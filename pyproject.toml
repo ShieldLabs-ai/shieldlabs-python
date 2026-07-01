@@ -1,0 +1,27 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "shieldlabs"
+version = "0.0.0"
+description = "ShieldLabs server SDK for Python: API client, webhook verification, and types."
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "MIT" }
+authors = [{ name = "ShieldLabs", email = "contact@shieldlabs.ai" }]
+keywords = ["shieldlabs", "server-sdk", "webhook-verification", "risk-score", "fraud-prevention"]
+classifiers = [
+  "Development Status :: 2 - Pre-Alpha",
+  "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: MIT License",
+]
+dependencies = []
+
+[project.urls]
+Homepage = "https://shieldlabs.ai"
+Repository = "https://github.com/ShieldLabs-ai/shieldlabs-python"
+Issues = "https://github.com/ShieldLabs-ai/shieldlabs-python/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/shieldlabs"]
