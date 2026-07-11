@@ -1,32 +1,22 @@
 # shieldlabs (Python)
 
-ShieldLabs server SDK for Python: API client, webhook verification, and types.
-
-> **Pre-launch.** This package is a placeholder to reserve the name and shape the public API. It is not published yet and the surface will change. Follow along at [shieldlabs.ai](https://shieldlabs.ai).
-
-Your code decides what to do with the score. This SDK never makes the decision for you. You set the rules.
+ShieldLabs server SDK: webhook verification and History API client.
 
 ## Install
 
 ```bash
-pip install shieldlabs   # coming soon
+pip install shieldlabs
 ```
 
-## Usage (subject to change)
+## Verify webhooks
 
 ```python
-from shieldlabs import ShieldLabsClient, verify_webhook
+from shieldlabs import verify_webhook
 
-client = ShieldLabsClient(api_key="sk_live_...")
-ok = verify_webhook(raw_body, signature_header, webhook_secret)
+ok = verify_webhook(raw_body, request.headers["X-Shield-Signature"], secret)
 ```
 
-## About ShieldLabs
-
-ShieldLabs gives you identification and anonymity detection with an explainable risk score (0-100) and detailed signals, so you can assess traffic quality and act on abuse and fraud in your own code. You read the score and its details; your code owns the decision. You set the rules.
-
-- Website: [shieldlabs.ai](https://shieldlabs.ai)
-- Get started: [Start Free](https://shieldlabs.ai)
+Signature: `X-Shield-Signature: sha256=` + hex(HMAC-SHA256(secret, raw_body)). Schema `2026-06-01`.
 
 ## License
 
