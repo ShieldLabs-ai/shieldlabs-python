@@ -13,3 +13,4 @@ venv/
 .ruff_cache/
 
 src/shieldlabs.egg-info
+.history
