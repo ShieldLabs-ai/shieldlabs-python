@@ -1,33 +1,103 @@
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling>=1.27"]
 build-backend = "hatchling.build"
 
 [project]
 name = "shieldlabs"
-version = "0.1.0"
-description = "ShieldLabs server SDK for Python: API client, webhook verification, and types."
+dynamic = ["version"]
+description = "ShieldLabs server SDK for Python: History API and Management API clients, webhook verification, typed events and risk helpers."
 readme = "README.md"
-requires-python = ">=3.8"
-license = { text = "MIT" }
-authors = [{ name = "ShieldLabs", email = "contact@shieldlabs.ai" }]
-keywords = ["shieldlabs", "server-sdk", "webhook-verification", "risk-score", "fraud-prevention"]
-classifiers = [
-  "Development Status :: 4 - Beta",
-  "Programming Language :: Python :: 3",
-  "License :: OSI Approved :: MIT License",
+requires-python = ">=3.9"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "ShieldLabs Inc.", email = "contact@shieldlabs.ai" }]
+keywords = [
+  "shieldlabs",
+  "device-intelligence",
+  "fraud-detection",
+  "risk-score",
+  "webhooks",
+  "account-abuse",
 ]
-dependencies = []
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+  "Intended Audience :: Developers",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Internet :: WWW/HTTP",
+  "Topic :: Security",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+  "Typing :: Typed",
+]
+dependencies = ["httpx>=0.25,<1"]
 
 [project.optional-dependencies]
-dev = ["pytest>=7.0"]
+# Upper bounds keep CI results stable when a tool publishes a new release; raise them on purpose.
+dev = [
+  "anyio>=3.7,<5",
+  "mypy>=1.8,<2.4",
+  "pytest>=7.4,<10",
+  "pytest-cov>=4.1,<8",
+  "respx>=0.20.2,<0.24",
+  "ruff>=0.6,<0.17",
+]
 
 [project.urls]
 Homepage = "https://shieldlabs.ai"
+Documentation = "https://docs.shieldlabs.ai"
 Repository = "https://github.com/ShieldLabs-ai/shieldlabs-python"
 Issues = "https://github.com/ShieldLabs-ai/shieldlabs-python/issues"
+Changelog = "https://github.com/ShieldLabs-ai/shieldlabs-python/blob/main/CHANGELOG.md"
+
+[tool.hatch.version]
+path = "src/shieldlabs/_version.py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/shieldlabs"]
 
+[tool.hatch.build.targets.sdist]
+include = ["src/shieldlabs", "tests", "examples", "README.md", "CHANGELOG.md", "LICENSE"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+addopts = "-ra"
+filterwarnings = ["error::DeprecationWarning:shieldlabs.*"]
+
+[tool.coverage.run]
+source = ["shieldlabs"]
+branch = true
+
+[tool.coverage.report]
+fail_under = 90
+show_missing = true
+skip_covered = false
+exclude_also = [
+  "if TYPE_CHECKING:",
+  "raise NotImplementedError",
+  "@overload",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B", "UP", "SIM", "C4", "RUF", "N", "PT", "RET", "PIE"]
+
+[tool.ruff.lint.pyupgrade]
+# Keep typing.Optional / typing.Union so annotations stay evaluable on Python 3.9.
+keep-runtime-typing = true
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["PT011"]
+
+[tool.mypy]
+strict = true
+warn_unreachable = true

@@ -1,16 +1,30 @@
+# Python
 __pycache__/
 *.py[cod]
-dist/
-build/
 *.egg-info/
+.eggs/
+build/
+dist/
+
+# Virtual environments
 .venv/
 venv/
-.env
-.env.*
-.DS_Store
+
+# Tooling caches and reports
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
 
-src/shieldlabs.egg-info
-.history
+# Local configuration
+.env
+.env.*
+
+# Editors and OS
+.DS_Store
+.history/
+.idea/
+.vscode/
