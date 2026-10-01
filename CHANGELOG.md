@@ -6,6 +6,10 @@ All notable changes to this project are documented in this file. The format foll
 
 ## [Unreleased]
 
+### Added
+
+- `sync.sh` downloads the OpenAPI description and `generate.sh` rebuilds `generated/` from it. The supported client is unchanged.
+
 ## [1.0.0] - 2026-09-30
 
 First stable release. It replaces the 0.1.0 preview package completely.

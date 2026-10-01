@@ -1,0 +1,9 @@
+{
+  "packageName": "shieldlabs_generated",
+  "projectName": "shieldlabs-generated",
+  "packageVersion": "1.0.0",
+  "packageUrl": "https://github.com/ShieldLabs-ai/shieldlabs-python",
+  "infoEmail": "contact@shieldlabs.ai",
+  "generateSourceCodeOnly": true,
+  "hideGenerationTimestamp": true
+}

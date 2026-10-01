@@ -446,6 +446,14 @@ Keys and request bodies are never logged. Each request carries
 
 ## Development
 
+Refresh the generated client when the API description changes. This does not replace the supported library in this repository.
+
+```bash
+./sync.sh      # download the current OpenAPI description into resources/
+./generate.sh  # rebuild generated/ from that file
+```
+
+
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate

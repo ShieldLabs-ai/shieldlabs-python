@@ -1,0 +1,2462 @@
+openapi: 3.1.0
+info:
+  title: ShieldLabs API
+  version: 1.0.1
+  summary: Identification results and risk scoring for your backend.
+  description: |-
+    The ShieldLabs API gives your backend the result of every identification the ShieldLabs agent
+    runs in a browser: the Risk Score, the risk signals behind it, the detection flags and the
+    identifiers (request, visitor, device, session, cookie and User HID) it belongs to.
+
+    ## How it fits
+
+    1. **Browser.** The ShieldLabs agent, loaded from `cdn.shieldlabs.ai`, runs an identification
+       and hands your page a request ID. The browser never receives a Risk Score, a visitor ID or
+       a device ID.
+    2. **Your backend.** Your page sends the request ID along with the protected action (signup,
+       login, checkout). Your backend reads the verdict for it from the **History API**, or
+       receives it in a signed `identification.scored` **webhook**.
+    3. **Decision.** Your backend acts on `risk_score`, the three risk bands, `detection_flags`
+       and the identifiers, for example by counting how many accounts one `device_id` has used
+       (skipping the `user_hid` values that do not identify a user, listed under Identifiers).
+
+    Scoring is asynchronous. The webhook usually arrives about 300 ms after the browser check; when
+    follow-up network checks run, it is sent when they finish, at most about 10 seconds later. The
+    History row appears about 1-3 seconds after the browser call and can be refined for up to about
+    10 seconds as follow-up checks finish. Start the identification when the user begins the
+    protected action (for example when the signup form opens), then either poll the History API by
+    `request_id` with a short backoff or wait for the webhook. Let one identification authorize one
+    protected action: reject request IDs you have already used and identifications older than your
+    freshness window.
+
+    ## Hosts and credentials
+
+    | API | Host | Paths | Credentials |
+    |---|---|---|---|
+    | History API | `https://account.shieldlabs.ai` | `/api/v1/...` | `Authorization: Bearer <Private API Key>` (`sec_...`, one per domain) |
+    | Management API | `https://api.shieldlabs.ai` | `/v1/...` | `X-Shield-Domain: <registered domain>` and `Authorization: Bearer <Secret Key>` |
+    | Health | both hosts | `/health` | none |
+
+    Every operation declares its own server, so generated clients send each call to the right
+    host. The History API serves its paths from the host root: the full URL is
+    `https://account.shieldlabs.ai/api/v1/history/{search_type}/{value}`, and a base URL that
+    already ends in `/api` produces `/api/api/v1/...` and a `404`.
+
+    The two credentials are not interchangeable. Keep the Private API Key and the Secret Key on your
+    server; only the Public Key belongs in the browser. All keys are in the analytics dashboard at
+    https://app.shieldlabs.ai.
+
+    ## Rate limits
+
+    - **History API:** about 15 requests per second per domain, shared by every caller of that
+      domain. Requests over the limit get `429`; there is no ban, so retry after about a second.
+    - **Management API:** 15 requests per minute per client IP. The request that goes over the
+      limit starts a 10-minute block, during which every request gets `429`. Never retry a `429`
+      from this API; cache the profile instead.
+    - **Health:** not rate limited.
+
+    API calls and webhook deliveries are free: only identifications made by the browser agent use
+    your included volume.
+
+    ## Errors
+
+    Error bodies are not uniform. Branch on the HTTP status first, then try to parse the body as
+    JSON whatever its content type.
+
+    | API | Status | Body |
+    |---|---|---|
+    | History API | 401 | JSON text `{"error":"..."}`, sent as `text/plain` |
+    | History API | 429 | `{"error":"too many requests"}` |
+    | History API | 500 | `{"error":"..."}`. A malformed UUID or IPv4 value always ends here: validate before sending and do not retry it |
+    | Management API | 401 | empty |
+    | Management API | 400 | a bare JSON string or `null` (deprecated history endpoint) |
+    | Management API | 429, 503 | `{"error":"..."}` |
+    | Both | 404 | `404 page not found` as `text/plain` when no route matches |
+    | Both | 502, 504 | an HTML page from the edge proxy |
+
+    Retry `429` (History API only), `5xx` and network errors with backoff. Do not retry `400`,
+    `401` or `404`, nor a History API `500` caused by a malformed value.
+
+    ## Identifiers
+
+    - `request_id`: one identification, created in the browser (UUID v4). It joins the browser
+      call, the webhook and the History row.
+    - `session_id`: one visit on one origin (UUID v4).
+    - `cookie_id`: first-party browser identifier kept by the agent (UUID v4).
+    - `device_id`: server-side device identifier (UUID v5). It survives cleared cookies and private
+      windows. The nil UUID `00000000-0000-0000-0000-000000000000` means no usable device signals.
+    - `visitor_id`: server-side visitor identifier (UUID v5), sticky to the device: a new cookie on
+      a known device keeps the visitor ID.
+    - `user_hid`: your hashed or pseudonymous account identifier, as passed to the agent.
+      `anonymous` marks anonymous checks; `fail`, `-1` and `unknown` also mean "no user". Leave
+      these values, `null` and the empty string out when you count accounts. Hex-encoded hashes
+      are the easiest values to search: see the `value` parameter of `searchHistory` for how to
+      encode other characters.
+
+    Validate UUIDs with any version accepted, the nil UUID included.
+
+    ## Risk Score, risk bands and the 999 marker
+
+    The Risk Score (`risk_score` on webhooks, `score` in the History API) is an integer from 0 to
+    100. Search-engine crawlers always score 0. The three risk bands are computed on your side; no
+    band field exists on the wire:
+
+    | Band | Score |
+    |---|---|
+    | trusted | 0-29 |
+    | suspicious | 30-59 |
+    | dangerous | 60-100 |
+
+    A value above 100 is not a score. **999** is the rate-limit marker: the visitor's IP went over
+    the ingest rate limit, and the identification carries exactly one signal,
+    `{"name":"rate_limited","weight":999}`, usually with nil identifiers. Treat every value above
+    100 as rate limited. One marker is written when the IP goes over the limit; request IDs issued
+    while it stays blocked get no row and no webhook, so they stay unverified.
+
+    Branch on `detection_flags` and the Risk Score. Signal names are for display and logging;
+    weights can be negative or change between releases, so never add them up yourself. A missing
+    identification means "unverified", never "clean".
+
+    ## Countries, IP addresses and timestamps
+
+    - `country` values are English country names from IP intelligence, such as `Germany` or
+      `United States`, or an empty string when unknown.
+    - IP fields hold IPv4 addresses. Without an IPv4 address the webhook sends `""` and the History
+      API sends `0.0.0.0`; such identifications cannot be searched by IP.
+    - Webhook timestamps (`created_at`, `observed_at`) are RFC 3339 in UTC with up to 9 fractional
+      digits.
+    - The History API `created_at` is `YYYY-MM-DD HH:MM:SS.mmm` in UTC without a zone designator;
+      older rows can lack the milliseconds.
+    - The Management API `CreatedAt` is RFC 3339 with second precision.
+
+    ## Webhooks
+
+    ShieldLabs sends one signed `POST` for each identification to every enabled endpoint of the
+    domain. A delivery has a 1-second timeout and is not retried today; a later release adds
+    retries that resend identical bytes. Answer 2xx within a second, process the event
+    asynchronously, make the handler idempotent on `data.request_id`, and use the History API for
+    guaranteed reads. A History row can be refined after its webhook was sent (its `ver`
+    increases); the webhook is not sent again. See the `identification.scored` and `webhook.ping`
+    entries for the signature algorithm.
+
+    ## Compatibility
+
+    Ignore fields you do not know, keep unknown values of string fields (such as new signal names
+    or channels) instead of failing, and accept webhook `schema_version` values other than
+    `2026-06-01`.
+
+    Start free at https://app.shieldlabs.ai. Guides: https://docs.shieldlabs.ai.
+  contact:
+    name: ShieldLabs
+    url: https://docs.shieldlabs.ai
+    email: contact@shieldlabs.ai
+  license:
+    name: MIT
+    identifier: MIT
+servers:
+  - url: https://account.shieldlabs.ai
+    description: History API (every operation also declares its own server)
+  - url: https://api.shieldlabs.ai
+    description: Management API (every operation also declares its own server)
+tags:
+  - name: History API
+    description: 'Read identifications by one identifier on `https://account.shieldlabs.ai` with the Private API Key. The canonical way to read a verdict: by `request_id` right after a protected action, or by `device_id`, `user_hid`, `visitor_id` or `ip` for account-level checks.'
+  - name: Management API
+    description: Domain profile on `https://api.shieldlabs.ai`, authenticated with the Secret Key and the `X-Shield-Domain` header. Also serves the deprecated history endpoint until 1 January 2027.
+  - name: Health
+    description: Unauthenticated liveness checks on both API hosts.
+  - name: Webhooks
+    description: 'Signed events ShieldLabs sends to your webhook endpoints: `identification.scored` for every identification and `webhook.ping` when you verify an endpoint.'
+externalDocs:
+  description: ShieldLabs documentation
+  url: https://docs.shieldlabs.ai
+paths:
+  /api/v1/history/{search_type}/{value}:
+    servers:
+      - url: https://account.shieldlabs.ai
+        description: History API
+    get:
+      operationId: searchHistory
+      tags:
+        - History API
+      summary: Search identifications
+      description: |-
+        Returns the identifications of your domain that match one identifier, newest first, together
+        with the total number of matches. The Private API Key selects the domain; identifications from
+        its subdomains are included (`domain` holds the host, `site_domain` the registered domain).
+
+        **Read one verdict.** After a protected action, search by `request_id` with `limit=1`. The row
+        appears about 1-3 seconds after the browser call and can be refined for up to about 10 seconds
+        as follow-up network checks finish, so start the identification when the user begins the
+        action (for example when the signup form opens), not when the form is submitted. An empty
+        `data` array means "not scored yet", never "clean". Poll with backoff (first try at once, then
+        wait 250 ms, 500 ms, 1 s, then steps of about 1.5 s) and treat a `429` inside that loop as
+        "wait longer". The official server SDKs do this for you.
+
+        **Account-level checks.** Search by `device_id`, `user_hid`, `visitor_id` or `ip` to see how
+        many accounts share a device, how many devices one account uses, or what else came from one
+        IP address. When you count accounts, skip rows whose `user_hid` is empty or one of the values
+        that do not identify a user: `anonymous`, `fail`, `-1` and `unknown`.
+
+        **Validate before sending.** The server does not validate the path: an unknown `search_type`
+        returns the latest identifications of the whole domain unfiltered, a malformed UUID or IPv4
+        value returns `500`, and a `limit` outside 1-100 silently becomes 20.
+
+        **Paging.** Page with `offset` while it is below `total`. Rows are ordered by `created_at`
+        only, so paging while new identifications arrive can repeat or skip rows: deduplicate on
+        `request_id`.
+
+        **Latest state.** A row can be refined after the webhook was sent, for example when late
+        network data re-scores it; its `ver` then increases. The History API always returns the latest
+        version, which makes it the guaranteed read path.
+
+        Reads are free: they do not use your included identifications.
+      security:
+        - historyApiKey: []
+      parameters:
+        - $ref: '#/components/parameters/HistorySearchType'
+        - $ref: '#/components/parameters/HistoryValue'
+        - $ref: '#/components/parameters/HistoryLimit'
+        - $ref: '#/components/parameters/HistoryOffset'
+      responses:
+        '200':
+          description: Matching identifications, newest first. `data` is empty when nothing matched.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HistoryPage'
+              examples:
+                page:
+                  $ref: '#/components/examples/HistoryPage'
+                empty:
+                  $ref: '#/components/examples/HistoryPageEmpty'
+        '401':
+          $ref: '#/components/responses/HistoryUnauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/HistoryTooManyRequests'
+        '500':
+          $ref: '#/components/responses/HistoryServerError'
+        '502':
+          $ref: '#/components/responses/BadGateway'
+        '504':
+          $ref: '#/components/responses/GatewayTimeout'
+      x-codeSamples:
+        - lang: Shell
+          label: curl
+          source: |
+            curl "https://account.shieldlabs.ai/api/v1/history/request_id/a5b7c9d1-e3f5-4a7b-9c1d-3e5f7a9b1c3d?limit=1" \
+              -H "Authorization: Bearer $SHIELDLABS_API_KEY"
+  /v1/profile:
+    servers:
+      - url: https://api.shieldlabs.ai
+        description: Management API
+    get:
+      operationId: getDomainProfile
+      tags:
+        - Management API
+      summary: Get the domain profile
+      description: |-
+        Returns the registered domain, the remaining included identifications of the account and the
+        masked keys.
+
+        **Credentials.** Send the Secret Key as a Bearer token and the registered domain in
+        `X-Shield-Domain`. The domain is matched exactly: send it lowercase, without scheme, path,
+        trailing slash or a leading `www.`.
+
+        **Rate limit.** 15 requests per minute per client IP. The request that goes over the limit
+        starts a 10-minute block during which every request to the Management API gets `429`. Call
+        this endpoint sparingly, cache the profile, and never retry a `429`.
+
+        `Weight` can be negative when the account is over its included volume. The call is free.
+      security:
+        - managementSecretKey: []
+      parameters:
+        - $ref: '#/components/parameters/ShieldDomain'
+      responses:
+        '200':
+          description: The domain profile.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DomainProfile'
+              examples:
+                profile:
+                  $ref: '#/components/examples/DomainProfile'
+        '401':
+          $ref: '#/components/responses/ManagementUnauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/ManagementTooManyRequests'
+        '502':
+          $ref: '#/components/responses/BadGateway'
+        '503':
+          $ref: '#/components/responses/ManagementServerBusy'
+        '504':
+          $ref: '#/components/responses/GatewayTimeout'
+      x-codeSamples:
+        - lang: Shell
+          label: curl
+          source: |
+            curl "https://api.shieldlabs.ai/v1/profile" \
+              -H "X-Shield-Domain: $SHIELDLABS_DOMAIN" \
+              -H "Authorization: Bearer $SHIELDLABS_SECRET_KEY"
+  /v1/history/{type}/{value}:
+    servers:
+      - url: https://api.shieldlabs.ai
+        description: Management API
+    get:
+      operationId: searchHistoryDeprecated
+      tags:
+        - Management API
+      summary: Search history by identifier (deprecated)
+      deprecated: true
+      x-sunset: '2027-01-01'
+      description: |-
+        **Deprecated.** This endpoint stops working after Sat, 01 Jan 2027 00:00:00 GMT. Use
+        `searchHistory` on the History API instead: `https://account.shieldlabs.ai/api/v1/history`.
+        Every answer of this route except `429` and `503` carries `Deprecation: true`, a `Sunset`
+        header and a `Link` header with `rel="successor-version"` pointing there. The plain-text `404`
+        for a path that matches no route and the edge proxy errors do not carry them.
+
+        Differences from the History API: the answer is a bare array of PascalCase objects; only rows
+        whose request host equals `X-Shield-Domain` are returned (no subdomain traffic); `limit`
+        defaults to 100 and there is no `offset`. It uses the Management API credentials and rate limit
+        (15 requests per minute per client IP, then a 10-minute block). The call is free.
+      security:
+        - managementSecretKey: []
+      parameters:
+        - $ref: '#/components/parameters/ShieldDomain'
+        - $ref: '#/components/parameters/DeprecatedHistoryType'
+        - $ref: '#/components/parameters/DeprecatedHistoryValue'
+        - $ref: '#/components/parameters/DeprecatedHistoryLimit'
+      responses:
+        '200':
+          description: Matching identifications, newest first.
+          headers:
+            Deprecation:
+              $ref: '#/components/headers/Deprecation'
+            Sunset:
+              $ref: '#/components/headers/Sunset'
+            Link:
+              $ref: '#/components/headers/Link'
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LegacySnapshot'
+              examples:
+                list:
+                  $ref: '#/components/examples/LegacySnapshotList'
+                empty:
+                  $ref: '#/components/examples/LegacySnapshotListEmpty'
+        '400':
+          description: The value failed validation (a bare JSON string) or the query failed (the JSON literal `null`, for example for an IPv6 `ip` value). Do not retry.
+          headers:
+            Deprecation:
+              $ref: '#/components/headers/Deprecation'
+            Sunset:
+              $ref: '#/components/headers/Sunset'
+            Link:
+              $ref: '#/components/headers/Link'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LegacyErrorMessage'
+              examples:
+                invalidUuid:
+                  $ref: '#/components/examples/ManagementBadRequestUuid'
+                invalidIp:
+                  $ref: '#/components/examples/ManagementBadRequestIp'
+                emptyValue:
+                  $ref: '#/components/examples/ManagementBadRequestEmpty'
+                queryFailed:
+                  $ref: '#/components/examples/ManagementBadRequestNull'
+        '401':
+          description: Empty body, no `Content-Type`. Missing or malformed headers, unknown or disabled domain, or a wrong Secret Key. Do not retry.
+          headers:
+            Deprecation:
+              $ref: '#/components/headers/Deprecation'
+            Sunset:
+              $ref: '#/components/headers/Sunset'
+            Link:
+              $ref: '#/components/headers/Link'
+        '404':
+          description: '`application/json`: the `type` is not supported (a bare JSON string); this answer carries the deprecation headers. `text/plain`: no route matches the path, for example because the value is empty or contains `/`; this answer comes from the router and carries no deprecation headers. Do not retry.'
+          headers:
+            Deprecation:
+              $ref: '#/components/headers/Deprecation'
+            Sunset:
+              $ref: '#/components/headers/Sunset'
+            Link:
+              $ref: '#/components/headers/Link'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LegacyErrorMessage'
+              examples:
+                unsupportedType:
+                  $ref: '#/components/examples/ManagementUnsupportedType'
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/PlainText'
+              examples:
+                notFound:
+                  $ref: '#/components/examples/NotFoundText'
+        '429':
+          $ref: '#/components/responses/ManagementTooManyRequests'
+        '502':
+          $ref: '#/components/responses/BadGateway'
+        '503':
+          $ref: '#/components/responses/ManagementServerBusy'
+        '504':
+          $ref: '#/components/responses/GatewayTimeout'
+  /health:
+    servers:
+      - url: https://account.shieldlabs.ai
+        description: History API host
+      - url: https://api.shieldlabs.ai
+        description: Management API host
+    get:
+      operationId: getHealth
+      tags:
+        - Health
+      summary: Check service health
+      description: |-
+        Liveness check. Returns `{"status":"ok"}` while the service answers. Available on both API
+        hosts: `https://account.shieldlabs.ai/health` for the History API and
+        `https://api.shieldlabs.ai/health` for the Management API. No authentication, not rate
+        limited, not billed.
+      security: []
+      responses:
+        '200':
+          description: The service is up.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthStatus'
+              examples:
+                ok:
+                  $ref: '#/components/examples/HealthOk'
+        '404':
+          description: No route matches the path. The health check lives at the host root, so `/api/health` gets this answer. Plain text body.
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/PlainText'
+              examples:
+                notFound:
+                  $ref: '#/components/examples/NotFoundText'
+        '502':
+          $ref: '#/components/responses/BadGateway'
+        '504':
+          $ref: '#/components/responses/GatewayTimeout'
+      x-codeSamples:
+        - lang: Shell
+          label: curl
+          source: |
+            curl "https://account.shieldlabs.ai/health"
+webhooks:
+  identification.scored:
+    post:
+      operationId: identificationScored
+      tags:
+        - Webhooks
+      summary: Identification scored
+      description: |-
+        Sent to every enabled webhook endpoint of your domain once for each identification, when its
+        scoring is final: usually about 300 ms after the browser check, and at most about 10 seconds
+        later when follow-up network checks run.
+
+        **Verify, then parse.** Compute HMAC-SHA256 over the raw request body and compare it with
+        `X-Shield-Signature` before you parse the JSON:
+        - key: the endpoint's signing secret as UTF-8 bytes, including the `whsec_` prefix (not hex-
+          or base64-decoded, not stripped);
+        - message: the exact bytes received; re-serializing parsed JSON changes them (for example, `&`
+          arrives escaped as `\u0026`);
+        - expected header: `sha256=` followed by the lowercase hex digest, compared in constant time.
+
+        There is no timestamp, delivery ID or event-type header. Rotating a secret replaces it at
+        once, so accept both the old and the new secret until your deployment has switched.
+
+        **Respond fast.** Answer any 2xx status within 1 second and process the event asynchronously;
+        do not redirect. Today each identification is delivered once per endpoint, with no retries. A
+        later release adds retries that resend identical bytes, so make your handler idempotent on
+        `data.request_id`.
+
+        **Latest state.** The event is a snapshot taken when scoring finished. The History row can
+        still be refined afterwards (its `ver` increases) and no second event is sent. Use the History
+        API for guaranteed reads and for the latest state.
+
+        **Test deliveries.** The Test button in the analytics dashboard sends a fixed sample with keys
+        sorted alphabetically, second-precision timestamps and two-letter country values. Its
+        `detection_flags` lack `browser_automation` and `search_bot`: parse missing flags as `false`.
+
+        Deliveries are free and do not use your included identifications.
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/ShieldSignature'
+      requestBody:
+        required: true
+        description: The event as compact JSON. Verify the signature over these exact bytes.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IdentificationScoredEvent'
+            examples:
+              scored:
+                $ref: '#/components/examples/IdentificationScored'
+              rateLimited:
+                $ref: '#/components/examples/IdentificationScoredRateLimited'
+              testDelivery:
+                $ref: '#/components/examples/IdentificationScoredTestDelivery'
+      responses:
+        2XX:
+          description: Delivery accepted. The response body is ignored.
+        4XX:
+          description: Delivery rejected, for example with `401` when the signature does not verify. Any status other than 2xx, and a timeout after 1 second, counts as a failed delivery; failed deliveries are not retried today.
+  webhook.ping:
+    post:
+      operationId: webhookPing
+      tags:
+        - Webhooks
+      summary: Endpoint verification
+      description: |-
+        Sent when you verify an endpoint in the analytics dashboard. It carries no `data`. A 2xx
+        answer within 5 seconds marks the endpoint as verified; anything else marks the verification
+        as failed.
+
+        The body is signed exactly like `identification.scored`. Its keys are sorted alphabetically
+        and `created_at` has second precision. Worked example with the test secret
+        `whsec_00112233445566778899aabbccddeeff`: the body
+
+        ```json
+        {"created_at":"2026-09-30T12:34:56Z","event_type":"webhook.ping","schema_version":"2026-06-01"}
+        ```
+
+        arrives with `X-Shield-Signature: sha256=ea2685733d254f7028fb031c4214583b0650de01e6c8c93131236024edd9fdd8`.
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/ShieldSignature'
+      requestBody:
+        required: true
+        description: The ping as compact JSON with sorted keys.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WebhookPingEvent'
+            examples:
+              ping:
+                $ref: '#/components/examples/WebhookPing'
+      responses:
+        2XX:
+          description: Endpoint verified. The response body is ignored.
+        4XX:
+          description: Verification failed. Any status other than 2xx, and a timeout after 5 seconds, fails it.
+components:
+  securitySchemes:
+    historyApiKey:
+      type: http
+      scheme: bearer
+      bearerFormat: sec_xxxxxxxx-xxxxxxxx-xxxxxxxx
+      description: 'Private API Key of one domain, sent as `Authorization: Bearer <key>`. Keys look like `sec_` followed by three groups of eight lowercase letters or digits separated by `-`. Create and rotate it in the analytics dashboard. It reads the History API of that domain only; keep it on your server.'
+    managementSecretKey:
+      type: http
+      scheme: bearer
+      description: 'Secret Key of the domain, sent as `Authorization: Bearer <key>` together with the registered domain in the `X-Shield-Domain` header. Treat the key as opaque. Find it in the analytics dashboard; keep it on your server.'
+  parameters:
+    HistorySearchType:
+      name: search_type
+      in: path
+      required: true
+      description: |-
+        Identifier to search by. Only these seven values are supported:
+        - `request_id`: one identification (read a verdict);
+        - `device_id`: every identification of one device;
+        - `user_hid`: every identification of one account;
+        - `visitor_id`: every identification of one visitor;
+        - `ip`: every identification from one public IPv4 address;
+        - `session_id`: every identification of one visit;
+        - `cookie_id`: every identification with one browser cookie.
+
+        The server does not reject other values: it ignores them and returns the latest identifications
+        of the whole domain, so restrict the value on your side.
+      schema:
+        type: string
+        enum:
+          - request_id
+          - device_id
+          - user_hid
+          - visitor_id
+          - ip
+          - session_id
+          - cookie_id
+      examples:
+        requestId:
+          summary: Read one verdict
+          value: request_id
+        deviceId:
+          summary: All identifications of one device
+          value: device_id
+    HistoryValue:
+      name: value
+      in: path
+      required: true
+      description: |-
+        Value of the identifier, validated on your side before sending:
+        - `request_id`, `device_id`, `visitor_id`, `session_id`, `cookie_id`: a UUID of any version,
+          the nil UUID included, matching
+          `^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`. Send it
+          lowercase.
+        - `ip`: a dotted IPv4 address. IPv6 addresses cannot be searched.
+        - `user_hid`: the exact, case-sensitive User HID as one path segment, encoded the way the
+          server reads it: send the characters `A-Z a-z 0-9 - . _ ~ $ & + , : ; = @` unescaped and
+          percent-encode every other byte of the UTF-8 value as uppercase `%XX`, including
+          `! ' ( ) *`, spaces and `%` itself. The server compares any other encoding literally, so
+          `%40` instead of `@`, or lowercase hex digits, return an empty page instead of the matching
+          rows. Many HTTP clients and generated clients escape `$ & + , : ; = @` in path values: build
+          this path yourself when yours does. A User HID that contains `/` cannot be searched, and most
+          HTTP clients cannot send `.` or `..` because they remove them as dot segments; the pattern
+          rejects these values. Hex-encoded hashes need no escaping at all.
+
+        The server does not validate the value: a malformed UUID or IPv4 address gets a `500`.
+      schema:
+        type: string
+        minLength: 1
+        pattern: ^(?:[^/.][^/]*|\.[^/.][^/]*|\.\.[^/]+)$
+      examples:
+        requestId:
+          summary: A request ID
+          value: a5b7c9d1-e3f5-4a7b-9c1d-3e5f7a9b1c3d
+        ip:
+          summary: A public IPv4 address
+          value: 203.0.113.24
+        userHid:
+          summary: A User HID
+          value: 9f86d081884c7d659a2feaa0c55ad015
+    HistoryLimit:
+      name: limit
+      in: query
+      required: false
+      description: Maximum number of identifications to return, from 1 to 100. The server replaces any other value (and a non-numeric one) with 20 instead of clamping it, so validate it on your side.
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+      examples:
+        one:
+          summary: Read one verdict
+          value: 1
+        page:
+          summary: A full page
+          value: 100
+    HistoryOffset:
+      name: offset
+      in: query
+      required: false
+      description: 'Number of identifications to skip, for paging. The server treats negative or non-numeric values as 0. Rows are ordered by `created_at` only, so paging while new identifications arrive can repeat or skip rows: deduplicate on `request_id`.'
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+      examples:
+        first:
+          summary: First page
+          value: 0
+        second:
+          summary: Second page of 100
+          value: 100
+    ShieldDomain:
+      name: X-Shield-Domain
+      in: header
+      required: true
+      description: 'Your registered domain. The server matches it exactly against the domain registered in the analytics dashboard, so send it normalized: lowercase, without scheme, path, trailing slash or a leading `www.` (`https://www.Example.com/` becomes `example.com`). A missing or wrong value gets a `401` with an empty body.'
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 253
+      examples:
+        domain:
+          summary: A registered domain
+          value: example.com
+    DeprecatedHistoryType:
+      name: type
+      in: path
+      required: true
+      description: Identifier to search by. Other values get a `404` with a bare JSON string such as `"auto is not supported"`.
+      schema:
+        type: string
+        enum:
+          - request_id
+          - device_id
+          - user_hid
+          - visitor_id
+          - ip
+          - session_id
+          - cookie_id
+      examples:
+        requestId:
+          summary: Search by request ID
+          value: request_id
+    DeprecatedHistoryValue:
+      name: value
+      in: path
+      required: true
+      description: Value of the identifier. UUID types accept a UUID of any version; `ip` must be an IP address (an IPv6 address passes validation but then fails with `400` and a `null` body); `user_hid` is free text.
+      schema:
+        type: string
+        minLength: 1
+      examples:
+        requestId:
+          summary: A request ID
+          value: a5b7c9d1-e3f5-4a7b-9c1d-3e5f7a9b1c3d
+    DeprecatedHistoryLimit:
+      name: limit
+      in: query
+      required: false
+      description: Maximum number of identifications, from 1 to 100. Any other value becomes 100. There is no `offset`.
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 100
+      examples:
+        ten:
+          summary: Ten rows
+          value: 10
+    ShieldSignature:
+      name: X-Shield-Signature
+      in: header
+      required: true
+      description: |-
+        `sha256=` followed by the lowercase hex HMAC-SHA256 of the raw request body:
+        - key: your endpoint's signing secret as UTF-8 bytes, the `whsec_` prefix included (not hex- or
+          base64-decoded, not stripped);
+        - message: the exact bytes of the body as received.
+
+        Compare it with your own digest in constant time, before parsing the JSON. The example values
+        are the signatures of the example bodies (in their compact form as sent) with the test secret
+        `whsec_00112233445566778899aabbccddeeff`.
+      schema:
+        type: string
+        pattern: ^sha256=[0-9a-f]{64}$
+      examples:
+        identificationScored:
+          summary: Signature of the identification.scored example
+          value: sha256=397ff9bd26888e9e86addc2d920a8c5b2037251a3a1181f3b4810ca6c5f78062
+        webhookPing:
+          summary: Signature of the webhook.ping example
+          value: sha256=ea2685733d254f7028fb031c4214583b0650de01e6c8c93131236024edd9fdd8
+  schemas:
+    RequestId:
+      type: string
+      format: uuid
+      description: Identifies one identification. The browser creates it as a UUID v4 and hands it to your page; it is the join key between the browser, the webhook and the History API. The nil UUID appears only on rate-limit marker rows that arrived with a malformed request ID.
+      examples:
+        - a5b7c9d1-e3f5-4a7b-9c1d-3e5f7a9b1c3d
+    SessionId:
+      type: string
+      format: uuid
+      description: One visit on one origin (UUID v4 created in the browser), shared by the open tabs of that origin. The next visit after the last tab closes gets a new session ID. The nil UUID appears on rate-limit marker rows.
+      examples:
+        - b6c8d0e2-f4a6-4b8c-8d0e-2f4a6b8c0d2e
+    CookieId:
+      type: string
+      format: uuid
+      description: First-party browser identifier kept by the ShieldLabs agent (UUID v4). A missing or malformed value is stored as the nil UUID.
+      examples:
+        - c7d9e1f3-a5b7-4c9d-ae1f-3a5b7c9d1e3f
+    DeviceId:
+      type: string
+      format: uuid
+      description: 'Server-side device identifier (UUID v5). It survives cleared cookies and private windows. The nil UUID `00000000-0000-0000-0000-000000000000` means that no usable device signals were collected (for example on rate-limit marker rows): never group identifications by it.'
+      examples:
+        - d8e0f2a4-b6c8-4d0e-bf2a-4b6c8d0e2f4a
+        - 00000000-0000-0000-0000-000000000000
+    VisitorId:
+      type: string
+      format: uuid
+      description: 'Server-side visitor identifier (UUID v5). It is sticky to the device: a new cookie on a known device keeps the existing visitor ID, so clearing cookies usually does not change it. The nil UUID appears on identifications without usable device data, such as rate-limit marker rows.'
+      examples:
+        - e9f1a3b5-c7d9-4e1f-8a3b-5c7d9e1f3a5b
+    Ipv4:
+      type: string
+      format: ipv4
+      description: Dotted IPv4 address. `0.0.0.0` when no IPv4 address is known (for example for visitors on IPv6); such identifications cannot be searched by IP.
+      examples:
+        - 203.0.113.24
+        - 0.0.0.0
+    OperatingSystem:
+      type: string
+      description: 'Operating system name, for example `Windows`, `Mac OS X`, `Linux`, `Android`, `IOS (iPhone)`, `IOS (iPad)`, `ChromeOS` or `Unknown`. Open set: display it, do not branch on it.'
+      examples:
+        - Windows
+        - Mac OS X
+        - Android
+    Browser:
+      type: string
+      description: 'Browser name, for example `Chrome`, `Safari`, `Firefox`, `Microsoft Edge`, `Opera`, `Samsung Internet`, `Brave`, `Chrome (iOS)`, `Safari (iOS)` or `Unknown`. Open set: display it, do not branch on it.'
+      examples:
+        - Chrome
+        - Safari
+    DeviceType:
+      type: string
+      description: 'Device class from the browser. Known values: `desktop`, `mobile`, `tablet` and `unknown` (the class could not be determined). The set is open: keep values added in later versions and treat them as `unknown`.'
+      x-extensible-enum:
+        - desktop
+        - mobile
+        - tablet
+        - unknown
+      examples:
+        - desktop
+    Country:
+      type: string
+      description: English country name from IP intelligence, for example `Germany` or `United States` (not an ISO code). Empty string when the country is unknown.
+      examples:
+        - Netherlands
+        - United States
+        - ''
+    ConnectionType:
+      type: string
+      description: |-
+        How the visitor connected. Known values:
+        - `direct`: a regular connection;
+        - `mobile`: a mobile carrier network;
+        - `vpn`: a VPN;
+        - `proxy`: a proxy, datacenter or hosting network (search-engine crawlers are reported here too);
+        - `tor`: the Tor network;
+        - `privacy_relay`: a privacy relay such as iCloud Private Relay;
+        - `browser_vpn_proxy`: a VPN or proxy built into the browser or one of its extensions;
+        - `unknown`: not enough data.
+
+        The value can say `vpn` while `detection_flags.vpn` is `false` (IP intelligence classified the
+        network, but the scored VPN check did not fire). Branch on `detection_flags` for decisions.
+        The set is open: keep values added in later versions and treat them as `unknown`.
+      x-extensible-enum:
+        - direct
+        - mobile
+        - vpn
+        - proxy
+        - tor
+        - privacy_relay
+        - browser_vpn_proxy
+        - unknown
+      examples:
+        - direct
+    RiskScore:
+      type: integer
+      minimum: 0
+      description: |-
+        Risk Score from 0 (no risk found) to 100. Search-engine crawlers always score 0.
+
+        Risk bands are computed on your side from the score; no band field exists on the wire:
+        - trusted: 0-29
+        - suspicious: 30-59
+        - dangerous: 60-100
+
+        A value above 100 is not a score. `999` is the rate-limit marker: the visitor's IP went over the
+        ingest rate limit, and the identification carries exactly one signal,
+        `{"name":"rate_limited","weight":999}`, usually with nil identifiers. Treat every value above
+        100 as rate limited. One marker is written when the IP goes over the limit; request IDs issued
+        while it stays blocked get no row and no webhook, so they stay unverified.
+
+        The score usually equals the sum of the signal weights capped at 100, but carried-forward
+        verdicts and corrections make that unreliable: never recompute or validate it yourself.
+      examples:
+        - 0
+        - 35
+        - 80
+        - 999
+    ScoreDetail:
+      type: object
+      description: One entry behind the score, in the PascalCase shape the server stores. `Value` is the weight (0 for informational entries); `Description` is free text for display, never branch on it.
+      required:
+        - Value
+        - Description
+      properties:
+        Value:
+          type: integer
+          description: Weight of the entry. Can be negative; 0 for informational entries.
+          examples:
+            - 10
+        Description:
+          type: string
+          description: Human-readable description, for example `Is proxy` or `Antidetect browser (turn_block)`.
+          examples:
+            - Is proxy
+    HistoryTimestamp:
+      type: string
+      pattern: ^[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]{3})?$
+      description: Time of the identification as `YYYY-MM-DD HH:MM:SS.mmm` in UTC, without a zone designator (not RFC 3339). Older rows can lack the milliseconds.
+      examples:
+        - '2026-09-30 12:34:56.123'
+        - '2026-09-30 13:05:12'
+    NetworkClass:
+      type: string
+      description: 'Connection class of one IP address from IP intelligence. Known values: `direct`, `mobile`, `vpn`, `proxy`, `tor`, `privacy_relay` and the empty string when unknown. The set is open: keep values added in later versions.'
+      x-extensible-enum:
+        - direct
+        - mobile
+        - vpn
+        - proxy
+        - tor
+        - privacy_relay
+        - ''
+      examples:
+        - direct
+    TrafficChannel:
+      type: string
+      description: 'Marketing channel of the visit. Known values: `Google Ads`, `Meta`, `TikTok`, `LinkedIn`, `X`, `Pinterest`, `Microsoft Ads`, `Organic Search`, `Search bot`, `Referral`, `Direct`, `Other` and the empty string. Resolved in this order: a click ID, then UTM parameters, then the referrer (search engines give `Organic Search`, social networks give the platform name, other sites give `Referral`), otherwise `Direct`. Search-engine crawlers get `Search bot`. Empty string on identifications without attribution, such as rate-limit marker rows. The set is open: keep values added in later versions and treat them as `Other`.'
+      x-extensible-enum:
+        - Google Ads
+        - Meta
+        - TikTok
+        - LinkedIn
+        - X
+        - Pinterest
+        - Microsoft Ads
+        - Organic Search
+        - Search bot
+        - Referral
+        - Direct
+        - Other
+        - ''
+      examples:
+        - Google Ads
+        - Direct
+    TrafficChannelGroup:
+      type: string
+      description: 'Group of the marketing channel. Known values: `Paid Search`, `Paid Social`, `Organic`, `Bot`, `Social`, `Referral`, `Direct` and `Other`. History API only; not part of the webhook. The set is open: keep values added in later versions and treat them as `Other`.'
+      x-extensible-enum:
+        - Paid Search
+        - Paid Social
+        - Organic
+        - Bot
+        - Social
+        - Referral
+        - Direct
+        - Other
+      examples:
+        - Paid Search
+    TrafficReason:
+      type: string
+      description: 'Why the channel was chosen. Known values: `gclid_present`, `msclkid_present`, `ttclid_present`, `fbclid_present`, `utm_match`, `referrer_search_engine`, `ip_crawler_detected`, `referrer_social`, `external_referrer` and `no_source_detected`. History API only; not part of the webhook. The set is open: keep values added in later versions.'
+      x-extensible-enum:
+        - gclid_present
+        - msclkid_present
+        - ttclid_present
+        - fbclid_present
+        - utm_match
+        - referrer_search_engine
+        - ip_crawler_detected
+        - referrer_social
+        - external_referrer
+        - no_source_detected
+      examples:
+        - gclid_present
+    ClickIdType:
+      type: string
+      description: 'Ad click identifier found in the landing URL. Known values: `gclid`, `gbraid`, `wbraid`, `msclkid`, `ttclid`, `fbclid` and the empty string when there is none. `fbclid` counts only together with a Meta referrer or a Meta `utm_source`. The set is open: keep values added in later versions.'
+      x-extensible-enum:
+        - gclid
+        - gbraid
+        - wbraid
+        - msclkid
+        - ttclid
+        - fbclid
+        - ''
+      examples:
+        - gclid
+        - ''
+    HistoryRow:
+      type: object
+      additionalProperties: true
+      description: |-
+        One identification as stored, in its latest version. It describes the same identification as a
+        webhook `data` object, with different field names:
+
+        | Webhook `data` | History row |
+        |---|---|
+        | `risk_score` | `score` |
+        | `signals` | `score_details` (JSON-encoded string, zero weights included) |
+        | `detection_flags` | the `is_*` columns and `check_incomplete` (each column names its flag) |
+        | `detection_flags.browser_vpn_proxy` | derive it: `connection_type == "browser_vpn_proxy"` |
+        | `domain` | `site_domain` when present, otherwise `domain` |
+        | `public_ip` | `ip` (`0.0.0.0` instead of `""`) and `country` |
+        | `local_ip` | `webrtc_leak_ip` and `webrtc_leak_country` when `webrtc_leak_source` is set and not `none`, otherwise `web_rtc_ip` and `web_rtc_country` |
+        | `traffic_source` | `traffic_channel`, `referrer_domain`, `entry_url`, `click_id_type`, `utm_*` (omitted when empty) |
+        | `observed_at` (when scoring finished) | `created_at` (when the identification was made) |
+
+        The `ip_mismatch` flag has no column. Rows also carry diagnostic network fields (TCP, MTU and
+        STUN measurements) that are not part of the stable contract: ignore fields you do not know.
+      required:
+        - request_id
+        - session_id
+        - cookie_id
+        - domain
+        - user_hid
+        - device_id
+        - visitor_id
+        - ip
+        - os
+        - browser
+        - device_type
+        - country
+        - connection_type
+        - score
+        - score_details
+        - created_at
+        - ver
+        - web_rtc_ip
+        - web_rtc_country
+        - web_rtc_connection_type
+        - webrtc_leak_ip
+        - webrtc_leak_country
+        - webrtc_leak_connection_type
+        - webrtc_leak_source
+        - is_vpn
+        - is_tor
+        - is_proxy
+        - is_datacenter
+        - is_abuser
+        - is_privacy_relay
+        - is_stun_not_checked
+        - check_incomplete
+        - is_antidetect
+        - is_os_mismatch
+        - is_os_not_detected
+        - is_timezone_mismatch
+        - is_js_disabled
+        - is_browser_automation
+        - is_incognito
+        - is_search_bot
+      properties:
+        request_id:
+          $ref: '#/components/schemas/RequestId'
+        session_id:
+          $ref: '#/components/schemas/SessionId'
+        cookie_id:
+          $ref: '#/components/schemas/CookieId'
+        domain:
+          type: string
+          description: Host the identification came from. Can be a subdomain of your registered domain.
+          examples:
+            - shop.example.com
+        site_domain:
+          type: string
+          description: Your registered domain, present when the identification came from a subdomain. Omitted when empty.
+          examples:
+            - example.com
+        user_hid:
+          type: string
+          description: User HID exactly as it was passed to the agent (hashed or pseudonymous account identifier). `anonymous` for anonymous checks; `fail`, `-1` and `unknown` also mean "no user". Empty string when no value was stored. Leave the empty string and these values out when you count accounts.
+          examples:
+            - 9f86d081884c7d659a2feaa0c55ad015
+            - anonymous
+        device_id:
+          $ref: '#/components/schemas/DeviceId'
+        visitor_id:
+          $ref: '#/components/schemas/VisitorId'
+        ip:
+          $ref: '#/components/schemas/Ipv4'
+          description: Public IPv4 address of the HTTP request; `0.0.0.0` when none (for example IPv6 visitors).
+        os:
+          $ref: '#/components/schemas/OperatingSystem'
+        browser:
+          $ref: '#/components/schemas/Browser'
+        device_type:
+          $ref: '#/components/schemas/DeviceType'
+        country:
+          $ref: '#/components/schemas/Country'
+          description: Country of `ip` as an English country name, or an empty string.
+        connection_type:
+          $ref: '#/components/schemas/ConnectionType'
+        score:
+          $ref: '#/components/schemas/RiskScore'
+        score_details:
+          type: string
+          contentMediaType: application/json
+          contentSchema:
+            type: array
+            items:
+              $ref: '#/components/schemas/ScoreDetail'
+          description: |-
+            The entries behind `score` as a JSON-encoded **string** holding an array of
+            `{"Value": <integer>, "Description": <string>}`. Parse it before use. Scored entries come
+            first, followed by informational entries with `Value` 0, which can be long. Empty string
+            when no details were stored.
+
+            The webhook `signals` are the entries with a non-zero `Value`, in the same order, with each
+            description turned into a signal name (for example `Is proxy` becomes `proxy`). Descriptions
+            are free text for display: never branch on them.
+          examples:
+            - '[{"Value":10,"Description":"Is proxy"},{"Value":0,"Description":"Check Incomplete"}]'
+            - ''
+        created_at:
+          $ref: '#/components/schemas/HistoryTimestamp'
+        ver:
+          type: integer
+          format: int64
+          description: Version of the row in Unix milliseconds. It increases every time the row is refined, for example when late network data re-scores it after the webhook was sent.
+          examples:
+            - 1790771696123
+        web_rtc_ip:
+          $ref: '#/components/schemas/Ipv4'
+          description: Local IP address observed by the ShieldLabs network check; `0.0.0.0` when none.
+        web_rtc_country:
+          $ref: '#/components/schemas/Country'
+          description: Country of `web_rtc_ip`, or an empty string.
+        web_rtc_connection_type:
+          $ref: '#/components/schemas/NetworkClass'
+          description: Connection class of `web_rtc_ip`, or an empty string.
+        webrtc_leak_ip:
+          $ref: '#/components/schemas/Ipv4'
+          description: Local network address leaked by the browser; `0.0.0.0` when none.
+        webrtc_leak_country:
+          $ref: '#/components/schemas/Country'
+          description: Country of `webrtc_leak_ip`, or an empty string.
+        webrtc_leak_connection_type:
+          $ref: '#/components/schemas/NetworkClass'
+          description: Connection class of `webrtc_leak_ip`, or an empty string.
+        webrtc_leak_source:
+          type: string
+          description: 'Which check found the local network leak. Known values: `scanner`, `shield`, `none` and the empty string. `none` or an empty string when there is no leak; the webhook `local_ip` then uses `web_rtc_ip`. The set is open: keep values added in later versions.'
+          x-extensible-enum:
+            - scanner
+            - shield
+            - none
+            - ''
+          examples:
+            - none
+        is_vpn:
+          type: boolean
+          description: Same meaning as `detection_flags.vpn`.
+        is_tor:
+          type: boolean
+          description: Same meaning as `detection_flags.tor`.
+        is_proxy:
+          type: boolean
+          description: Same meaning as `detection_flags.proxy`.
+        is_datacenter:
+          type: boolean
+          description: Same meaning as `detection_flags.datacenter_ip`.
+        is_abuser:
+          type: boolean
+          description: Same meaning as `detection_flags.abuser`.
+        is_privacy_relay:
+          type: boolean
+          description: Same meaning as `detection_flags.privacy_relay`.
+        is_stun_not_checked:
+          type: boolean
+          description: Same meaning as `detection_flags.stun_not_checked`.
+        check_incomplete:
+          type: boolean
+          description: Same meaning as `detection_flags.check_incomplete`. Always `false` for search-engine crawlers.
+        is_antidetect:
+          type: boolean
+          description: Same meaning as `detection_flags.anti_detect_browser`.
+        is_os_mismatch:
+          type: boolean
+          description: Same meaning as `detection_flags.os_mismatch`.
+        is_os_not_detected:
+          type: boolean
+          description: Same meaning as `detection_flags.os_not_detected`.
+        is_timezone_mismatch:
+          type: boolean
+          description: Same meaning as `detection_flags.timezone_mismatch`.
+        is_js_disabled:
+          type: boolean
+          description: Same meaning as `detection_flags.javascript_disabled`. Always `false` for search-engine crawlers.
+        is_browser_automation:
+          type: boolean
+          description: Same meaning as `detection_flags.browser_automation`.
+        is_incognito:
+          type: boolean
+          description: Same meaning as `detection_flags.incognito`. Always `false` for search-engine crawlers.
+        is_search_bot:
+          type: boolean
+          description: Same meaning as `detection_flags.search_bot`.
+        is_suspicious_paid_click:
+          type: boolean
+          description: Same meaning as `detection_flags.suspicious_paid_click`. Omitted when `false`.
+        entry_url:
+          type: string
+          description: Landing page URL without the `#fragment` (webhook `traffic_source.landing_url`). Omitted when empty. It keeps the query string, which can contain personal data.
+          examples:
+            - https://shop.example.com/signup?utm_source=google&utm_medium=cpc&gclid=abc123
+        utm_source:
+          type: string
+          description: '`utm_source`, lowercased. Omitted when empty.'
+          examples:
+            - google
+        utm_medium:
+          type: string
+          description: '`utm_medium`, lowercased. Omitted when empty.'
+          examples:
+            - cpc
+        utm_campaign:
+          type: string
+          description: '`utm_campaign` as sent. Omitted when empty.'
+          examples:
+            - spring_launch
+        utm_content:
+          type: string
+          description: '`utm_content` as sent. Omitted when empty.'
+          examples:
+            - banner_a
+        utm_term:
+          type: string
+          description: '`utm_term` as sent. Omitted when empty.'
+          examples:
+            - device intelligence
+        traffic_channel:
+          $ref: '#/components/schemas/TrafficChannel'
+          description: Marketing channel (webhook `traffic_source.channel`). Omitted when empty.
+        traffic_channel_group:
+          $ref: '#/components/schemas/TrafficChannelGroup'
+          description: Group of the marketing channel. Omitted when empty.
+        traffic_reason:
+          $ref: '#/components/schemas/TrafficReason'
+          description: Why the channel was chosen. Omitted when empty.
+        referrer_domain:
+          type: string
+          description: Registrable domain of the referrer without `www.`; the crawler name (for example `GoogleBot`) for search-engine crawlers. Omitted when empty.
+          examples:
+            - news.example.org
+        click_id_type:
+          $ref: '#/components/schemas/ClickIdType'
+          description: Ad click identifier type found in the landing URL. Omitted when empty.
+    HistoryPage:
+      type: object
+      description: One page of identifications, newest first.
+      required:
+        - data
+        - total
+      properties:
+        data:
+          type: array
+          description: Identifications on this page, ordered by `created_at` descending. Empty when nothing matched.
+          items:
+            $ref: '#/components/schemas/HistoryRow'
+        total:
+          type: integer
+          minimum: 0
+          description: Number of identifications that match the search in total, across all pages. Page with `offset` while it is below `total`.
+          examples:
+            - 37
+    ErrorBody:
+      type: object
+      description: Error object sent by the History API and by the Management API rate and load limits.
+      required:
+        - error
+      properties:
+        error:
+          type: string
+          description: Human-readable error message. Branch on the HTTP status, not on this text.
+          examples:
+            - too many requests
+    ErrorBodyText:
+      type: string
+      contentMediaType: application/json
+      contentSchema:
+        $ref: '#/components/schemas/ErrorBody'
+      description: 'JSON text followed by a newline, sent with `Content-Type: text/plain; charset=utf-8`. Parse it as JSON: it holds `{"error": "..."}`.'
+      examples:
+        - |
+          {"error":"invalid api key"}
+    PlainText:
+      type: string
+      description: Plain text body.
+      examples:
+        - 404 page not found
+    HtmlText:
+      type: string
+      description: HTML error page from the edge proxy. Do not parse it; branch on the status.
+      examples:
+        - <html><body><h1>502 Bad Gateway</h1></body></html>
+    MaskedKey:
+      type: string
+      pattern: ^(\*+.{4}|.{0,4})$
+      description: A key with every character except the last four replaced by `*`, keeping the original length. Keys of four characters or fewer are returned as they are.
+      examples:
+        - '****************************a3f8'
+    DomainProfile:
+      type: object
+      description: Profile of the registered domain. The keys are PascalCase on the wire. Ignore keys you do not know.
+      required:
+        - Domain
+        - Weight
+        - Callback
+        - PublicKey
+        - Secret
+        - CreatedAt
+      properties:
+        Domain:
+          type: string
+          description: The registered domain, as sent in `X-Shield-Domain`.
+          examples:
+            - example.com
+        Weight:
+          type: integer
+          description: Remaining included identifications of the account (shared by its domains). Can be negative when the account is over its included volume.
+          examples:
+            - 148230
+        Callback:
+          type: string
+          description: 'Legacy field kept for compatibility, normally an empty string. Webhook deliveries do not use it: configure webhook endpoints in the analytics dashboard.'
+          examples:
+            - ''
+        PublicKey:
+          $ref: '#/components/schemas/MaskedKey'
+          description: The domain's Public Key, masked.
+        Secret:
+          $ref: '#/components/schemas/MaskedKey'
+          description: The domain's Secret Key, masked.
+        CreatedAt:
+          type: string
+          format: date-time
+          description: When the domain was registered, RFC 3339 in UTC with second precision. `0001-01-01T00:00:00Z` when unknown.
+          examples:
+            - '2026-01-15T09:00:00Z'
+    LegacySnapshot:
+      type: object
+      additionalProperties: true
+      description: One identification as returned by the deprecated Management API history endpoint (PascalCase keys). Also carries diagnostic network fields that are not part of the stable contract. Use the History API row instead.
+      required:
+        - RequestID
+        - SessionID
+        - CookieID
+        - DeviceID
+        - VisitorID
+        - IP
+        - ConnectionType
+        - WebRtcHIP
+        - WebRtcCountry
+        - WebRtcConnectionType
+        - OS
+        - Browser
+        - DeviceType
+        - Country
+        - UserHID
+        - Score
+        - Details
+        - LastRequestTime
+      properties:
+        RequestID:
+          $ref: '#/components/schemas/RequestId'
+        SessionID:
+          $ref: '#/components/schemas/SessionId'
+        CookieID:
+          $ref: '#/components/schemas/CookieId'
+        DeviceID:
+          $ref: '#/components/schemas/DeviceId'
+        VisitorID:
+          $ref: '#/components/schemas/VisitorId'
+        IP:
+          $ref: '#/components/schemas/Ipv4'
+          description: Public IPv4 address of the HTTP request.
+        ConnectionType:
+          $ref: '#/components/schemas/ConnectionType'
+        WebRtcHIP:
+          $ref: '#/components/schemas/Ipv4'
+          description: Local IP address observed by the ShieldLabs network check (not hashed); `0.0.0.0` when none.
+        WebRtcCountry:
+          $ref: '#/components/schemas/Country'
+          description: Country of `WebRtcHIP`, or an empty string.
+        WebRtcConnectionType:
+          $ref: '#/components/schemas/NetworkClass'
+          description: Connection class of `WebRtcHIP`, or an empty string.
+        OS:
+          $ref: '#/components/schemas/OperatingSystem'
+        Browser:
+          $ref: '#/components/schemas/Browser'
+        DeviceType:
+          $ref: '#/components/schemas/DeviceType'
+        Country:
+          $ref: '#/components/schemas/Country'
+          description: Country of `IP` as an English country name, or an empty string.
+        UserHID:
+          type: string
+          description: User HID as passed to the agent; `anonymous` for anonymous checks.
+          examples:
+            - 9f86d081884c7d659a2feaa0c55ad015
+        Score:
+          $ref: '#/components/schemas/RiskScore'
+        Details:
+          type: array
+          description: Every entry behind `Score`, informational entries with `Value` 0 included (unlike the History API, this is a parsed array, not a string).
+          items:
+            $ref: '#/components/schemas/ScoreDetail'
+        LastRequestTime:
+          type: string
+          format: date-time
+          description: Time of the identification, RFC 3339 with fractional seconds.
+          examples:
+            - '2026-09-30T12:34:56.123Z'
+    LegacyErrorMessage:
+      type:
+        - string
+        - 'null'
+      description: A bare JSON string with the error message, or the JSON literal `null` (an unexpected database error, for example for an IPv6 value).
+      examples:
+        - fail parse uuid
+        - null
+    HealthStatus:
+      type: object
+      description: Liveness status.
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          const: ok
+          description: Always `ok` when the service answers.
+    SchemaVersion:
+      type: string
+      minLength: 1
+      description: Version of the webhook payload contract. Every event sent today carries `2026-06-01`. Accept other values, so that a future version does not break your handler.
+      examples:
+        - '2026-06-01'
+    Rfc3339Timestamp:
+      type: string
+      format: date-time
+      pattern: ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]{1,9})?Z$
+      description: RFC 3339 timestamp in UTC with up to 9 fractional digits (trailing zeros trimmed), for example `2026-09-30T12:34:57.482913041Z`. Parse it with a parser that accepts nanoseconds.
+      examples:
+        - '2026-09-30T12:34:57.482913041Z'
+        - '2026-09-30T12:34:56Z'
+    UserHid:
+      type:
+        - string
+        - 'null'
+      description: |-
+        User HID: your hashed or pseudonymous account identifier, exactly as it was passed to the
+        ShieldLabs agent. Pass a hashed value, never a raw email address or database ID.
+
+        Values that do not identify a user:
+        - `anonymous`: an anonymous check;
+        - `fail`: the agent sent no value;
+        - `-1` and `unknown`: rows created by ShieldLabs itself, such as rate-limit marker rows.
+
+        `null` only when the stored value is an empty string. Leave `null` and the values above out
+        when you count the accounts of one device, visitor or IP address.
+      examples:
+        - 9f86d081884c7d659a2feaa0c55ad015
+        - anonymous
+        - null
+    Ipv4OrEmpty:
+      type: string
+      pattern: ^((25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])(\.(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])){3})?$
+      description: Dotted IPv4 address, or an empty string when no IPv4 address is known (for example for visitors on IPv6).
+      examples:
+        - 203.0.113.24
+        - ''
+    IpInfo:
+      type: object
+      description: An IPv4 address and its country. Both keys are always present and can be empty strings.
+      required:
+        - ip
+        - country
+      properties:
+        ip:
+          $ref: '#/components/schemas/Ipv4OrEmpty'
+        country:
+          $ref: '#/components/schemas/Country'
+    TrafficSource:
+      type: object
+      description: Where the visit came from. All nine keys are always present; values can be empty strings.
+      required:
+        - channel
+        - referrer_domain
+        - landing_url
+        - click_id_type
+        - utm_source
+        - utm_medium
+        - utm_campaign
+        - utm_content
+        - utm_term
+      properties:
+        channel:
+          $ref: '#/components/schemas/TrafficChannel'
+        referrer_domain:
+          type: string
+          description: Registrable domain of the referrer without `www.`. For search-engine crawlers, the crawler name (for example `GoogleBot`).
+          examples:
+            - google.com
+        landing_url:
+          type: string
+          description: 'Landing page URL without the `#fragment`. It keeps the query string, which can contain personal data: store it with care.'
+          examples:
+            - https://shop.example.com/signup?utm_source=google&utm_medium=cpc&gclid=abc123
+        click_id_type:
+          $ref: '#/components/schemas/ClickIdType'
+        utm_source:
+          type: string
+          description: '`utm_source` query parameter, lowercased.'
+          examples:
+            - google
+        utm_medium:
+          type: string
+          description: '`utm_medium` query parameter, lowercased.'
+          examples:
+            - cpc
+        utm_campaign:
+          type: string
+          description: '`utm_campaign` query parameter as sent.'
+          examples:
+            - spring_launch
+        utm_content:
+          type: string
+          description: '`utm_content` query parameter as sent.'
+          examples:
+            - ''
+        utm_term:
+          type: string
+          description: '`utm_term` query parameter as sent.'
+          examples:
+            - ''
+    Signal:
+      type: object
+      description: One weighted risk signal behind the Risk Score. Only signals with a non-zero weight are listed, in scoring order. The same name can appear twice, and weights can be negative.
+      required:
+        - name
+        - weight
+      properties:
+        name:
+          type: string
+          minLength: 1
+          description: |-
+            Signal name. The set is open: new names can appear at any time, so keep unknown names and
+            use them for display and logging only. Known names:
+            - `tor`: the request came through Tor;
+            - `vpn`: a VPN was detected;
+            - `privacy_relay`: a privacy relay such as iCloud Private Relay;
+            - `proxy`: a proxy was detected;
+            - `datacenter_ip`: the IP belongs to a datacenter or hosting range;
+            - `abuser`: the IP has a record of abuse;
+            - `browser_vpn_proxy`: a VPN or proxy inside the browser;
+            - `antidetect_browser`: an anti-detect browser (the matching flag is `anti_detect_browser`);
+            - `proxy_routed_antidetect`: the network check was routed through a proxy in a way typical
+              for anti-detect browsers;
+            - `port_scan_routed_via_proxy`: `proxy_routed_antidetect` carried forward from an earlier
+              identification of the same device and IP;
+            - `browser_automation`: browser automation, for example a WebDriver-controlled browser;
+            - `javascript_disabled`: JavaScript or the browser APIs the checks need were unavailable;
+            - `os_mismatch`: the operating system seen on the network differs from the one the browser
+              reports;
+            - `os_not_detected`: the operating system could not be determined;
+            - `timezone_mismatch`: the browser timezone differs from the IP location timezone;
+            - `stun_not_checked`: the network (STUN) check did not complete;
+            - `stun_late_correction`: a late network result arrived; negative weight that cancels
+              `stun_not_checked`;
+            - `rate_limited`: the rate-limit marker, weight 999.
+
+            A verdict carried forward from an earlier identification of the same device and IP (for
+            example `antidetect_browser`) keeps a name derived from the original signal and can carry a
+            partial weight.
+          examples:
+            - proxy
+            - antidetect_browser
+        weight:
+          type: integer
+          description: Points the signal contributed. Can be negative (`stun_late_correction` is -30) and is 999 for `rate_limited`. Weights can change between releases; never add them up yourself.
+          examples:
+            - 10
+            - -30
+    DetectionFlags:
+      type: object
+      description: |-
+        Stable yes/no verdicts for the identification. Always all 19 keys. Branch on these flags and on
+        the Risk Score; signal names are for display and logging.
+
+        When `search_bot` is `true`, `incognito`, `check_incomplete`, `ip_mismatch` and
+        `javascript_disabled` are always `false`.
+      required:
+        - vpn
+        - privacy_relay
+        - browser_vpn_proxy
+        - tor
+        - proxy
+        - datacenter_ip
+        - abuser
+        - os_mismatch
+        - os_not_detected
+        - timezone_mismatch
+        - anti_detect_browser
+        - browser_automation
+        - ip_mismatch
+        - incognito
+        - search_bot
+        - suspicious_paid_click
+        - javascript_disabled
+        - stun_not_checked
+        - check_incomplete
+      properties:
+        vpn:
+          type: boolean
+          description: A VPN was detected (scored `vpn` signal).
+        privacy_relay:
+          type: boolean
+          description: A privacy relay such as iCloud Private Relay was detected.
+        browser_vpn_proxy:
+          type: boolean
+          description: A VPN or proxy built into the browser or one of its extensions. `true` exactly when `connection_type` is `browser_vpn_proxy`.
+        tor:
+          type: boolean
+          description: The request came through the Tor network.
+        proxy:
+          type: boolean
+          description: A proxy was detected.
+        datacenter_ip:
+          type: boolean
+          description: The public IP belongs to a datacenter or hosting range.
+        abuser:
+          type: boolean
+          description: The public IP has a record of abuse in IP intelligence.
+        os_mismatch:
+          type: boolean
+          description: The operating system seen on the network differs from the one the browser reports.
+        os_not_detected:
+          type: boolean
+          description: The operating system could not be determined from the User-Agent or the network.
+        timezone_mismatch:
+          type: boolean
+          description: The browser timezone differs from the timezone of the IP location.
+        anti_detect_browser:
+          type: boolean
+          description: An anti-detect browser was detected.
+        browser_automation:
+          type: boolean
+          description: Browser automation was detected, for example a WebDriver-controlled browser.
+        ip_mismatch:
+          type: boolean
+          description: 'The public IP differs from the local IP found by the browser network check. Informational: it does not add to the score.'
+        incognito:
+          type: boolean
+          description: The browser runs in a private window.
+        search_bot:
+          type: boolean
+          description: A search-engine crawler. Its Risk Score is always 0.
+        suspicious_paid_click:
+          type: boolean
+          description: The visit came from a paid ad click (Google Ads, Meta, TikTok, Microsoft Ads, LinkedIn, Pinterest or X) and the Risk Score is 60 or more (the 999 marker included).
+        javascript_disabled:
+          type: boolean
+          description: JavaScript, or the browser APIs the checks need, were unavailable.
+        stun_not_checked:
+          type: boolean
+          description: The browser network (STUN) check did not complete. Cleared again when a late network result arrives.
+        check_incomplete:
+          type: boolean
+          description: Part of the browser checks timed out, so the verdict rests on partial data. Informational.
+    IdentificationScoredData:
+      type: object
+      description: The scored identification. Every key is always present (no key is ever omitted); only `user_hid` can be `null`.
+      required:
+        - request_id
+        - visitor_id
+        - device_id
+        - session_id
+        - cookie_id
+        - user_hid
+        - domain
+        - public_ip
+        - local_ip
+        - connection_type
+        - os
+        - browser
+        - device_type
+        - traffic_source
+        - risk_score
+        - signals
+        - detection_flags
+        - observed_at
+      properties:
+        request_id:
+          $ref: '#/components/schemas/RequestId'
+        visitor_id:
+          $ref: '#/components/schemas/VisitorId'
+        device_id:
+          $ref: '#/components/schemas/DeviceId'
+        session_id:
+          $ref: '#/components/schemas/SessionId'
+        cookie_id:
+          $ref: '#/components/schemas/CookieId'
+        user_hid:
+          $ref: '#/components/schemas/UserHid'
+        domain:
+          type: string
+          description: Registered domain of your site (the request host when no registered domain matched).
+          examples:
+            - example.com
+        public_ip:
+          $ref: '#/components/schemas/IpInfo'
+          description: Public IPv4 address of the HTTP request and its country. `ip` is empty when the request did not arrive over IPv4.
+        local_ip:
+          $ref: '#/components/schemas/IpInfo'
+          description: 'Local IP address found by the browser network check (WebRTC): the leaked address when a local network leak was found, otherwise the address ShieldLabs observed. Both keys are empty when the check found nothing.'
+        connection_type:
+          $ref: '#/components/schemas/ConnectionType'
+        os:
+          $ref: '#/components/schemas/OperatingSystem'
+        browser:
+          $ref: '#/components/schemas/Browser'
+        device_type:
+          $ref: '#/components/schemas/DeviceType'
+        traffic_source:
+          $ref: '#/components/schemas/TrafficSource'
+        risk_score:
+          $ref: '#/components/schemas/RiskScore'
+        signals:
+          type: array
+          description: Weighted risk signals behind `risk_score`, in scoring order. Can be empty. The rate-limit marker carries exactly one entry, `{"name":"rate_limited","weight":999}`.
+          items:
+            $ref: '#/components/schemas/Signal'
+        detection_flags:
+          $ref: '#/components/schemas/DetectionFlags'
+        observed_at:
+          $ref: '#/components/schemas/Rfc3339Timestamp'
+          description: When scoring finished and the event was built (not the page view time); identical to the envelope `created_at`. RFC 3339 in UTC with up to 9 fractional digits.
+    IdentificationScoredEvent:
+      type: object
+      description: 'Body of an `identification.scored` delivery. The signature is not part of the body: it arrives in the `X-Shield-Signature` header.'
+      required:
+        - event_type
+        - schema_version
+        - created_at
+        - data
+      properties:
+        event_type:
+          type: string
+          const: identification.scored
+          description: Event type. Ignore events whose type you do not know instead of failing.
+        schema_version:
+          $ref: '#/components/schemas/SchemaVersion'
+        created_at:
+          $ref: '#/components/schemas/Rfc3339Timestamp'
+          description: When the event was built. Equal to `data.observed_at`.
+        data:
+          $ref: '#/components/schemas/IdentificationScoredData'
+    WebhookPingEvent:
+      type: object
+      description: Body of a `webhook.ping` delivery, sent when you verify an endpoint. It has no `data`. The keys arrive sorted alphabetically and `created_at` has second precision.
+      required:
+        - event_type
+        - schema_version
+        - created_at
+      properties:
+        event_type:
+          type: string
+          const: webhook.ping
+          description: Event type.
+        schema_version:
+          $ref: '#/components/schemas/SchemaVersion'
+        created_at:
+          $ref: '#/components/schemas/Rfc3339Timestamp'
+          description: When the ping was sent, with second precision.
+  examples:
+    HistoryPage:
+      summary: Five identifications
+      description: 'One page of five identifications out of 37 matches: a dangerous paid click through a proxy with an anti-detect browser, a trusted anonymous visit, a VPN visit with a local network leak and a late network correction, a rate-limit marker (999) and a search-engine crawler.'
+      value:
+        data:
+          - request_id: a5b7c9d1-e3f5-4a7b-9c1d-3e5f7a9b1c3d
+            session_id: b6c8d0e2-f4a6-4b8c-8d0e-2f4a6b8c0d2e
+            cookie_id: c7d9e1f3-a5b7-4c9d-ae1f-3a5b7c9d1e3f
+            domain: shop.example.com
+            site_domain: example.com
+            user_hid: 9f86d081884c7d659a2feaa0c55ad015
+            device_id: d8e0f2a4-b6c8-4d0e-bf2a-4b6c8d0e2f4a
+            visitor_id: e9f1a3b5-c7d9-4e1f-8a3b-5c7d9e1f3a5b
+            ip: 203.0.113.24
+            os: Windows
+            browser: Chrome
+            device_type: desktop
+            country: Netherlands
+            connection_type: proxy
+            score: 80
+            score_details: '[{"Value":10,"Description":"Is proxy"},{"Value":10,"Description":"Is datacenter"},{"Value":60,"Description":"Antidetect browser (turn_block)"},{"Value":0,"Description":"Check Incomplete"}]'
+            created_at: '2026-09-30 12:34:56.123'
+            ver: 1790771696123
+            web_rtc_ip: 198.51.100.23
+            web_rtc_country: Germany
+            web_rtc_connection_type: direct
+            scanner_web_rtc_ip: 0.0.0.0
+            scanner_web_rtc_country: ''
+            scanner_web_rtc_connection_type: ''
+            webrtc_leak_ip: 0.0.0.0
+            webrtc_leak_country: ''
+            webrtc_leak_connection_type: ''
+            webrtc_leak_source: none
+            tcp_mss: 1460
+            mtu_value: 1500
+            mtu_hint: direct
+            is_vpn: false
+            is_tor: false
+            is_proxy: true
+            is_datacenter: true
+            is_abuser: false
+            is_privacy_relay: false
+            is_stun_not_checked: false
+            check_incomplete: false
+            is_antidetect: true
+            is_os_mismatch: false
+            is_os_not_detected: false
+            is_timezone_mismatch: false
+            is_js_disabled: false
+            is_browser_automation: false
+            is_incognito: false
+            is_search_bot: false
+            stun_request_seen: true
+            is_scanner_stun_passed: false
+            stun_flow_status: ok
+            entry_url: https://shop.example.com/signup?utm_source=google&utm_medium=cpc&gclid=abc123
+            utm_source: google
+            utm_medium: cpc
+            traffic_channel: Google Ads
+            traffic_channel_group: Paid Search
+            traffic_reason: gclid_present
+            click_id_type: gclid
+            is_suspicious_paid_click: true
+          - request_id: 7c1e2f4a-3b6d-4e8f-9a0b-1c2d3e4f5a6b
+            session_id: a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d
+            cookie_id: f0e1d2c3-b4a5-4968-8776-655443322110
+            domain: example.com
+            user_hid: anonymous
+            device_id: 5d9a1f3e-7b2c-5e4d-8f6a-9b0c1d2e3f4a
+            visitor_id: 3c4d5e6f-7a8b-5c9d-8e0f-1a2b3c4d5e6f
+            ip: 192.0.2.44
+            os: Mac OS X
+            browser: Safari
+            device_type: desktop
+            country: United States
+            connection_type: direct
+            score: 10
+            score_details: '[{"Value":10,"Description":"Browser timezone ≠ IP-timezone"}]'
+            created_at: '2026-09-30 12:40:01.007'
+            ver: 1790772001007
+            web_rtc_ip: 192.0.2.44
+            web_rtc_country: United States
+            web_rtc_connection_type: direct
+            scanner_web_rtc_ip: 0.0.0.0
+            scanner_web_rtc_country: ''
+            scanner_web_rtc_connection_type: ''
+            webrtc_leak_ip: 0.0.0.0
+            webrtc_leak_country: ''
+            webrtc_leak_connection_type: ''
+            webrtc_leak_source: ''
+            tcp_mss: 1460
+            mtu_value: 1500
+            mtu_hint: direct
+            is_vpn: false
+            is_tor: false
+            is_proxy: false
+            is_datacenter: false
+            is_abuser: false
+            is_privacy_relay: false
+            is_stun_not_checked: false
+            check_incomplete: false
+            is_antidetect: false
+            is_os_mismatch: false
+            is_os_not_detected: false
+            is_timezone_mismatch: true
+            is_js_disabled: false
+            is_browser_automation: false
+            is_incognito: true
+            is_search_bot: false
+            stun_request_seen: true
+            is_scanner_stun_passed: false
+            stun_flow_status: ok
+          - request_id: 9e8d7c6b-5a49-4382-9716-05f4e3d2c1b0
+            session_id: b0c1d2e3-f4a5-4b6c-9d7e-8f9a0b1c2d3e
+            cookie_id: c3d4e5f6-a7b8-4c9d-8e0f-a1b2c3d4e5f6
+            domain: example.com
+            user_hid: ''
+            device_id: e1f2a3b4-c5d6-5e7f-8a9b-0c1d2e3f4a5b
+            visitor_id: d2e3f4a5-b6c7-5d8e-9f0a-1b2c3d4e5f6a
+            ip: 198.51.100.7
+            os: Android
+            browser: Chrome
+            device_type: mobile
+            country: France
+            connection_type: vpn
+            score: 45
+            score_details: '[{"Value":15,"Description":"Is VPN"},{"Value":30,"Description":"Stun is not checked"},{"Value":-30,"Description":"Stun passed (late arrival, corrected)"},{"Value":30,"Description":"Sticky verdict: Stun is not checked (request 11111111-2222-4333-8444-555555555555)"},{"Value":0,"Description":"IP ≠ leakIP (198.51.100.7 ≠ 203.0.113.9, source=scanner)"}]'
+            created_at: '2026-09-30 13:05:12'
+            ver: 1790773512000
+            web_rtc_ip: 0.0.0.0
+            web_rtc_country: ''
+            web_rtc_connection_type: ''
+            scanner_web_rtc_ip: 203.0.113.9
+            scanner_web_rtc_country: Spain
+            scanner_web_rtc_connection_type: direct
+            webrtc_leak_ip: 203.0.113.9
+            webrtc_leak_country: Spain
+            webrtc_leak_connection_type: direct
+            webrtc_leak_source: scanner
+            tcp_mss: 1380
+            mtu_value: 1420
+            mtu_hint: vpn_likely
+            is_vpn: true
+            is_tor: false
+            is_proxy: false
+            is_datacenter: false
+            is_abuser: false
+            is_privacy_relay: false
+            is_stun_not_checked: true
+            check_incomplete: true
+            is_antidetect: false
+            is_os_mismatch: false
+            is_os_not_detected: false
+            is_timezone_mismatch: false
+            is_js_disabled: false
+            is_browser_automation: false
+            is_incognito: false
+            is_search_bot: false
+            stun_request_seen: false
+            is_scanner_stun_passed: true
+            stun_flow_status: reply_without_request
+            entry_url: https://example.com/pricing
+            referrer_domain: news.example.org
+            traffic_channel: Referral
+            traffic_channel_group: Referral
+            traffic_reason: external_referrer
+          - request_id: 1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d
+            session_id: 00000000-0000-0000-0000-000000000000
+            cookie_id: 00000000-0000-0000-0000-000000000000
+            domain: example.com
+            user_hid: '-1'
+            device_id: 00000000-0000-0000-0000-000000000000
+            visitor_id: 00000000-0000-0000-0000-000000000000
+            ip: 203.0.113.200
+            os: Unknown
+            browser: Unknown
+            device_type: desktop
+            country: ''
+            connection_type: unknown
+            score: 999
+            score_details: '[{"Value":999,"Description":"User has been banned 1H, to many requests"}]'
+            created_at: '2026-09-30 13:10:00.500'
+            ver: 1790773800500
+            web_rtc_ip: 0.0.0.0
+            web_rtc_country: ''
+            web_rtc_connection_type: ''
+            scanner_web_rtc_ip: 0.0.0.0
+            scanner_web_rtc_country: ''
+            scanner_web_rtc_connection_type: ''
+            webrtc_leak_ip: 0.0.0.0
+            webrtc_leak_country: ''
+            webrtc_leak_connection_type: ''
+            webrtc_leak_source: ''
+            tcp_mss: 0
+            mtu_value: 0
+            mtu_hint: ''
+            is_vpn: false
+            is_tor: false
+            is_proxy: false
+            is_datacenter: false
+            is_abuser: false
+            is_privacy_relay: false
+            is_stun_not_checked: false
+            check_incomplete: false
+            is_antidetect: false
+            is_os_mismatch: false
+            is_os_not_detected: false
+            is_timezone_mismatch: false
+            is_js_disabled: false
+            is_browser_automation: false
+            is_incognito: false
+            is_search_bot: false
+            stun_request_seen: false
+            is_scanner_stun_passed: false
+            stun_flow_status: ''
+          - request_id: 4f5e6d7c-8b9a-4c1d-9e2f-3a4b5c6d7e8f
+            session_id: 5a6b7c8d-9e0f-4a1b-8c2d-3e4f5a6b7c8d
+            cookie_id: 6b7c8d9e-0f1a-4b2c-9d3e-4f5a6b7c8d9e
+            domain: example.com
+            user_hid: anonymous
+            device_id: 7c8d9e0f-1a2b-5c3d-8e4f-5a6b7c8d9e0f
+            visitor_id: 8d9e0f1a-2b3c-5d4e-9f5a-6b7c8d9e0f1a
+            ip: 198.51.100.66
+            os: Linux
+            browser: Chrome
+            device_type: desktop
+            country: United States
+            connection_type: proxy
+            score: 0
+            score_details: ''
+            created_at: '2026-09-30 13:20:30.250'
+            ver: 1790774430250
+            web_rtc_ip: 203.0.113.77
+            web_rtc_country: United States
+            web_rtc_connection_type: direct
+            scanner_web_rtc_ip: 0.0.0.0
+            scanner_web_rtc_country: ''
+            scanner_web_rtc_connection_type: ''
+            webrtc_leak_ip: 0.0.0.0
+            webrtc_leak_country: ''
+            webrtc_leak_connection_type: ''
+            webrtc_leak_source: none
+            tcp_mss: 1460
+            mtu_value: 1500
+            mtu_hint: direct
+            is_vpn: false
+            is_tor: false
+            is_proxy: false
+            is_datacenter: false
+            is_abuser: false
+            is_privacy_relay: false
+            is_stun_not_checked: false
+            check_incomplete: false
+            is_antidetect: false
+            is_os_mismatch: false
+            is_os_not_detected: false
+            is_timezone_mismatch: false
+            is_js_disabled: false
+            is_browser_automation: false
+            is_incognito: false
+            is_search_bot: true
+            stun_request_seen: false
+            is_scanner_stun_passed: false
+            stun_flow_status: ''
+            referrer_domain: GoogleBot
+            traffic_channel: Search bot
+            traffic_channel_group: Bot
+            traffic_reason: ip_crawler_detected
+        total: 37
+    HistoryPageEmpty:
+      summary: Nothing matched
+      description: No identification matched. When searching by `request_id` right after a protected action, this means "not scored yet" (or an invalid request ID), never "clean".
+      value:
+        data: []
+        total: 0
+    HistoryUnauthorizedMissingHeader:
+      summary: Missing or malformed Authorization header
+      description: JSON text sent as `text/plain`, followed by a newline.
+      value: |
+        {"error":"missing or invalid authorization header"}
+    HistoryUnauthorizedInvalidKey:
+      summary: Unknown, deleted or disabled key
+      description: JSON text sent as `text/plain`, followed by a newline.
+      value: |
+        {"error":"invalid api key"}
+    NotFoundText:
+      summary: No route matched
+      description: Plain text body of an unrouted path.
+      value: 404 page not found
+    HistoryTooManyRequests:
+      summary: Soft rate limit reached
+      description: More than about 15 requests in the current second for this domain. Retry after about a second.
+      value:
+        error: too many requests
+    HistoryInvalidValue:
+      summary: Malformed UUID value
+      description: 'The raw database error for a value that is not a UUID. It repeats for the same request: validate the value instead of retrying.'
+      value:
+        error: 'code: 53, message: Cannot convert string ''abc'' to type UUID'
+    HistoryKeyLookupFailed:
+      summary: Key lookup failed
+      description: A transient error while checking the key, sent as JSON text. Retry with backoff.
+      value: |
+        {"error":"internal error"}
+    BadGatewayHtml:
+      summary: Bad gateway
+      description: HTML page from the edge proxy.
+      value: <html><body><h1>502 Bad Gateway</h1></body></html>
+    GatewayTimeoutHtml:
+      summary: Gateway timeout
+      description: HTML page from the edge proxy.
+      value: <html><body><h1>504 Gateway Time-out</h1></body></html>
+    DomainProfile:
+      summary: Profile of example.com
+      description: A domain with 148,230 remaining included identifications and masked keys.
+      value:
+        Domain: example.com
+        Weight: 148230
+        Callback: ''
+        PublicKey: '****************************a3f8'
+        Secret: '****************************9c2d'
+        CreatedAt: '2026-01-15T09:00:00Z'
+    ManagementTooManyRequests:
+      summary: Rate limit reached or block active
+      description: 'Do not retry: every request gets this answer until the 10-minute block ends.'
+      value:
+        error: too many requests
+    ManagementServerBusy:
+      summary: Too many requests in flight
+      description: Retry with backoff.
+      value:
+        error: server is busy
+    LegacySnapshotList:
+      summary: One identification (deprecated shape)
+      description: The PascalCase array returned by the deprecated endpoint, for the same identification as the first History API example row.
+      value:
+        - RequestID: a5b7c9d1-e3f5-4a7b-9c1d-3e5f7a9b1c3d
+          SessionID: b6c8d0e2-f4a6-4b8c-8d0e-2f4a6b8c0d2e
+          CookieID: c7d9e1f3-a5b7-4c9d-ae1f-3a5b7c9d1e3f
+          DeviceID: d8e0f2a4-b6c8-4d0e-bf2a-4b6c8d0e2f4a
+          VisitorID: e9f1a3b5-c7d9-4e1f-8a3b-5c7d9e1f3a5b
+          IP: 203.0.113.24
+          ConnectionType: proxy
+          TcpMss: 1460
+          MtuValue: 1500
+          MtuHint: direct
+          WebRtcHIP: 198.51.100.23
+          WebRtcCountry: Germany
+          WebRtcConnectionType: direct
+          OS: Windows
+          Browser: Chrome
+          DeviceType: desktop
+          Country: Netherlands
+          UserHID: 9f86d081884c7d659a2feaa0c55ad015
+          Score: 80
+          Details:
+            - Value: 10
+              Description: Is proxy
+            - Value: 10
+              Description: Is datacenter
+            - Value: 60
+              Description: Antidetect browser (turn_block)
+          LastRequestTime: '2026-09-30T12:34:56.123Z'
+    LegacySnapshotListEmpty:
+      summary: Nothing matched
+      description: An empty array.
+      value: []
+    ManagementBadRequestUuid:
+      summary: Value is not a UUID
+      description: A bare JSON string.
+      value: fail parse uuid
+    ManagementBadRequestIp:
+      summary: Value is not an IP address
+      description: A bare JSON string.
+      value: invalid IP address
+    ManagementBadRequestEmpty:
+      summary: Empty value
+      description: A bare JSON string.
+      value: value cannot be empty
+    ManagementBadRequestNull:
+      summary: Database error
+      description: The JSON literal `null`, for example for an IPv6 `ip` value.
+      value: null
+    ManagementUnsupportedType:
+      summary: Unsupported identifier type
+      description: A bare JSON string naming the type that was sent.
+      value: auto is not supported
+    HealthOk:
+      summary: Service is up
+      description: The only successful answer.
+      value:
+        status: ok
+    IdentificationScored:
+      summary: Dangerous identification from a paid click
+      description: Risk Score 80 from a proxy, a datacenter IP and an anti-detect browser, on a visit from a Google Ads click.
+      value:
+        event_type: identification.scored
+        schema_version: '2026-06-01'
+        created_at: '2026-09-30T12:34:57.482913041Z'
+        data:
+          request_id: a5b7c9d1-e3f5-4a7b-9c1d-3e5f7a9b1c3d
+          visitor_id: e9f1a3b5-c7d9-4e1f-8a3b-5c7d9e1f3a5b
+          device_id: d8e0f2a4-b6c8-4d0e-bf2a-4b6c8d0e2f4a
+          session_id: b6c8d0e2-f4a6-4b8c-8d0e-2f4a6b8c0d2e
+          cookie_id: c7d9e1f3-a5b7-4c9d-ae1f-3a5b7c9d1e3f
+          user_hid: 9f86d081884c7d659a2feaa0c55ad015
+          domain: example.com
+          public_ip:
+            ip: 203.0.113.24
+            country: Netherlands
+          local_ip:
+            ip: 198.51.100.23
+            country: Germany
+          connection_type: proxy
+          os: Windows
+          browser: Chrome
+          device_type: desktop
+          traffic_source:
+            channel: Google Ads
+            referrer_domain: google.com
+            landing_url: https://shop.example.com/signup?utm_source=google&utm_medium=cpc&gclid=abc123
+            click_id_type: gclid
+            utm_source: google
+            utm_medium: cpc
+            utm_campaign: ''
+            utm_content: ''
+            utm_term: ''
+          risk_score: 80
+          signals:
+            - name: proxy
+              weight: 10
+            - name: datacenter_ip
+              weight: 10
+            - name: antidetect_browser
+              weight: 60
+          detection_flags:
+            vpn: false
+            privacy_relay: false
+            browser_vpn_proxy: false
+            tor: false
+            proxy: true
+            datacenter_ip: true
+            abuser: false
+            os_mismatch: false
+            os_not_detected: false
+            timezone_mismatch: false
+            anti_detect_browser: true
+            browser_automation: false
+            ip_mismatch: true
+            incognito: false
+            search_bot: false
+            suspicious_paid_click: true
+            javascript_disabled: false
+            stun_not_checked: false
+            check_incomplete: false
+          observed_at: '2026-09-30T12:34:57.482913041Z'
+    IdentificationScoredRateLimited:
+      summary: Rate-limit marker (999)
+      description: 'The 999 rate-limit marker: one `rate_limited` signal, nil identifiers and no attribution. It is not a Risk Score.'
+      value:
+        event_type: identification.scored
+        schema_version: '2026-06-01'
+        created_at: '2026-09-30T13:10:00.5Z'
+        data:
+          request_id: 1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d
+          visitor_id: 00000000-0000-0000-0000-000000000000
+          device_id: 00000000-0000-0000-0000-000000000000
+          session_id: 00000000-0000-0000-0000-000000000000
+          cookie_id: 00000000-0000-0000-0000-000000000000
+          user_hid: '-1'
+          domain: example.com
+          public_ip:
+            ip: 203.0.113.200
+            country: ''
+          local_ip:
+            ip: ''
+            country: ''
+          connection_type: unknown
+          os: Unknown
+          browser: Unknown
+          device_type: desktop
+          traffic_source:
+            channel: ''
+            referrer_domain: ''
+            landing_url: ''
+            click_id_type: ''
+            utm_source: ''
+            utm_medium: ''
+            utm_campaign: ''
+            utm_content: ''
+            utm_term: ''
+          risk_score: 999
+          signals:
+            - name: rate_limited
+              weight: 999
+          detection_flags:
+            vpn: false
+            privacy_relay: false
+            browser_vpn_proxy: false
+            tor: false
+            proxy: false
+            datacenter_ip: false
+            abuser: false
+            os_mismatch: false
+            os_not_detected: false
+            timezone_mismatch: false
+            anti_detect_browser: false
+            browser_automation: false
+            ip_mismatch: false
+            incognito: false
+            search_bot: false
+            suspicious_paid_click: false
+            javascript_disabled: false
+            stun_not_checked: false
+            check_incomplete: false
+          observed_at: '2026-09-30T13:10:00.5Z'
+    IdentificationScoredTestDelivery:
+      summary: Test delivery from the analytics dashboard
+      description: 'The fixed sample sent by the Test button: keys sorted alphabetically, second-precision timestamps, two-letter country values and only 17 detection flags (`browser_automation` and `search_bot` are missing). It differs from the schema in exactly those two flags: parse missing flags as `false`.'
+      value:
+        created_at: '2026-09-30T12:34:56Z'
+        data:
+          browser: Chrome
+          connection_type: proxy
+          cookie_id: 2c9d1e8f-4b7a-4c3e-9d2f-1a8b7c6d5e4f
+          detection_flags:
+            abuser: true
+            anti_detect_browser: false
+            browser_vpn_proxy: false
+            check_incomplete: false
+            datacenter_ip: true
+            incognito: false
+            ip_mismatch: false
+            javascript_disabled: false
+            os_mismatch: false
+            os_not_detected: false
+            privacy_relay: false
+            proxy: true
+            stun_not_checked: false
+            suspicious_paid_click: false
+            timezone_mismatch: false
+            tor: false
+            vpn: false
+          device_id: 6f1e2d3c-4b5a-5968-8776-655443322110
+          device_type: desktop
+          domain: example.com
+          local_ip:
+            country: BY
+            ip: 198.51.100.10
+          observed_at: '2026-09-30T12:34:56Z'
+          os: Windows
+          public_ip:
+            country: BY
+            ip: 203.0.113.10
+          request_id: 13f84f05-7c2a-4e9b-9f1d-2a6b8c0e4d11
+          risk_score: 30
+          session_id: 3a2b1c0d-9e8f-4a7b-8c6d-5e4f3a2b1c0d
+          signals:
+            - name: proxy
+              weight: 10
+            - name: datacenter_ip
+              weight: 10
+            - name: abuser
+              weight: 10
+          traffic_source:
+            channel: Direct
+            click_id_type: ''
+            landing_url: https://example.com/
+            referrer_domain: ''
+            utm_campaign: ''
+            utm_content: ''
+            utm_medium: ''
+            utm_source: ''
+            utm_term: ''
+          user_hid: null
+          visitor_id: 7a6b5c4d-3e2f-5a1b-9c8d-7e6f5a4b3c2d
+        event_type: identification.scored
+        schema_version: '2026-06-01'
+    WebhookPing:
+      summary: Endpoint verification
+      description: The ping sent when you verify an endpoint. It has no `data`.
+      value:
+        created_at: '2026-09-30T12:34:56Z'
+        event_type: webhook.ping
+        schema_version: '2026-06-01'
+  responses:
+    HistoryUnauthorized:
+      description: 'The `Authorization` header is missing or is not a Bearer token, or the Private API Key is unknown, deleted or belongs to a disabled domain. The body is JSON text sent with `Content-Type: text/plain; charset=utf-8`: parse it as JSON anyway. Do not retry.'
+      content:
+        text/plain:
+          schema:
+            $ref: '#/components/schemas/ErrorBodyText'
+          examples:
+            missingHeader:
+              $ref: '#/components/examples/HistoryUnauthorizedMissingHeader'
+            invalidKey:
+              $ref: '#/components/examples/HistoryUnauthorizedInvalidKey'
+    NotFound:
+      description: No route matches the method and path, for example because the base URL repeats part of the path or a path value is empty or contains `/`. Plain text body. Check the URL; do not retry.
+      content:
+        text/plain:
+          schema:
+            $ref: '#/components/schemas/PlainText'
+          examples:
+            notFound:
+              $ref: '#/components/examples/NotFoundText'
+    HistoryTooManyRequests:
+      description: 'More than about 15 requests in the current second for this domain (all callers of the domain share the limit). There is no ban: retry after about a second, with backoff.'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorBody'
+          examples:
+            tooManyRequests:
+              $ref: '#/components/examples/HistoryTooManyRequests'
+    HistoryServerError:
+      description: |-
+        Server error.
+        - `application/json`: the query failed. A malformed UUID or IPv4 value always ends here with the
+          raw database message, so validate the path before sending and do not retry such a request.
+          Other failures are transient.
+        - `text/plain` (JSON text): the key lookup failed. Transient: retry with backoff.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorBody'
+          examples:
+            invalidValue:
+              $ref: '#/components/examples/HistoryInvalidValue'
+        text/plain:
+          schema:
+            $ref: '#/components/schemas/ErrorBodyText'
+          examples:
+            keyLookupFailed:
+              $ref: '#/components/examples/HistoryKeyLookupFailed'
+    BadGateway:
+      description: The edge proxy could not reach the service. HTML body. Retry with backoff.
+      content:
+        text/html:
+          schema:
+            $ref: '#/components/schemas/HtmlText'
+          examples:
+            badGateway:
+              $ref: '#/components/examples/BadGatewayHtml'
+    GatewayTimeout:
+      description: The service did not answer the edge proxy in time. HTML body. Retry with backoff.
+      content:
+        text/html:
+          schema:
+            $ref: '#/components/schemas/HtmlText'
+          examples:
+            gatewayTimeout:
+              $ref: '#/components/examples/GatewayTimeoutHtml'
+    ManagementUnauthorized:
+      description: Empty body, no `Content-Type`. `X-Shield-Domain` or `Authorization` is missing or malformed, the domain is unknown or disabled, or the Secret Key is wrong. Do not retry.
+    ManagementTooManyRequests:
+      description: 'More than 15 requests in the current minute from your IP, or a 10-minute block is active. The request that exceeds the limit starts the block, and every request during it gets this answer. Do not retry: wait for the block to end and cache results to stay under the limit.'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorBody'
+          examples:
+            tooManyRequests:
+              $ref: '#/components/examples/ManagementTooManyRequests'
+    ManagementServerBusy:
+      description: Too many requests are in flight on the server. Retry with backoff.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorBody'
+          examples:
+            serverBusy:
+              $ref: '#/components/examples/ManagementServerBusy'
+  headers:
+    Deprecation:
+      description: Marks the endpoint as deprecated. The value is the literal `true`.
+      schema:
+        type: string
+        const: 'true'
+      examples:
+        deprecated:
+          summary: Deprecated endpoint
+          value: 'true'
+    Sunset:
+      description: HTTP date after which the endpoint stops working.
+      schema:
+        type: string
+        const: Sat, 01 Jan 2027 00:00:00 GMT
+      examples:
+        sunset:
+          summary: Sunset date
+          value: Sat, 01 Jan 2027 00:00:00 GMT
+    Link:
+      description: Points to the replacement endpoint with `rel="successor-version"`.
+      schema:
+        type: string
+        const: <https://account.shieldlabs.ai/api/v1/history>; rel="successor-version"
+      examples:
+        successor:
+          summary: Successor endpoint
+          value: <https://account.shieldlabs.ai/api/v1/history>; rel="successor-version"

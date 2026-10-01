@@ -85,6 +85,7 @@ exclude_also = [
 
 [tool.ruff]
 line-length = 100
+extend-exclude = ["generated"]
 target-version = "py39"
 src = ["src", "tests"]
 
