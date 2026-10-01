@@ -38,6 +38,11 @@ They are identical in every SDK and compared byte for byte (the `.raw.txt` files
 webhook bodies without a trailing newline), so do not edit them in a pull request. If a fixture
 looks wrong, open an issue.
 
+They come from `contract/` in shieldlabs-openapi. `contract-sync.json` maps each file,
+`.shieldlabs-contract.lock` records the release they come from, and CI runs
+`python3 scripts/sync_contract.py --check`. The `contract-sync.yml` workflow checks for a new
+release every day and opens a pull request, with the test result, when it changes the files.
+
 ## Writing style
 
 Docs, docstrings and comments use plain technical English and the terms used in the README.

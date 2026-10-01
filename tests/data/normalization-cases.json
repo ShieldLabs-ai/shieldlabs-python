@@ -2,17 +2,17 @@
   "description": "History API rows and webhook data objects with the Identification every SDK must produce. Compare observed_at at millisecond precision (truncate, never round). Keys not listed in expected (for example raw) are free.",
   "cases": [
     {
-      "name": "history_02f1d973",
+      "name": "history_a5b7c9d1",
       "source": "history",
       "input": {
-        "request_id": "02f1d973-84db-4156-a7f7-e799e6bf389b",
-        "session_id": "bde78778-efd2-4c49-952f-1f11b9c05f35",
-        "cookie_id": "4449bb58-590c-444c-ae1f-d1ddc768dbdd",
+        "request_id": "a5b7c9d1-e3f5-4a7b-9c1d-3e5f7a9b1c3d",
+        "session_id": "b6c8d0e2-f4a6-4b8c-8d0e-2f4a6b8c0d2e",
+        "cookie_id": "c7d9e1f3-a5b7-4c9d-ae1f-3a5b7c9d1e3f",
         "domain": "shop.example.com",
         "site_domain": "example.com",
         "user_hid": "9f86d081884c7d659a2feaa0c55ad015",
-        "device_id": "ac7c303d-971b-41d1-8e25-cd5b46b46aed",
-        "visitor_id": "bde0e249-20d8-4544-838c-ed9a0b6d7a36",
+        "device_id": "d8e0f2a4-b6c8-4d0e-bf2a-4b6c8d0e2f4a",
+        "visitor_id": "e9f1a3b5-c7d9-4e1f-8a3b-5c7d9e1f3a5b",
         "ip": "203.0.113.24",
         "os": "Windows",
         "browser": "Chrome",
@@ -65,11 +65,11 @@
         "is_suspicious_paid_click": true
       },
       "expected": {
-        "request_id": "02f1d973-84db-4156-a7f7-e799e6bf389b",
-        "visitor_id": "bde0e249-20d8-4544-838c-ed9a0b6d7a36",
-        "device_id": "ac7c303d-971b-41d1-8e25-cd5b46b46aed",
-        "session_id": "bde78778-efd2-4c49-952f-1f11b9c05f35",
-        "cookie_id": "4449bb58-590c-444c-ae1f-d1ddc768dbdd",
+        "request_id": "a5b7c9d1-e3f5-4a7b-9c1d-3e5f7a9b1c3d",
+        "visitor_id": "e9f1a3b5-c7d9-4e1f-8a3b-5c7d9e1f3a5b",
+        "device_id": "d8e0f2a4-b6c8-4d0e-bf2a-4b6c8d0e2f4a",
+        "session_id": "b6c8d0e2-f4a6-4b8c-8d0e-2f4a6b8c0d2e",
+        "cookie_id": "c7d9e1f3-a5b7-4c9d-ae1f-3a5b7c9d1e3f",
         "user_hid": "9f86d081884c7d659a2feaa0c55ad015",
         "domain": "example.com",
         "public_ip": {
@@ -632,11 +632,11 @@
       "name": "webhook_scored",
       "source": "webhook",
       "input": {
-        "request_id": "02f1d973-84db-4156-a7f7-e799e6bf389b",
-        "visitor_id": "bde0e249-20d8-4544-838c-ed9a0b6d7a36",
-        "device_id": "ac7c303d-971b-41d1-8e25-cd5b46b46aed",
-        "session_id": "bde78778-efd2-4c49-952f-1f11b9c05f35",
-        "cookie_id": "4449bb58-590c-444c-ae1f-d1ddc768dbdd",
+        "request_id": "a5b7c9d1-e3f5-4a7b-9c1d-3e5f7a9b1c3d",
+        "visitor_id": "e9f1a3b5-c7d9-4e1f-8a3b-5c7d9e1f3a5b",
+        "device_id": "d8e0f2a4-b6c8-4d0e-bf2a-4b6c8d0e2f4a",
+        "session_id": "b6c8d0e2-f4a6-4b8c-8d0e-2f4a6b8c0d2e",
+        "cookie_id": "c7d9e1f3-a5b7-4c9d-ae1f-3a5b7c9d1e3f",
         "user_hid": "9f86d081884c7d659a2feaa0c55ad015",
         "domain": "example.com",
         "public_ip": {
@@ -701,11 +701,11 @@
         "observed_at": "2026-09-30T12:34:57.482913041Z"
       },
       "expected": {
-        "request_id": "02f1d973-84db-4156-a7f7-e799e6bf389b",
-        "visitor_id": "bde0e249-20d8-4544-838c-ed9a0b6d7a36",
-        "device_id": "ac7c303d-971b-41d1-8e25-cd5b46b46aed",
-        "session_id": "bde78778-efd2-4c49-952f-1f11b9c05f35",
-        "cookie_id": "4449bb58-590c-444c-ae1f-d1ddc768dbdd",
+        "request_id": "a5b7c9d1-e3f5-4a7b-9c1d-3e5f7a9b1c3d",
+        "visitor_id": "e9f1a3b5-c7d9-4e1f-8a3b-5c7d9e1f3a5b",
+        "device_id": "d8e0f2a4-b6c8-4d0e-bf2a-4b6c8d0e2f4a",
+        "session_id": "b6c8d0e2-f4a6-4b8c-8d0e-2f4a6b8c0d2e",
+        "cookie_id": "c7d9e1f3-a5b7-4c9d-ae1f-3a5b7c9d1e3f",
         "user_hid": "9f86d081884c7d659a2feaa0c55ad015",
         "domain": "example.com",
         "public_ip": {

@@ -1,0 +1,21 @@
+{
+  "ref": "v1.0.1",
+  "contract_version": "1.0.1",
+  "files": {
+    "error-responses.json": "2be02da69063dcbbf40643559ac6eb6250ae22f5b41562f79810e97e9e3915e0",
+    "history-empty.json": "5616a1180d8234908daca7a08a05afa49a2d0ce06426cc97ebaf7971ba05b339",
+    "history-page.json": "50abc4a9622f800154043b2c67c0479f7e445d01ea46e882e973b217f32f7c9e",
+    "management-profile-expected.json": "5069ddc195bd0a11f5f53c8c964a6096bb54c116c0797fd3a6dd5d26149bc6f9",
+    "management-profile.json": "a02126112d37f0e5857f71d51cbfa201e876217001433af4f41ff27c31e488e6",
+    "normalization-cases.json": "66f1dae0293c26bf55370e713dc54a801b81d433e892022eede22ab592c5bcbe",
+    "risk-band-cases.json": "c9b168f5df1738faccffd69cea23bfdc8d299329ac2a129206ddf7cf9891c20c",
+    "signal-slug-cases.json": "8a79760a89503d48eb11c1e5e5d9b7dbe6756734092fc5a0a93f110f46228365",
+    "webhook-identification-scored.json": "be64dd698516acd46c773c62000bacf5e152ff54b7845c3b1819a563b948ffb2",
+    "webhook-identification-scored.raw.txt": "4cfa0fd3fe0fcfed1de1172d2b7d94c17246c0d6f27c2125909f03d05c71b029",
+    "webhook-ping.json": "90569a442e10c0af00393fcc455e5347d88b1e60624749056815b09ca267a471",
+    "webhook-ping.raw.txt": "5d0fde10a301d142970dc184d2a61cbb03ee58394481abb2e316065a390d4f77",
+    "webhook-rate-limited.json": "4985e08b2b306187d4ad3a78dc9e9d6ecf3bfcbd5fb781921bc02bb9f8a90ccd",
+    "webhook-signature-vectors.json": "33daee0c2823bb9b86b63a688b3065e9cfde3b8ecec14f9a988dfbdd5552fe89",
+    "webhook-test-delivery.json": "7678d32cf757ec604adb35b5b1dbe2a226530cec25266756ed96268f81c6d16d"
+  }
+}

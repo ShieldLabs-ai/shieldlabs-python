@@ -32,7 +32,7 @@ from shieldlabs import (
 )
 from shieldlabs._http import USER_AGENT
 
-DEVICE_ID = "AC7C303D-971B-41D1-8E25-CD5B46B46AED"
+DEVICE_ID = "D8E0F2A4-B6C8-4D0E-BF2A-4B6C8D0E2F4A"
 
 
 @pytest.fixture
@@ -78,11 +78,11 @@ def test_search_defaults_and_empty_page(client: ShieldLabs, mock: Any) -> None:
 def test_uuid_values_are_sent_lowercase(client: ShieldLabs, mock: Any) -> None:
     route = mock.get(host=HISTORY_HOST).respond(200, json=history_body())
     client.history.search("device_id", DEVICE_ID)
-    client.history.search("visitor_id", UUID("bde0e249-20d8-4544-838c-ed9a0b6d7a36"))
+    client.history.search("visitor_id", UUID("e9f1a3b5-c7d9-4e1f-8a3b-5c7d9e1f3a5b"))
     paths = [call.request.url.path for call in route.calls]
     assert paths == [
         f"/api/v1/history/device_id/{DEVICE_ID.lower()}",
-        "/api/v1/history/visitor_id/bde0e249-20d8-4544-838c-ed9a0b6d7a36",
+        "/api/v1/history/visitor_id/e9f1a3b5-c7d9-4e1f-8a3b-5c7d9e1f3a5b",
     ]
 
 
@@ -184,8 +184,8 @@ def test_ip_lookup(client: ShieldLabs, mock: Any) -> None:
         ("REQUEST_ID", REQUEST_ID, "type must be one of"),
         ("request_id", "not-a-uuid", "must be a UUID"),
         ("request_id", REQUEST_ID + " ", "must be a UUID"),
-        ("device_id", "ac7c303d971b41d18e25cd5b46b46aed", "must be a UUID"),
-        ("session_id", "{bde78778-efd2-4c49-952f-1f11b9c05f35}", "must be a UUID"),
+        ("device_id", "d8e0f2a4b6c84d0ebf2a4b6c8d0e2f4a", "must be a UUID"),
+        ("session_id", "{b6c8d0e2-f4a6-4b8c-8d0e-2f4a6b8c0d2e}", "must be a UUID"),
         ("cookie_id", "", "must be a UUID"),
         ("ip", "2001:db8::1", "IPv6"),
         ("ip", "203.0.113", "dotted IPv4"),

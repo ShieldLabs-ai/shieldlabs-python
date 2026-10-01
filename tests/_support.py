@@ -19,7 +19,7 @@ SECRET_KEY = "0123456789abcdef0123456789abcdef"
 DOMAIN = "example.com"
 HISTORY_HOST = "account.shieldlabs.ai"
 MANAGEMENT_HOST = "api.shieldlabs.ai"
-REQUEST_ID = "02f1d973-84db-4156-a7f7-e799e6bf389b"
+REQUEST_ID = "a5b7c9d1-e3f5-4a7b-9c1d-3e5f7a9b1c3d"
 REQUEST_PATH = f"/api/v1/history/request_id/{REQUEST_ID}"
 
 
@@ -43,7 +43,7 @@ def row(request_id: str, **extra: Any) -> dict[str, Any]:
     """A minimal History row for paging tests."""
     base: dict[str, Any] = {
         "request_id": request_id,
-        "device_id": "ac7c303d-971b-41d1-8e25-cd5b46b46aed",
+        "device_id": "d8e0f2a4-b6c8-4d0e-bf2a-4b6c8d0e2f4a",
         "score": 10,
         "created_at": "2026-09-30 12:00:00.000",
     }

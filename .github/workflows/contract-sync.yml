@@ -1,0 +1,180 @@
+name: Contract sync
+
+# Takes the shared API contract (test fixtures, see contract-sync.json) from the newest
+# shieldlabs-openapi release, or from the release given by hand or by a contract-release
+# dispatch. When files change, it runs the full test suite and opens a pull request with the
+# result. Pull requests opened with GITHUB_TOKEN start no other workflow, so the tests run here.
+
+on:
+  schedule:
+    - cron: '17 6 * * *'
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Contract release: 'latest' or a tag such as v1.0.1"
+        required: false
+        default: latest
+        type: string
+  repository_dispatch:
+    types: [contract-release]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: contract-sync-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    name: Sync the shared contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - name: Sync the contract files
+        id: sync
+        env:
+          INPUT_REF: ${{ inputs.ref }}
+          DISPATCH_REF: ${{ github.event.client_payload.ref }}
+          # Only raises the GitHub API rate limit when resolving 'latest'.
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          ref="${DISPATCH_REF:-${INPUT_REF:-latest}}"
+          if ! [[ "$ref" =~ ^(latest|v[0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+            echo "::error::Invalid contract ref: use latest or a tag such as v1.0.1."
+            exit 1
+          fi
+          python3 scripts/sync_contract.py --ref "$ref"
+          resolved="$(python3 -c 'import json; print(json.load(open(".shieldlabs-contract.lock"))["ref"])')"
+          if ! [[ "$resolved" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Unexpected ref in .shieldlabs-contract.lock."
+            exit 1
+          fi
+          mapfile -t files < <(python3 -c 'import json; print("\n".join(json.load(open("contract-sync.json"))["files"].values()))')
+          if [ -n "$(git status --porcelain -- "${files[@]}")" ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            # Same bytes under a newer tag: keep the lock as it is, no pull request.
+            git checkout -- .shieldlabs-contract.lock
+            echo "Contract files are already those of $resolved."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+          echo "ref=$resolved" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        if: steps.sync.outputs.changed == 'true'
+        with:
+          python-version: '3.12'
+
+      - name: Run the full test suite
+        id: tests
+        if: steps.sync.outputs.changed == 'true'
+        continue-on-error: true
+        shell: bash
+        run: |
+          {
+            python -m pip install --upgrade pip
+            python -m pip install -e ".[dev]" -r examples/requirements.txt
+            ruff check .
+            ruff format --check .
+            mypy --strict src
+            pytest -q --cov=shieldlabs --cov-report=term-missing
+            python -m pip install build==1.6.1 twine==7.0.0
+            python -m build
+            twine check --strict dist/*
+          } 2>&1 | tee "$RUNNER_TEMP/contract-tests.log"
+
+      - name: Push the branch and open or update the pull request
+        if: steps.sync.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CONTRACT_REF: ${{ steps.sync.outputs.ref }}
+          TESTS: ${{ steps.tests.outcome }}
+        run: |
+          set -euo pipefail
+          if ! [[ "$CONTRACT_REF" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Unexpected contract ref."
+            exit 1
+          fi
+          export GH_REPO="$GITHUB_REPOSITORY"
+          base="$GITHUB_REF_NAME"
+          branch="contract-sync/$CONTRACT_REF"
+          label="contract-change-needs-code"
+          version="$(python3 -c 'import json; print(json.load(open(".shieldlabs-contract.lock"))["contract_version"])')"
+          mapfile -t files < <(python3 -c 'import json; print("\n".join(json.load(open("contract-sync.json"))["files"].values()))')
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$branch"
+          git add -- "${files[@]}" .shieldlabs-contract.lock
+          changes="$(git diff --cached --name-status)"
+          git commit -q -m "chore: sync the shared contract $CONTRACT_REF"
+
+          remote_sha="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/$branch" --jq .object.sha 2>/dev/null || true)"
+          remote_tree=""
+          if [[ "$remote_sha" =~ ^[0-9a-f]{40}$ ]]; then
+            remote_tree="$(gh api "repos/$GITHUB_REPOSITORY/git/commits/$remote_sha" --jq .tree.sha)"
+          fi
+          if [ "$remote_tree" = "$(git rev-parse 'HEAD^{tree}')" ]; then
+            echo "$branch already holds these changes."
+          else
+            git push --force "https://x-access-token:$GH_TOKEN@${GITHUB_SERVER_URL#https://}/$GITHUB_REPOSITORY.git" "HEAD:refs/heads/$branch"
+          fi
+
+          body="$RUNNER_TEMP/contract-pr.md"
+          {
+            echo "Syncs the shared API contract to [$CONTRACT_REF](https://github.com/ShieldLabs-ai/shieldlabs-openapi/releases/tag/$CONTRACT_REF) of shieldlabs-openapi (contract_version $version)."
+            echo
+            echo "Changed files:"
+            echo
+            echo '```'
+            echo "$changes"
+            echo '```'
+            echo
+            if [ "$TESTS" = "success" ]; then
+              echo "Tests: the full test suite passes with these files."
+            else
+              echo "Tests: **the full test suite fails with these files** ($TESTS). The SDK must change before it can take this contract; push the fixes to this branch."
+              echo
+              echo "<details><summary>Last lines of the test log</summary>"
+              echo
+              echo '```'
+              tail -n 80 "$RUNNER_TEMP/contract-tests.log" 2>/dev/null | cut -c1-300 || true
+              echo '```'
+              echo
+              echo "</details>"
+            fi
+            echo
+            echo "Run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+            echo
+            echo "Pull requests opened by this workflow start no other workflow. Close and reopen this pull request (or push to its branch) to run the usual checks."
+          } > "$body"
+
+          number="$(gh pr list --head "$branch" --base "$base" --state open --json number --jq '.[0].number // empty')"
+          if [ -n "$number" ]; then
+            gh pr edit "$number" --body-file "$body"
+          elif ! gh pr create --base "$base" --head "$branch" --title "chore: sync the shared contract $CONTRACT_REF" --body-file "$body"; then
+            echo "::error::Could not open the pull request. Enable 'Allow GitHub Actions to create and approve pull requests' for this repository, or open it by hand: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/compare/$base...$branch"
+            exit 1
+          fi
+
+          if [ "$TESTS" = "success" ]; then
+            gh pr edit "$branch" --remove-label "$label" >/dev/null 2>&1 || true
+          else
+            gh label create "$label" --force --color D93F0B --description "A contract sync whose tests fail: the SDK must change first" \
+              || echo "::warning::Could not create the $label label."
+            gh pr edit "$branch" --add-label "$label"
+          fi
+
+      - name: Fail when the new contract breaks the tests
+        if: steps.tests.outcome == 'failure'
+        run: |
+          echo "::error::The test suite fails with the new contract files. See the pull request labeled contract-change-needs-code."
+          exit 1
