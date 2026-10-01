@@ -1,1 +1,5 @@
 tests/data/** -text
+generated/** linguist-generated
+resources/shieldlabs-api.yaml linguist-generated
+sync.sh text eol=lf
+generate.sh text eol=lf

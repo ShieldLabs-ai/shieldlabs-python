@@ -70,3 +70,15 @@ jobs:
           python -m pip install build==1.6.1 twine==7.0.0
           python -m build
           twine check --strict dist/*
+
+  generated:
+    name: Generated API types
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Rebuild generated files
+        run: ./generate.sh
+      - name: Fail if generated files drifted
+        run: git diff --exit-code
