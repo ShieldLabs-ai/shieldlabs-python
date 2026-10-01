@@ -1,0 +1,66 @@
+{
+  "event_type": "identification.scored",
+  "schema_version": "2026-06-01",
+  "created_at": "2026-09-30T13:10:00.5Z",
+  "data": {
+    "request_id": "1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d",
+    "visitor_id": "00000000-0000-0000-0000-000000000000",
+    "device_id": "00000000-0000-0000-0000-000000000000",
+    "session_id": "00000000-0000-0000-0000-000000000000",
+    "cookie_id": "00000000-0000-0000-0000-000000000000",
+    "user_hid": "-1",
+    "domain": "example.com",
+    "public_ip": {
+      "ip": "203.0.113.200",
+      "country": ""
+    },
+    "local_ip": {
+      "ip": "",
+      "country": ""
+    },
+    "connection_type": "unknown",
+    "os": "Unknown",
+    "browser": "Unknown",
+    "device_type": "desktop",
+    "traffic_source": {
+      "channel": "",
+      "referrer_domain": "",
+      "landing_url": "",
+      "click_id_type": "",
+      "utm_source": "",
+      "utm_medium": "",
+      "utm_campaign": "",
+      "utm_content": "",
+      "utm_term": ""
+    },
+    "risk_score": 999,
+    "signals": [
+      {
+        "name": "rate_limited",
+        "weight": 999
+      }
+    ],
+    "detection_flags": {
+      "vpn": false,
+      "privacy_relay": false,
+      "browser_vpn_proxy": false,
+      "tor": false,
+      "proxy": false,
+      "datacenter_ip": false,
+      "abuser": false,
+      "os_mismatch": false,
+      "os_not_detected": false,
+      "timezone_mismatch": false,
+      "anti_detect_browser": false,
+      "browser_automation": false,
+      "ip_mismatch": false,
+      "incognito": false,
+      "search_bot": false,
+      "suspicious_paid_click": false,
+      "javascript_disabled": false,
+      "stun_not_checked": false,
+      "check_incomplete": false
+    },
+    "observed_at": "2026-09-30T13:10:00.5Z"
+  }
+}

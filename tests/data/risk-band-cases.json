@@ -1,0 +1,44 @@
+{
+  "cases": [
+    {
+      "score": 0,
+      "band": "trusted"
+    },
+    {
+      "score": 5,
+      "band": "trusted"
+    },
+    {
+      "score": 29,
+      "band": "trusted"
+    },
+    {
+      "score": 30,
+      "band": "suspicious"
+    },
+    {
+      "score": 45,
+      "band": "suspicious"
+    },
+    {
+      "score": 59,
+      "band": "suspicious"
+    },
+    {
+      "score": 60,
+      "band": "dangerous"
+    },
+    {
+      "score": 85,
+      "band": "dangerous"
+    },
+    {
+      "score": 100,
+      "band": "dangerous"
+    },
+    {
+      "score": 999,
+      "band": "rate_limited"
+    }
+  ]
+}

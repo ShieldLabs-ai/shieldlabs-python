@@ -1,0 +1,109 @@
+{
+  "description": "Error responses exactly as the ShieldLabs servers send them. Bodies are not uniform: parse defensively and branch on status.",
+  "cases": [
+    {
+      "surface": "history",
+      "status": 401,
+      "content_type": "text/plain; charset=utf-8",
+      "body": "{\"error\":\"missing or invalid authorization header\"}\n",
+      "expected_error": "AuthenticationError",
+      "retry": false
+    },
+    {
+      "surface": "history",
+      "status": 401,
+      "content_type": "text/plain; charset=utf-8",
+      "body": "{\"error\":\"invalid api key\"}\n",
+      "expected_error": "AuthenticationError",
+      "retry": false
+    },
+    {
+      "surface": "history",
+      "status": 429,
+      "content_type": "application/json",
+      "body": "{\"error\":\"too many requests\"}\n",
+      "expected_error": "RateLimitError",
+      "retry": true
+    },
+    {
+      "surface": "history",
+      "status": 500,
+      "content_type": "application/json",
+      "body": "{\"error\":\"code: 53, message: Cannot convert string 'abc' to type UUID\"}\n",
+      "expected_error": "ServerError",
+      "retry": true
+    },
+    {
+      "surface": "history",
+      "status": 500,
+      "content_type": "text/plain; charset=utf-8",
+      "body": "{\"error\":\"internal error\"}\n",
+      "expected_error": "ServerError",
+      "retry": true
+    },
+    {
+      "surface": "history",
+      "status": 404,
+      "content_type": "text/plain; charset=utf-8",
+      "body": "404 page not found",
+      "expected_error": "NotFoundError",
+      "retry": false
+    },
+    {
+      "surface": "history",
+      "status": 502,
+      "content_type": "text/html",
+      "body": "<html><body><h1>502 Bad Gateway</h1></body></html>",
+      "expected_error": "ServerError",
+      "retry": true
+    },
+    {
+      "surface": "management",
+      "status": 401,
+      "content_type": null,
+      "body": "",
+      "expected_error": "AuthenticationError",
+      "retry": false
+    },
+    {
+      "surface": "management",
+      "status": 429,
+      "content_type": "application/json; charset=utf-8",
+      "body": "{\"error\":\"too many requests\"}",
+      "expected_error": "RateLimitError",
+      "retry": false
+    },
+    {
+      "surface": "management",
+      "status": 503,
+      "content_type": "application/json; charset=utf-8",
+      "body": "{\"error\":\"server is busy\"}",
+      "expected_error": "ServerError",
+      "retry": true
+    },
+    {
+      "surface": "management",
+      "status": 400,
+      "content_type": "application/json; charset=utf-8",
+      "body": "null",
+      "expected_error": "BadRequestError",
+      "retry": false
+    },
+    {
+      "surface": "management",
+      "status": 402,
+      "content_type": null,
+      "body": "",
+      "expected_error": "QuotaExceededError",
+      "retry": false
+    },
+    {
+      "surface": "management",
+      "status": 404,
+      "content_type": "text/plain; charset=utf-8",
+      "body": "404 page not found",
+      "expected_error": "NotFoundError",
+      "retry": false
+    }
+  ]
+}

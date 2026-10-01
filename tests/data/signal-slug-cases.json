@@ -1,0 +1,129 @@
+{
+  "description": "Description (History score_details) to signal slug (webhook signals[].name). The slug function: exact map, then known prefixes, then 'Sticky verdict: ' prefix, then the fallback slugger.",
+  "cases": [
+    {
+      "description": "Is tor",
+      "slug": "tor"
+    },
+    {
+      "description": "Is VPN",
+      "slug": "vpn"
+    },
+    {
+      "description": "Is privacy relay",
+      "slug": "privacy_relay"
+    },
+    {
+      "description": "Is proxy",
+      "slug": "proxy"
+    },
+    {
+      "description": "Is datacenter",
+      "slug": "datacenter_ip"
+    },
+    {
+      "description": "Is abuser",
+      "slug": "abuser"
+    },
+    {
+      "description": "Stun is not checked",
+      "slug": "stun_not_checked"
+    },
+    {
+      "description": "Stun passed (late arrival, corrected)",
+      "slug": "stun_late_correction"
+    },
+    {
+      "description": "UA OS is not detected",
+      "slug": "os_not_detected"
+    },
+    {
+      "description": "Network OS is not detected",
+      "slug": "os_not_detected"
+    },
+    {
+      "description": "Browser timezone ≠ IP-timezone",
+      "slug": "timezone_mismatch"
+    },
+    {
+      "description": "Browser VPN/Proxy",
+      "slug": "browser_vpn_proxy"
+    },
+    {
+      "description": "Browser Automation",
+      "slug": "browser_automation"
+    },
+    {
+      "description": "Port scan routed via proxy (antidetect browser pattern)",
+      "slug": "proxy_routed_antidetect"
+    },
+    {
+      "description": "User has been banned 1H, to many requests",
+      "slug": "rate_limited"
+    },
+    {
+      "description": "Antidetect browser (turn_block)",
+      "slug": "antidetect_browser"
+    },
+    {
+      "description": "Antidetect browser (port: 51234)",
+      "slug": "antidetect_browser"
+    },
+    {
+      "description": "Os_mismatch (Fail by windows detect)",
+      "slug": "os_mismatch"
+    },
+    {
+      "description": "OS mismatch2 (TCP behaviour: ttl)",
+      "slug": "os_mismatch2"
+    },
+    {
+      "description": "TCP handshake (window)",
+      "slug": "tcp_handshake_v2"
+    },
+    {
+      "description": "Latency test (WS vs TCP: 40ms)",
+      "slug": "ws_tcp_latency"
+    },
+    {
+      "description": "JavaScript disabled (WebRTC, WebGL)",
+      "slug": "javascript_disabled"
+    },
+    {
+      "description": "Sticky verdict: Antidetect browser (turn_block) (request 11111111-2222-4333-8444-555555555555)",
+      "slug": "antidetect_browser"
+    },
+    {
+      "description": "Sticky verdict: Port scan routed via proxy (antidetect browser pattern) (request 11111111-2222-4333-8444-555555555555)",
+      "slug": "port_scan_routed_via_proxy"
+    },
+    {
+      "description": "IP ≠ leakIP (198.51.100.7 ≠ 203.0.113.9, source=scanner)",
+      "slug": "ip__neq__leakip"
+    },
+    {
+      "description": "Device spoofing",
+      "slug": "device_spoofing"
+    },
+    {
+      "description": "  Weird -- Name / Here  ",
+      "slug": "weird_name_here"
+    },
+    {
+      "description": "État Spécial (x)",
+      "slug": "état_spécial"
+    },
+    {
+      "description": "(only parens)",
+      "slug": "unknown"
+    },
+    {
+      "description": "!!!",
+      "slug": "unknown"
+    },
+    {
+      "description": "",
+      "slug": "unknown"
+    }
+  ]
+}
