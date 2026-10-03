@@ -18,6 +18,8 @@ Run the same checks as CI:
 
 ```bash
 ruff check . && ruff format --check . && mypy --strict src
+python scripts/generate_wire.py --check
+python scripts/check_wire_drift.py
 pytest -q --cov=shieldlabs --cov-report=term-missing
 ```
 
@@ -29,6 +31,46 @@ pytest -q --cov=shieldlabs --cov-report=term-missing
   cannot change CI results on its own. Raise a bound in its own pull request.
 - The FastAPI example has its own smoke test:
   `pip install -r examples/requirements.txt && pytest tests/test_example_app.py`.
+
+## Updating the HTTP contract
+
+`resources/shieldlabs-api.yaml` is the bundled OpenAPI input. Run
+`python scripts/generate_wire.py` after updating it. The deterministic output
+`src/shieldlabs/_generated_wire.py` is included in the wheel and is read by the real
+History/profile/webhook normalizers and request builders. PyYAML and the pinned formatter
+are development dependencies only; the installed SDK still depends only on httpx.
+
+The generated fields describe wire types, while the boundary helpers retain missing/null/
+malformed-value defaults, unknown strings and raw fields. They do not validate entire
+responses or coerce UUIDs/dates. The strict models under `generated/` require extra runtime
+dependencies and reject values the supported client accepts, so they remain reference code.
+`./generate.sh` regenerates both layers (Docker is needed only for the reference client).
+
+The mutation check regenerates temporary schemas and type-checks copies of the actual SDK
+source. Renamed fields, incompatible types, query parameters and headers must be rejected;
+optional additive fields and parameters must compile. Unsupported new required parameters
+on the consumed HTTP operations fail generation, including inherited path-level parameters.
+The profile request path comes from the operation's OpenAPI route; a mutation test verifies
+the changed route reaches an actual mocked HTTP request. Ping timestamp and version fields
+are checked against the ping model separately from scored events. The checks never edit the
+checked-in API description.
+
+History's route template also comes from OpenAPI, with lookup values escaped before template
+substitution. The current HTTP operations require GET; changing their method fails generation.
+The generated lookup enum must match the real validation list before generation proceeds.
+Public and local IP objects have separate generated fields, so one can change without hiding
+an incompatible change in the other. Both webhook discriminator definitions are checked
+against the supported envelope field and event values before generating.
+
+To check the installed artifact without an editable checkout:
+
+```bash
+python -m pip install build
+python -m build
+python -m venv .wheel-consumer
+.wheel-consumer/bin/pip install dist/*.whl
+.wheel-consumer/bin/python scripts/smoke_wheel.py
+```
 
 ## Shared test fixtures
 
