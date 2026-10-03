@@ -7,11 +7,12 @@ import math
 import os
 import re
 import warnings
-from typing import Literal, Optional, Union
+from typing import Optional, Union
 from urllib.parse import quote, urlsplit
 from uuid import UUID
 
 from ._errors import ShieldLabsWarning, ValidationError
+from ._generated_wire import LookupType as LookupType
 
 __all__ = [
     "DEFAULT_HISTORY_BASE_URL",
@@ -32,12 +33,7 @@ __all__ = [
     "validate_uuid",
 ]
 
-LookupType = Literal[
-    "ip", "user_hid", "visitor_id", "request_id", "device_id", "session_id", "cookie_id"
-]
-"""The identifier a History API lookup searches by."""
-
-LOOKUP_TYPES: tuple[str, ...] = (
+LOOKUP_TYPES: tuple[LookupType, ...] = (
     "ip",
     "user_hid",
     "visitor_id",

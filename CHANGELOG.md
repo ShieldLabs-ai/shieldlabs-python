@@ -8,7 +8,10 @@ All notable changes to this project are documented in this file. The format foll
 
 ### Added
 
-- `sync.sh` downloads the OpenAPI description and `generate.sh` rebuilds `generated/` from it. The supported client is unchanged.
+- `sync.sh` downloads the OpenAPI description. Schema-derived wire fields now drive History,
+  profile and webhook normalization, with generated request parameter types and CI checks
+  for stale output and incompatible schema changes. Public models and tolerant decoding stay
+  unchanged. The strict reference client in `generated/` remains separate.
 
 ## [1.0.0] - 2026-09-30
 

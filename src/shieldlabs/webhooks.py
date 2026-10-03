@@ -32,8 +32,11 @@ from datetime import datetime
 from typing import Any, Literal, Optional, Union
 
 from ._errors import ShieldLabsWarning, SignatureVerificationError, WebhookParseError
+from ._generated_wire import IdentificationScoredEvent as WireEvent
+from ._generated_wire import WebhookPingEvent as WirePing
 from ._models import Identification
 from ._normalize import parse_rfc3339
+from ._wire import text
 
 __all__ = [
     "SCHEMA_VERSION",
@@ -199,12 +202,11 @@ def _parse_event(body: bytes) -> WebhookEvent:
         raise WebhookParseError("Webhook body is not valid JSON") from exc
     if not isinstance(envelope, dict):
         raise WebhookParseError("Webhook body is not a JSON object")
-    event_type = envelope.get("event_type")
+    event_type = text(WireEvent.event_type.read(envelope))
     if not isinstance(event_type, str) or not event_type:
         raise WebhookParseError("Webhook body has no event_type")
-    schema_version = envelope.get("schema_version")
-    if not isinstance(schema_version, str):
-        schema_version = ""
+    envelope_fields = WirePing if event_type == "webhook.ping" else WireEvent
+    schema_version = text(envelope_fields.schema_version.read(envelope))
     if schema_version != SCHEMA_VERSION:
         warnings.warn(
             f"Webhook schema_version {schema_version!r} is not {SCHEMA_VERSION!r}; "
@@ -212,8 +214,8 @@ def _parse_event(body: bytes) -> WebhookEvent:
             ShieldLabsWarning,
             stacklevel=3,
         )
-    created_at = parse_rfc3339(envelope.get("created_at"))
-    data = envelope.get("data")
+    created_at = parse_rfc3339(text(envelope_fields.created_at.read(envelope)))
+    data = WireEvent.data.read(envelope)
     if event_type == "identification.scored":
         if not isinstance(data, dict):
             raise WebhookParseError("identification.scored event has no data object")

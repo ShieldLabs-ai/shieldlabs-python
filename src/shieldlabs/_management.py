@@ -7,6 +7,7 @@ from typing import Optional
 
 import httpx
 
+from ._generated_wire import PROFILE_PATH, ProfileHeaders
 from ._http import USER_AGENT, AsyncTransport, SyncTransport, json_object
 from ._models import DomainProfile
 from ._validation import (
@@ -19,7 +20,7 @@ from ._validation import (
 
 __all__ = ["AsyncShieldLabsManagement", "ShieldLabsManagement"]
 
-_PROFILE_PATH = "/v1/profile"
+_PROFILE_PATH = PROFILE_PATH
 
 
 class _ManagementConfig:
@@ -41,8 +42,9 @@ class _ManagementConfig:
         secret = require_secret(secret_key, "SHIELDLABS_SECRET_KEY", "secret_key")
         self.domain = normalize_domain(domain)
         self.base_url = management_origin(base_url)
-        self._headers = {
-            "X-Shield-Domain": self.domain,
+        profile_headers: ProfileHeaders = {"X-Shield-Domain": self.domain}
+        self._headers: dict[str, str] = {
+            "X-Shield-Domain": profile_headers["X-Shield-Domain"],
             "Authorization": f"Bearer {secret}",
             "Accept": "application/json",
             "User-Agent": USER_AGENT,
