@@ -8,9 +8,10 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Literal, Optional
 
+from . import _generated_wire as wire
+from . import _wire
 from ._normalize import (
     FLAG_KEYS,
-    HISTORY_FLAG_MAP,
     NIL_UUID,
     TRAFFIC_KEYS,
     RiskBand,
@@ -41,6 +42,60 @@ IdentificationSource = Literal["webhook", "history"]
 """Where an ``Identification`` came from."""
 
 _IP_MISMATCH_DETAIL = "IP ≠ leakIP"
+
+_HISTORY_FLAGS: dict[str, wire.Field[bool]] = {
+    "vpn": wire.HistoryRow.is_vpn,
+    "privacy_relay": wire.HistoryRow.is_privacy_relay,
+    "tor": wire.HistoryRow.is_tor,
+    "proxy": wire.HistoryRow.is_proxy,
+    "datacenter_ip": wire.HistoryRow.is_datacenter,
+    "abuser": wire.HistoryRow.is_abuser,
+    "os_mismatch": wire.HistoryRow.is_os_mismatch,
+    "os_not_detected": wire.HistoryRow.is_os_not_detected,
+    "timezone_mismatch": wire.HistoryRow.is_timezone_mismatch,
+    "anti_detect_browser": wire.HistoryRow.is_antidetect,
+    "browser_automation": wire.HistoryRow.is_browser_automation,
+    "incognito": wire.HistoryRow.is_incognito,
+    "search_bot": wire.HistoryRow.is_search_bot,
+    "suspicious_paid_click": wire.HistoryRow.is_suspicious_paid_click,
+    "javascript_disabled": wire.HistoryRow.is_js_disabled,
+    "stun_not_checked": wire.HistoryRow.is_stun_not_checked,
+    "check_incomplete": wire.HistoryRow.check_incomplete,
+}
+
+_FLAG_FIELDS: dict[str, wire.Field[bool]] = {
+    "vpn": wire.DetectionFlags.vpn,
+    "privacy_relay": wire.DetectionFlags.privacy_relay,
+    "browser_vpn_proxy": wire.DetectionFlags.browser_vpn_proxy,
+    "tor": wire.DetectionFlags.tor,
+    "proxy": wire.DetectionFlags.proxy,
+    "datacenter_ip": wire.DetectionFlags.datacenter_ip,
+    "abuser": wire.DetectionFlags.abuser,
+    "os_mismatch": wire.DetectionFlags.os_mismatch,
+    "os_not_detected": wire.DetectionFlags.os_not_detected,
+    "timezone_mismatch": wire.DetectionFlags.timezone_mismatch,
+    "anti_detect_browser": wire.DetectionFlags.anti_detect_browser,
+    "browser_automation": wire.DetectionFlags.browser_automation,
+    "ip_mismatch": wire.DetectionFlags.ip_mismatch,
+    "incognito": wire.DetectionFlags.incognito,
+    "search_bot": wire.DetectionFlags.search_bot,
+    "suspicious_paid_click": wire.DetectionFlags.suspicious_paid_click,
+    "javascript_disabled": wire.DetectionFlags.javascript_disabled,
+    "stun_not_checked": wire.DetectionFlags.stun_not_checked,
+    "check_incomplete": wire.DetectionFlags.check_incomplete,
+}
+
+_TRAFFIC_FIELDS: dict[str, wire.Field[str]] = {
+    "channel": wire.TrafficSource.channel,
+    "referrer_domain": wire.TrafficSource.referrer_domain,
+    "landing_url": wire.TrafficSource.landing_url,
+    "click_id_type": wire.TrafficSource.click_id_type,
+    "utm_source": wire.TrafficSource.utm_source,
+    "utm_medium": wire.TrafficSource.utm_medium,
+    "utm_campaign": wire.TrafficSource.utm_campaign,
+    "utm_content": wire.TrafficSource.utm_content,
+    "utm_term": wire.TrafficSource.utm_term,
+}
 
 
 def _mapping(value: object) -> Mapping[str, Any]:
@@ -91,10 +146,21 @@ class IpInfo:
     def from_dict(cls, data: Mapping[str, Any]) -> IpInfo:
         """Build from ``{"ip": ..., "country": ...}``. ``0.0.0.0`` becomes ``""``."""
         data = _mapping(data)
-        return cls(ip=clean_ip(data.get("ip")), country=as_str(data.get("country")))
+        return cls(
+            ip=clean_ip(_wire.text(wire.IpInfo.ip.read(data))),
+            country=_wire.text(wire.IpInfo.country.read(data)),
+        )
 
     def to_dict(self) -> dict[str, Any]:
         return {"ip": self.ip, "country": self.country}
+
+
+def _local_ip_info(value: Optional[Mapping[str, object]]) -> IpInfo:
+    data = _wire.mapping(value)
+    return IpInfo(
+        ip=clean_ip(_wire.text(wire.LocalIpInfo.ip.read(data))),
+        country=_wire.text(wire.LocalIpInfo.country.read(data)),
+    )
 
 
 @dataclass(frozen=True)
@@ -115,7 +181,7 @@ class TrafficSource:
     def from_dict(cls, data: Mapping[str, Any]) -> TrafficSource:
         """Build from a webhook ``traffic_source`` object. Missing keys become ``""``."""
         data = _mapping(data)
-        return cls(**{key: as_str(data.get(key)) for key in TRAFFIC_KEYS})
+        return cls(**{key: _wire.text(field.read(data)) for key, field in _TRAFFIC_FIELDS.items()})
 
     def to_dict(self) -> dict[str, Any]:
         return {key: getattr(self, key) for key in TRAFFIC_KEYS}
@@ -142,8 +208,8 @@ class Signal:
         data = _mapping(data)
         description = data.get("description")
         return cls(
-            name=as_str(data.get("name")),
-            weight=as_int(data.get("weight")),
+            name=_wire.text(wire.Signal.name.read(data)),
+            weight=_wire.integer(wire.Signal.weight.read(data)),
             description=description if isinstance(description, str) else None,
         )
 
@@ -179,7 +245,7 @@ class DetectionFlags:
     def from_dict(cls, data: Mapping[str, Any]) -> DetectionFlags:
         """Build from a webhook ``detection_flags`` object. A missing key is ``False``."""
         data = _mapping(data)
-        return cls(**{key: bool(data.get(key, False)) for key in FLAG_KEYS})
+        return cls(**{key: _wire.boolean(field.read(data)) for key, field in _FLAG_FIELDS.items()})
 
     def to_dict(self) -> dict[str, bool]:
         return {key: getattr(self, key) for key in FLAG_KEYS}
@@ -240,32 +306,41 @@ class Identification:
     def from_webhook_data(cls, data: Mapping[str, Any]) -> Identification:
         """Normalize the ``data`` object of an ``identification.scored`` webhook."""
         data = _mapping(data)
-        flags = _mapping(data.get("detection_flags"))
-        raw_signals = data.get("signals")
+        flags = _wire.mapping(wire.IdentificationScoredData.detection_flags.read(data))
+        raw_signals = wire.IdentificationScoredData.signals.read(data)
         signals = tuple(
-            Signal(name=as_str(item.get("name")), weight=as_int(item.get("weight")))
-            for item in (raw_signals if isinstance(raw_signals, list) else [])
+            Signal(
+                name=_wire.text(wire.Signal.name.read(item)),
+                weight=_wire.integer(wire.Signal.weight.read(item)),
+            )
+            for item in _wire.records(raw_signals)
             if isinstance(item, Mapping)
         )
         return cls(
-            request_id=as_str(data.get("request_id")),
-            visitor_id=as_str(data.get("visitor_id")),
-            device_id=as_str(data.get("device_id")),
-            session_id=as_str(data.get("session_id")),
-            cookie_id=as_str(data.get("cookie_id")),
-            user_hid=_optional_user_hid(data.get("user_hid")),
-            domain=as_str(data.get("domain")),
-            public_ip=IpInfo.from_dict(_mapping(data.get("public_ip"))),
-            local_ip=IpInfo.from_dict(_mapping(data.get("local_ip"))),
-            connection_type=as_str(data.get("connection_type")),
-            os=as_str(data.get("os")),
-            browser=as_str(data.get("browser")),
-            device_type=as_str(data.get("device_type")),
-            traffic_source=TrafficSource.from_dict(_mapping(data.get("traffic_source"))),
-            risk_score=as_int(data.get("risk_score")),
+            request_id=_wire.text(wire.IdentificationScoredData.request_id.read(data)),
+            visitor_id=_wire.text(wire.IdentificationScoredData.visitor_id.read(data)),
+            device_id=_wire.text(wire.IdentificationScoredData.device_id.read(data)),
+            session_id=_wire.text(wire.IdentificationScoredData.session_id.read(data)),
+            cookie_id=_wire.text(wire.IdentificationScoredData.cookie_id.read(data)),
+            user_hid=_optional_user_hid(wire.IdentificationScoredData.user_hid.read(data)),
+            domain=_wire.text(wire.IdentificationScoredData.domain.read(data)),
+            public_ip=IpInfo.from_dict(
+                _wire.mapping(wire.IdentificationScoredData.public_ip.read(data))
+            ),
+            local_ip=_local_ip_info(wire.IdentificationScoredData.local_ip.read(data)),
+            connection_type=_wire.text(wire.IdentificationScoredData.connection_type.read(data)),
+            os=_wire.text(wire.IdentificationScoredData.os.read(data)),
+            browser=_wire.text(wire.IdentificationScoredData.browser.read(data)),
+            device_type=_wire.text(wire.IdentificationScoredData.device_type.read(data)),
+            traffic_source=TrafficSource.from_dict(
+                _wire.mapping(wire.IdentificationScoredData.traffic_source.read(data))
+            ),
+            risk_score=_wire.integer(wire.IdentificationScoredData.risk_score.read(data)),
             signals=signals,
             detection_flags=DetectionFlags.from_dict(flags),
-            observed_at=parse_rfc3339(data.get("observed_at")),
+            observed_at=parse_rfc3339(
+                _wire.text(wire.IdentificationScoredData.observed_at.read(data))
+            ),
             source="webhook",
             raw=dict(data),
         )
@@ -274,17 +349,17 @@ class Identification:
     def from_history_row(cls, row: Mapping[str, Any]) -> Identification:
         """Normalize one row of a History API response."""
         row = _mapping(row)
-        leak_source = as_str(row.get("webrtc_leak_source")).strip()
+        leak_source = _wire.text(wire.HistoryRow.webrtc_leak_source.read(row)).strip()
         if leak_source and leak_source != "none":
-            local_ip = clean_ip(row.get("webrtc_leak_ip"))
-            local_country = as_str(row.get("webrtc_leak_country"))
+            local_ip = clean_ip(_wire.text(wire.HistoryRow.webrtc_leak_ip.read(row)))
+            local_country = _wire.text(wire.HistoryRow.webrtc_leak_country.read(row))
         else:
-            local_ip = clean_ip(row.get("web_rtc_ip"))
-            local_country = as_str(row.get("web_rtc_country"))
-        public_ip = clean_ip(row.get("ip"))
+            local_ip = clean_ip(_wire.text(wire.HistoryRow.web_rtc_ip.read(row)))
+            local_country = _wire.text(wire.HistoryRow.web_rtc_country.read(row))
+        public_ip = clean_ip(_wire.text(wire.HistoryRow.ip.read(row)))
 
         details: Any = []
-        score_details = row.get("score_details")
+        score_details = wire.HistoryRow.score_details.read(row)
         if isinstance(score_details, str) and score_details:
             try:
                 details = json.loads(score_details)
@@ -298,56 +373,57 @@ class Identification:
         for detail in details:
             if not isinstance(detail, Mapping):
                 continue
-            description = as_str(detail.get("Description"))
+            description = _wire.text(wire.ScoreDetail.Description.read(detail))
             if description.startswith(_IP_MISMATCH_DETAIL):
                 ip_leak_detail = True
-            value = detail.get("Value", 0)
+            value = wire.ScoreDetail.Value.read(detail)
             if isinstance(value, bool) or not isinstance(value, int) or value == 0:
                 continue
             signals.append(
                 Signal(name=signal_slug(description), weight=value, description=description)
             )
 
-        search_bot = bool(row.get("is_search_bot", False))
+        search_bot = _wire.boolean(wire.HistoryRow.is_search_bot.read(row))
         flags: dict[str, bool] = {}
         for key in FLAG_KEYS:
             if key == "browser_vpn_proxy":
-                flags[key] = row.get("connection_type") == "browser_vpn_proxy"
+                flags[key] = wire.HistoryRow.connection_type.read(row) == "browser_vpn_proxy"
             elif key == "ip_mismatch":
                 differs = public_ip != "" and local_ip != "" and public_ip != local_ip
                 flags[key] = (not search_bot) and (ip_leak_detail or differs)
             else:
-                flags[key] = bool(row.get(HISTORY_FLAG_MAP[key], False))
+                flags[key] = _wire.boolean(_HISTORY_FLAGS[key].read(row))
 
         return cls(
-            request_id=as_str(row.get("request_id")),
-            visitor_id=as_str(row.get("visitor_id")),
-            device_id=as_str(row.get("device_id")),
-            session_id=as_str(row.get("session_id")),
-            cookie_id=as_str(row.get("cookie_id")),
-            user_hid=_optional_user_hid(row.get("user_hid")),
-            domain=as_str(row.get("site_domain")) or as_str(row.get("domain")),
-            public_ip=IpInfo(ip=public_ip, country=as_str(row.get("country"))),
+            request_id=_wire.text(wire.HistoryRow.request_id.read(row)),
+            visitor_id=_wire.text(wire.HistoryRow.visitor_id.read(row)),
+            device_id=_wire.text(wire.HistoryRow.device_id.read(row)),
+            session_id=_wire.text(wire.HistoryRow.session_id.read(row)),
+            cookie_id=_wire.text(wire.HistoryRow.cookie_id.read(row)),
+            user_hid=_optional_user_hid(wire.HistoryRow.user_hid.read(row)),
+            domain=_wire.text(wire.HistoryRow.site_domain.read(row))
+            or _wire.text(wire.HistoryRow.domain.read(row)),
+            public_ip=IpInfo(ip=public_ip, country=_wire.text(wire.HistoryRow.country.read(row))),
             local_ip=IpInfo(ip=local_ip, country=local_country),
-            connection_type=as_str(row.get("connection_type")),
-            os=as_str(row.get("os")),
-            browser=as_str(row.get("browser")),
-            device_type=as_str(row.get("device_type")),
+            connection_type=_wire.text(wire.HistoryRow.connection_type.read(row)),
+            os=_wire.text(wire.HistoryRow.os.read(row)),
+            browser=_wire.text(wire.HistoryRow.browser.read(row)),
+            device_type=_wire.text(wire.HistoryRow.device_type.read(row)),
             traffic_source=TrafficSource(
-                channel=as_str(row.get("traffic_channel")),
-                referrer_domain=as_str(row.get("referrer_domain")),
-                landing_url=as_str(row.get("entry_url")),
-                click_id_type=as_str(row.get("click_id_type")),
-                utm_source=as_str(row.get("utm_source")),
-                utm_medium=as_str(row.get("utm_medium")),
-                utm_campaign=as_str(row.get("utm_campaign")),
-                utm_content=as_str(row.get("utm_content")),
-                utm_term=as_str(row.get("utm_term")),
+                channel=_wire.text(wire.HistoryRow.traffic_channel.read(row)),
+                referrer_domain=_wire.text(wire.HistoryRow.referrer_domain.read(row)),
+                landing_url=_wire.text(wire.HistoryRow.entry_url.read(row)),
+                click_id_type=_wire.text(wire.HistoryRow.click_id_type.read(row)),
+                utm_source=_wire.text(wire.HistoryRow.utm_source.read(row)),
+                utm_medium=_wire.text(wire.HistoryRow.utm_medium.read(row)),
+                utm_campaign=_wire.text(wire.HistoryRow.utm_campaign.read(row)),
+                utm_content=_wire.text(wire.HistoryRow.utm_content.read(row)),
+                utm_term=_wire.text(wire.HistoryRow.utm_term.read(row)),
             ),
-            risk_score=as_int(row.get("score")),
+            risk_score=_wire.integer(wire.HistoryRow.score.read(row)),
             signals=tuple(signals),
             detection_flags=DetectionFlags(**flags),
-            observed_at=parse_history_time(row.get("created_at")),
+            observed_at=parse_history_time(_wire.text(wire.HistoryRow.created_at.read(row))),
             source="history",
             raw=dict(row),
         )
@@ -432,13 +508,15 @@ class HistoryPage:
     def from_dict(cls, body: Mapping[str, Any]) -> HistoryPage:
         """Build from a History API response body ``{"data": [...], "total": N}``."""
         body = _mapping(body)
-        rows = body.get("data")
+        rows = wire.HistoryPage.data.read(body)
         data = tuple(
             Identification.from_history_row(row)
-            for row in (rows if isinstance(rows, list) else [])
+            for row in _wire.records(rows)
             if isinstance(row, Mapping)
         )
-        return cls(data=data, total=as_int(body.get("total"), default=len(data)))
+        return cls(
+            data=data, total=_wire.integer(wire.HistoryPage.total.read(body), default=len(data))
+        )
 
 
 @dataclass(frozen=True)
@@ -467,11 +545,11 @@ class DomainProfile:
         """Build from a ``GET /v1/profile`` response body."""
         body = _mapping(body)
         return cls(
-            domain=as_str(body.get("Domain")),
-            remaining_identifications=as_int(body.get("Weight")),
-            public_key_masked=as_str(body.get("PublicKey")),
-            secret_key_masked=as_str(body.get("Secret")),
-            created_at=parse_rfc3339(body.get("CreatedAt")),
+            domain=_wire.text(wire.DomainProfile.Domain.read(body)),
+            remaining_identifications=_wire.integer(wire.DomainProfile.Weight.read(body)),
+            public_key_masked=_wire.text(wire.DomainProfile.PublicKey.read(body)),
+            secret_key_masked=_wire.text(wire.DomainProfile.Secret.read(body)),
+            created_at=parse_rfc3339(_wire.text(wire.DomainProfile.CreatedAt.read(body))),
             raw=dict(body),
         )
 

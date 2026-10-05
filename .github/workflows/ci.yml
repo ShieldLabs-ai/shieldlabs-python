@@ -37,6 +37,11 @@ jobs:
           ruff format --check .
       - name: Type check
         run: mypy --strict src
+      - name: Check consumed wire types
+        run: python scripts/generate_wire.py --check
+      - name: Check breaking schema changes
+        if: matrix.python-version == '3.12'
+        run: python scripts/check_wire_drift.py
       - name: Test
         run: pytest -q --cov=shieldlabs --cov-report=term-missing
 
@@ -70,6 +75,12 @@ jobs:
           python -m pip install build==1.6.1 twine==7.0.0
           python -m build
           twine check --strict dist/*
+      - name: Test installed wheel
+        run: |
+          python -m venv /tmp/wheel-consumer
+          /tmp/wheel-consumer/bin/pip install dist/*.whl
+          cd /tmp
+          /tmp/wheel-consumer/bin/python "$GITHUB_WORKSPACE/scripts/smoke_wheel.py"
 
   generated:
     name: Generated API types
@@ -78,7 +89,12 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: "3.12"
       - name: Rebuild generated files
-        run: ./generate.sh
+        run: |
+          python3 -m pip install -e ".[dev]"
+          ./generate.sh
       - name: Fail if generated files drifted
         run: git diff --exit-code

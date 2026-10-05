@@ -45,7 +45,8 @@ dev = [
   "pytest>=7.4,<10",
   "pytest-cov>=4.1,<8",
   "respx>=0.20.2,<0.24",
-  "ruff>=0.6,<0.17",
+  "ruff==0.16.10",
+  "PyYAML==6.0.3",
 ]
 
 [project.urls]
@@ -62,7 +63,7 @@ path = "src/shieldlabs/_version.py"
 packages = ["src/shieldlabs"]
 
 [tool.hatch.build.targets.sdist]
-include = ["src/shieldlabs", "tests", "examples", "README.md", "CHANGELOG.md", "LICENSE"]
+include = ["src/shieldlabs", "tests", "examples", "scripts", "resources", "README.md", "CONTRIBUTING.md", "CHANGELOG.md", "LICENSE", "pyproject.toml"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -98,6 +99,7 @@ keep-runtime-typing = true
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["PT011"]
+"src/shieldlabs/_generated_wire.py" = ["N815"]
 
 [tool.mypy]
 strict = true

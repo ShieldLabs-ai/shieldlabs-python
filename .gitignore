@@ -8,6 +8,8 @@ dist/
 
 # Virtual environments
 .venv/
+.wheel-consumer/
+.wire-drift-*/
 venv/
 
 # Tooling caches and reports

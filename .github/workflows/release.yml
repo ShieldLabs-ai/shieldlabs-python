@@ -39,11 +39,19 @@ jobs:
           ruff check .
           ruff format --check .
           mypy --strict src
+          python scripts/generate_wire.py --check
+          python scripts/check_wire_drift.py
           pytest -q
       - name: Build
         run: |
           python -m build
           twine check --strict dist/*
+      - name: Test installed wheel
+        run: |
+          python -m venv /tmp/wheel-consumer
+          /tmp/wheel-consumer/bin/pip install dist/*.whl
+          cd /tmp
+          /tmp/wheel-consumer/bin/python "$GITHUB_WORKSPACE/scripts/smoke_wheel.py"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: dist

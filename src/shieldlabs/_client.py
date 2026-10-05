@@ -5,7 +5,7 @@ from __future__ import annotations
 import itertools
 from collections.abc import AsyncIterator, Iterator
 from types import TracebackType
-from typing import Callable, Optional, Union
+from typing import Callable, Optional, Union, cast
 from uuid import UUID
 
 import httpx
@@ -17,6 +17,7 @@ from ._errors import (
     ServerError,
     ShieldLabsError,
 )
+from ._generated_wire import HISTORY_PATH, HistoryPath, HistoryQuery
 from ._http import (
     RATE_LIMIT_MIN_DELAY,
     RETRY_AFTER_CAP,
@@ -61,7 +62,7 @@ POLL_STEPS = (1, 2, 4, 6, 8)
 # Errors that do not end a wait: the next poll can still succeed. Everything else (400, 401,
 # 403, 404 and any other API error) is raised at once.
 _TRANSIENT_ERRORS = (RateLimitError, ServerError, APIConnectionError, APITimeoutError)
-_HISTORY_PATH = "/api/v1/history"
+_HISTORY_PATH = HISTORY_PATH
 
 
 def poll_waits(initial: float) -> Iterator[float]:
@@ -154,7 +155,9 @@ class _HistoryConfig:
 
     def _history_url(self, lookup_type: str, value: Union[str, UUID]) -> str:
         checked_type, segment = validate_lookup(lookup_type, value)
-        return f"{self.base_url}{_HISTORY_PATH}/{checked_type}/{segment}"
+        path = HistoryPath(search_type=cast(LookupType, checked_type), value=segment)
+        route = _HISTORY_PATH.format(search_type=path["search_type"], value=path["value"])
+        return f"{self.base_url}{route}"
 
     def __repr__(self) -> str:
         return f"{type(self).__name__}(base_url={self.base_url!r})"
@@ -209,7 +212,7 @@ class ShieldLabs(_HistoryConfig):
         response = self._transport.get(
             url,
             headers=self._headers,
-            params={"limit": validate_limit(limit), "offset": validate_offset(offset)},
+            params=dict(HistoryQuery(limit=validate_limit(limit), offset=validate_offset(offset))),
             timeout=timeout,
             max_retries=max_retries,
         )
@@ -420,7 +423,7 @@ class AsyncShieldLabs(_HistoryConfig):
         response = await self._transport.get(
             url,
             headers=self._headers,
-            params={"limit": validate_limit(limit), "offset": validate_offset(offset)},
+            params=dict(HistoryQuery(limit=validate_limit(limit), offset=validate_offset(offset))),
             timeout=timeout,
             max_retries=max_retries,
         )

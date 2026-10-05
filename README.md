@@ -446,11 +446,16 @@ Keys and request bodies are never logged. Each request carries
 
 ## Development
 
-Refresh the generated client when the API description changes. This does not replace the supported library in this repository.
+The supported SDK consumes schema-derived wire fields for History, domain profiles and
+webhooks, and generated request parameter types. Its public models, tolerant decoding,
+retries and signature verification remain unchanged. The strict reference client under
+`generated/` is separate and is not installed as part of the package.
 
 ```bash
 ./sync.sh      # download the current OpenAPI description into resources/
-./generate.sh  # rebuild generated/ from that file
+python scripts/generate_wire.py  # rebuild the wire types used by the supported SDK
+python scripts/generate_wire.py --check  # reject stale wire types
+./generate.sh  # rebuild both wire types and the reference client (requires Docker)
 ```
 
 
