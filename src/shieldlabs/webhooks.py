@@ -5,10 +5,10 @@ Every delivery is a ``POST`` with a JSON body and the header
 string exactly as shown in the analytics dashboard, ``whsec_`` prefix included, and the message
 is the raw request body. Always verify the raw bytes you received, before parsing them.
 
-ShieldLabs sends one delivery per identification and endpoint, with a 1-second timeout and no
-retries. Respond with a 2xx within 1 second and do slow work afterwards. Keep handlers
-idempotent on ``data.request_id``: a future release retries deliveries, and a retry resends
-identical bytes. Use the History API for guaranteed reads and for the latest state.
+Version 2026-10-06 carries a signed event_id in the body and X-Shield-Event-Id header.
+Failed deliveries are retried within a bounded window. Deduplicate by event_id,
+store the event durably before returning 2xx, then process asynchronously. For old
+bodies without event_id, fall back to data.request_id. History provides recovery/latest state.
 
 Example::
 
@@ -49,7 +49,7 @@ __all__ = [
 SIGNATURE_HEADER = "X-Shield-Signature"
 """Name of the header that carries the signature."""
 
-SCHEMA_VERSION = "2026-06-01"
+SCHEMA_VERSION = "2026-10-06"
 """Webhook ``schema_version`` this SDK was built for. Other values are parsed with a warning."""
 
 _SIGNATURE_PREFIX = "sha256="
@@ -76,6 +76,8 @@ class IdentificationScoredEvent:
     created_at: Optional[datetime]
     data: Identification
     raw: Mapping[str, Any] = field(default_factory=dict, compare=False, repr=False)
+    event_id: Optional[str] = None
+    site_id: Optional[int] = None
 
 
 @dataclass(frozen=True)
@@ -86,6 +88,8 @@ class WebhookPingEvent:
     schema_version: str
     created_at: Optional[datetime]
     raw: Mapping[str, Any] = field(default_factory=dict, compare=False, repr=False)
+    event_id: Optional[str] = None
+    site_id: Optional[int] = None
 
 
 @dataclass(frozen=True)
@@ -101,6 +105,8 @@ class UnknownWebhookEvent:
     created_at: Optional[datetime]
     data: Optional[Mapping[str, Any]] = None
     raw: Mapping[str, Any] = field(default_factory=dict, compare=False, repr=False)
+    event_id: Optional[str] = None
+    site_id: Optional[int] = None
 
 
 WebhookEvent = Union[IdentificationScoredEvent, WebhookPingEvent, UnknownWebhookEvent]
@@ -205,7 +211,7 @@ def _parse_event(body: bytes) -> WebhookEvent:
     schema_version = envelope.get("schema_version")
     if not isinstance(schema_version, str):
         schema_version = ""
-    if schema_version != SCHEMA_VERSION:
+    if schema_version not in (SCHEMA_VERSION, "2026-06-01"):
         warnings.warn(
             f"Webhook schema_version {schema_version!r} is not {SCHEMA_VERSION!r}; "
             "parsing it anyway. Upgrade the shieldlabs package to get the latest fields.",
@@ -223,6 +229,10 @@ def _parse_event(body: bytes) -> WebhookEvent:
             created_at=created_at,
             data=Identification.from_webhook_data(data),
             raw=envelope,
+            event_id=envelope.get("event_id")
+            if isinstance(envelope.get("event_id"), str)
+            else None,
+            site_id=envelope.get("site_id") if isinstance(envelope.get("site_id"), int) else None,
         )
     if event_type == "webhook.ping":
         return WebhookPingEvent(
@@ -230,6 +240,10 @@ def _parse_event(body: bytes) -> WebhookEvent:
             schema_version=schema_version,
             created_at=created_at,
             raw=envelope,
+            event_id=envelope.get("event_id")
+            if isinstance(envelope.get("event_id"), str)
+            else None,
+            site_id=envelope.get("site_id") if isinstance(envelope.get("site_id"), int) else None,
         )
     return UnknownWebhookEvent(
         event_type=event_type,
@@ -237,4 +251,6 @@ def _parse_event(body: bytes) -> WebhookEvent:
         created_at=created_at,
         data=data if isinstance(data, dict) else None,
         raw=envelope,
+        event_id=envelope.get("event_id") if isinstance(envelope.get("event_id"), str) else None,
+        site_id=envelope.get("site_id") if isinstance(envelope.get("site_id"), int) else None,
     )

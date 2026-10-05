@@ -20,7 +20,7 @@ import json
 
 from datetime import datetime
 from pydantic import BaseModel, ConfigDict, Field, StrictStr, field_validator
-from typing import Any, ClassVar, Dict, List
+from typing import Any, ClassVar, Dict, List, Optional
 from typing_extensions import Annotated
 from shieldlabs_generated.models.identification_scored_data import IdentificationScoredData
 from typing import Optional, Set
@@ -32,17 +32,12 @@ class IdentificationScoredEvent(BaseModel):
     Body of an `identification.scored` delivery. The signature is not part of the body: it arrives in the `X-Shield-Signature` header.
     """ # noqa: E501
     event_type: StrictStr = Field(description="Event type. Ignore events whose type you do not know instead of failing.")
-    schema_version: Annotated[str, Field(min_length=1, strict=True)] = Field(description="Version of the webhook payload contract. Every event sent today carries `2026-06-01`. Accept other values, so that a future version does not break your handler.")
-    created_at: datetime = Field(description="When the event was built. Equal to `data.observed_at`.")
+    schema_version: Annotated[str, Field(min_length=1, strict=True)] = Field(description="Webhook contract version. Current release 2026-10-06; parsers also accept legacy 2026-06-01.")
+    created_at: datetime = Field(description="RFC 3339 timestamp in UTC with up to 9 fractional digits (trailing zeros trimmed), for example `2026-09-30T12:34:57.482913041Z`. Parse it with a parser that accepts nanoseconds.")
     data: IdentificationScoredData
-    __properties: ClassVar[List[str]] = ["event_type", "schema_version", "created_at", "data"]
-
-    @field_validator('event_type')
-    def event_type_validate_enum(cls, value):
-        """Validates the enum"""
-        if value not in set(['identification.scored']):
-            raise ValueError("must be one of enum values ('identification.scored')")
-        return value
+    event_id: Optional[Annotated[str, Field(min_length=1, strict=True)]] = Field(default=None, description="Logical site/request/final-result-version/type identity. Stable across retries and endpoints.")
+    site_id: Optional[Annotated[int, Field(strict=True, ge=1)]] = Field(default=None, description="Site scope when available; legacy domain-only accounts omit it.")
+    __properties: ClassVar[List[str]] = ["event_type", "schema_version", "created_at", "data", "event_id", "site_id"]
 
     @field_validator('created_at')
     def created_at_validate_regular_expression(cls, value):
@@ -111,7 +106,9 @@ class IdentificationScoredEvent(BaseModel):
             "event_type": obj.get("event_type"),
             "schema_version": obj.get("schema_version"),
             "created_at": obj.get("created_at"),
-            "data": IdentificationScoredData.from_dict(obj["data"]) if obj.get("data") is not None else None
+            "data": IdentificationScoredData.from_dict(obj["data"]) if obj.get("data") is not None else None,
+            "event_id": obj.get("event_id"),
+            "site_id": obj.get("site_id")
         })
         return _obj
 

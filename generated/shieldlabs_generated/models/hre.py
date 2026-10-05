@@ -18,40 +18,22 @@ import pprint
 import re  # noqa: F401
 import json
 
-from datetime import datetime
-from pydantic import BaseModel, ConfigDict, Field, StrictStr, field_validator
+from pydantic import BaseModel, ConfigDict, StrictStr
 from typing import Any, ClassVar, Dict, List, Optional
-from typing_extensions import Annotated
+from shieldlabs_generated.models.hre_result import HREResult
 from typing import Optional, Set
 from typing_extensions import Self
 from pydantic_core import to_jsonable_python
 
-class WebhookPingEvent(BaseModel):
+class HRE(BaseModel):
     """
-    Body of a `webhook.ping` delivery, sent when you verify an endpoint. It has no `data`. The keys arrive sorted alphabetically and `created_at` has second precision.
+    Three completed on-demand handler results. Technical errors block emission; no_history/skipped are explicit not_evaluated results. Anonymous checks are not_applicable. Multiaccount is separate.
     """ # noqa: E501
-    event_type: StrictStr = Field(description="Event type.")
-    schema_version: Annotated[str, Field(min_length=1, strict=True)] = Field(description="Webhook contract version. Current release 2026-10-06; parsers also accept legacy 2026-06-01.")
-    created_at: datetime = Field(description="When the ping was sent, with second precision.")
-    event_id: Optional[Annotated[str, Field(min_length=1, strict=True)]] = None
-    __properties: ClassVar[List[str]] = ["event_type", "schema_version", "created_at", "event_id"]
-
-    @field_validator('event_type')
-    def event_type_validate_enum(cls, value):
-        """Validates the enum"""
-        if value not in set(['webhook.ping']):
-            raise ValueError("must be one of enum values ('webhook.ping')")
-        return value
-
-    @field_validator('created_at')
-    def created_at_validate_regular_expression(cls, value):
-        """Validates the regular expression"""
-        if not isinstance(value, str):
-            value = str(value)
-
-        if not re.match(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]{1,9})?Z$", value):
-            raise ValueError(r"must validate the regular expression /^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]{1,9})?Z$/")
-        return value
+    rules_version: Optional[StrictStr] = None
+    account_sharing: HREResult
+    account_takeover: HREResult
+    impossible_travel: HREResult
+    __properties: ClassVar[List[str]] = ["rules_version", "account_sharing", "account_takeover", "impossible_travel"]
 
     model_config = ConfigDict(
         validate_by_name=True,
@@ -71,7 +53,7 @@ class WebhookPingEvent(BaseModel):
 
     @classmethod
     def from_json(cls, json_str: str) -> Optional[Self]:
-        """Create an instance of WebhookPingEvent from a JSON string"""
+        """Create an instance of HRE from a JSON string"""
         return cls.from_dict(json.loads(json_str))
 
     def to_dict(self) -> Dict[str, Any]:
@@ -92,11 +74,20 @@ class WebhookPingEvent(BaseModel):
             exclude=excluded_fields,
             exclude_none=True,
         )
+        # override the default output from pydantic by calling `to_dict()` of account_sharing
+        if self.account_sharing:
+            _dict['account_sharing'] = self.account_sharing.to_dict()
+        # override the default output from pydantic by calling `to_dict()` of account_takeover
+        if self.account_takeover:
+            _dict['account_takeover'] = self.account_takeover.to_dict()
+        # override the default output from pydantic by calling `to_dict()` of impossible_travel
+        if self.impossible_travel:
+            _dict['impossible_travel'] = self.impossible_travel.to_dict()
         return _dict
 
     @classmethod
     def from_dict(cls, obj: Optional[Dict[str, Any]]) -> Optional[Self]:
-        """Create an instance of WebhookPingEvent from a dict"""
+        """Create an instance of HRE from a dict"""
         if obj is None:
             return None
 
@@ -104,10 +95,10 @@ class WebhookPingEvent(BaseModel):
             return cls.model_validate(obj)
 
         _obj = cls.model_validate({
-            "event_type": obj.get("event_type"),
-            "schema_version": obj.get("schema_version"),
-            "created_at": obj.get("created_at"),
-            "event_id": obj.get("event_id")
+            "rules_version": obj.get("rules_version"),
+            "account_sharing": HREResult.from_dict(obj["account_sharing"]) if obj.get("account_sharing") is not None else None,
+            "account_takeover": HREResult.from_dict(obj["account_takeover"]) if obj.get("account_takeover") is not None else None,
+            "impossible_travel": HREResult.from_dict(obj["impossible_travel"]) if obj.get("impossible_travel") is not None else None
         })
         return _obj
 

@@ -1,0 +1,243 @@
+{
+  "event_id": "ce256c0f66536957adc5f719250f5b10ce331bd1",
+  "site_id": 7,
+  "event_type": "identification.scored",
+  "schema_version": "2026-10-06",
+  "created_at": "2026-10-06T00:00:02Z",
+  "data": {
+    "result_version": "2026-10-06T00:00:01Z",
+    "scoring_version": "core:fixture",
+    "risk_events": [
+      {
+        "code": "vpn",
+        "detected": false,
+        "weight": 30,
+        "contribution": 0,
+        "status": "evaluated"
+      },
+      {
+        "code": "proxy",
+        "detected": false,
+        "weight": 30,
+        "contribution": 0,
+        "status": "evaluated"
+      },
+      {
+        "code": "privacy_relay",
+        "detected": false,
+        "weight": 30,
+        "contribution": 0,
+        "status": "evaluated"
+      },
+      {
+        "code": "check_incomplete",
+        "detected": false,
+        "weight": 0,
+        "contribution": 0,
+        "status": "evaluated"
+      },
+      {
+        "code": "network_check_incomplete",
+        "detected": false,
+        "weight": 30,
+        "contribution": 0,
+        "status": "evaluated"
+      },
+      {
+        "code": "os_not_detected",
+        "detected": false,
+        "weight": 30,
+        "contribution": 0,
+        "status": "evaluated"
+      },
+      {
+        "code": "timezone_mismatch",
+        "detected": false,
+        "weight": 10,
+        "contribution": 0,
+        "status": "evaluated"
+      },
+      {
+        "code": "javascript_disabled",
+        "detected": false,
+        "weight": 90,
+        "contribution": 0,
+        "status": "evaluated"
+      },
+      {
+        "code": "os_mismatch",
+        "detected": false,
+        "weight": 60,
+        "contribution": 0,
+        "status": "evaluated"
+      },
+      {
+        "code": "os_mismatch2",
+        "detected": false,
+        "weight": 60,
+        "contribution": 0,
+        "status": "evaluated"
+      },
+      {
+        "code": "ip_mismatch",
+        "detected": false,
+        "weight": 45,
+        "contribution": 0,
+        "status": "evaluated"
+      },
+      {
+        "code": "latency_test",
+        "detected": false,
+        "weight": 60,
+        "contribution": 0,
+        "status": "evaluated"
+      },
+      {
+        "code": "anti_detect_browser",
+        "detected": false,
+        "weight": 60,
+        "contribution": 0,
+        "status": "evaluated"
+      },
+      {
+        "code": "device_spoofing",
+        "detected": false,
+        "weight": 90,
+        "contribution": 0,
+        "status": "evaluated"
+      },
+      {
+        "code": "banned_ip",
+        "detected": false,
+        "weight": 999,
+        "contribution": 0,
+        "status": "evaluated"
+      },
+      {
+        "code": "incognito",
+        "detected": true,
+        "weight": 0,
+        "contribution": 0,
+        "status": "evaluated"
+      },
+      {
+        "code": "search_bot",
+        "detected": false,
+        "weight": 0,
+        "contribution": 0,
+        "status": "evaluated"
+      },
+      {
+        "code": "browser_automation",
+        "detected": false,
+        "weight": 60,
+        "contribution": 0,
+        "status": "evaluated"
+      },
+      {
+        "code": "tor",
+        "detected": false,
+        "weight": 99,
+        "contribution": 0,
+        "status": "evaluated"
+      }
+    ],
+    "hre": {
+      "rules_version": "fp21-fixture",
+      "account_sharing": {
+        "status": "evaluated",
+        "level": null,
+        "reason": "",
+        "devices": 1,
+        "min_devices": 4
+      },
+      "account_takeover": {
+        "status": "not_evaluated",
+        "level": null,
+        "reason": "no_history"
+      },
+      "impossible_travel": {
+        "status": "not_evaluated",
+        "level": null,
+        "reason": "skipped"
+      }
+    },
+    "request_id": "13f84f05-7c2a-4e9b-9f1d-2a6b8c0e4d11",
+    "visitor_id": "161dfbad-8e7f-4a6b-9c5d-0e1f2a3b4c5d",
+    "device_id": "5eb7fd5c-2a1b-4c3d-9e8f-7a6b5c4d3e2f",
+    "session_id": "7a1b2c3d-4e5f-4789-abcd-ef0123456789",
+    "cookie_id": "3f2e1d0c-9b8a-4654-b210-fedcba987654",
+    "user_hid": "test-user",
+    "domain": "example.com",
+    "public_ip": {
+      "ip": "203.0.113.1",
+      "country": ""
+    },
+    "local_ip": {
+      "ip": "",
+      "country": ""
+    },
+    "connection_type": "direct",
+    "os": "Windows",
+    "browser": "Chrome",
+    "device_type": "desktop",
+    "traffic_source": {
+      "channel": "",
+      "referrer_domain": "",
+      "landing_url": "",
+      "click_id_type": "",
+      "utm_source": "",
+      "utm_medium": "",
+      "utm_campaign": "",
+      "utm_content": "",
+      "utm_term": ""
+    },
+    "risk_score": 0,
+    "signals": [],
+    "detection_flags": {
+      "os_mismatch2": false,
+      "device_spoofing": false,
+      "latency_test": false,
+      "banned_ip": false,
+      "vpn": false,
+      "privacy_relay": false,
+      "browser_vpn_proxy": false,
+      "tor": false,
+      "proxy": false,
+      "datacenter_ip": false,
+      "abuser": false,
+      "os_mismatch": false,
+      "os_not_detected": false,
+      "timezone_mismatch": false,
+      "anti_detect_browser": false,
+      "browser_automation": false,
+      "ip_mismatch": false,
+      "incognito": true,
+      "search_bot": false,
+      "suspicious_paid_click": false,
+      "javascript_disabled": false,
+      "stun_not_checked": false,
+      "check_incomplete": false
+    },
+    "observed_at": "2026-10-06T00:00:00Z",
+    "fingerprint": {
+      "outcome": "new_record",
+      "record_id": "sample-record",
+      "hardware_id": "sample-hardware",
+      "rules_version": "fp21-fixture",
+      "sharing": {
+        "level": "",
+        "devices": 1,
+        "min_devices": 4
+      },
+      "takeover": {
+        "level": "",
+        "reason": "no_history"
+      },
+      "travel": {
+        "level": "",
+        "reason": "skipped"
+      }
+    }
+  }
+}

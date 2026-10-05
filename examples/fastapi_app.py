@@ -122,11 +122,12 @@ async def shieldlabs_webhook(request: Request) -> Response:
 
     if isinstance(event, IdentificationScoredEvent):
         data = event.data
-        if data.request_id in processed_request_ids:
+        delivery_id = event.event_id or data.request_id
+        if delivery_id in processed_request_ids:
             return Response(status_code=200)  # already handled: acknowledge and stop
-        processed_request_ids.add(data.request_id)
-        # Answer fast (under 1 s): a slow or failed delivery is not sent again, so queue slow
-        # work instead of doing it here, and read the History API when you must not miss one.
+        processed_request_ids.add(delivery_id)
+        # Demo dedup is in memory only. Production must durably persist event_id and
+        # the raw body before 2xx; processing may then run asynchronously.
         logger.info(
             "identification.scored request_id=%s risk_score=%s band=%s flags=%s",
             data.request_id,

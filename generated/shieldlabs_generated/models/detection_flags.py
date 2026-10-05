@@ -19,14 +19,14 @@ import re  # noqa: F401
 import json
 
 from pydantic import BaseModel, ConfigDict, Field, StrictBool
-from typing import Any, ClassVar, Dict, List
+from typing import Any, ClassVar, Dict, List, Optional
 from typing import Optional, Set
 from typing_extensions import Self
 from pydantic_core import to_jsonable_python
 
 class DetectionFlags(BaseModel):
     """
-    Stable yes/no verdicts for the identification. Always all 19 keys. Branch on these flags and on the Risk Score; signal names are for display and logging.  When `search_bot` is `true`, `incognito`, `check_incomplete`, `ip_mismatch` and `javascript_disabled` are always `false`.
+    Stable yes/no verdicts for the identification. Legacy 19 keys are always present; the four extension flags are present in schema 2026-10-06. Branch on these flags and on the Risk Score; signal names are for display and logging.  When `search_bot` is `true`, `incognito`, `check_incomplete`, `ip_mismatch` and `javascript_disabled` are always `false`.
     """ # noqa: E501
     vpn: StrictBool = Field(description="A VPN was detected (scored `vpn` signal).")
     privacy_relay: StrictBool = Field(description="A privacy relay such as iCloud Private Relay was detected.")
@@ -47,7 +47,11 @@ class DetectionFlags(BaseModel):
     javascript_disabled: StrictBool = Field(description="JavaScript, or the browser APIs the checks need, were unavailable.")
     stun_not_checked: StrictBool = Field(description="The browser network (STUN) check did not complete. Cleared again when a late network result arrives.")
     check_incomplete: StrictBool = Field(description="Part of the browser checks timed out, so the verdict rests on partial data. Informational.")
-    __properties: ClassVar[List[str]] = ["vpn", "privacy_relay", "browser_vpn_proxy", "tor", "proxy", "datacenter_ip", "abuser", "os_mismatch", "os_not_detected", "timezone_mismatch", "anti_detect_browser", "browser_automation", "ip_mismatch", "incognito", "search_bot", "suspicious_paid_click", "javascript_disabled", "stun_not_checked", "check_incomplete"]
+    os_mismatch2: Optional[StrictBool] = None
+    device_spoofing: Optional[StrictBool] = None
+    latency_test: Optional[StrictBool] = None
+    banned_ip: Optional[StrictBool] = None
+    __properties: ClassVar[List[str]] = ["vpn", "privacy_relay", "browser_vpn_proxy", "tor", "proxy", "datacenter_ip", "abuser", "os_mismatch", "os_not_detected", "timezone_mismatch", "anti_detect_browser", "browser_automation", "ip_mismatch", "incognito", "search_bot", "suspicious_paid_click", "javascript_disabled", "stun_not_checked", "check_incomplete", "os_mismatch2", "device_spoofing", "latency_test", "banned_ip"]
 
     model_config = ConfigDict(
         validate_by_name=True,
@@ -118,7 +122,11 @@ class DetectionFlags(BaseModel):
             "suspicious_paid_click": obj.get("suspicious_paid_click"),
             "javascript_disabled": obj.get("javascript_disabled"),
             "stun_not_checked": obj.get("stun_not_checked"),
-            "check_incomplete": obj.get("check_incomplete")
+            "check_incomplete": obj.get("check_incomplete"),
+            "os_mismatch2": obj.get("os_mismatch2"),
+            "device_spoofing": obj.get("device_spoofing"),
+            "latency_test": obj.get("latency_test"),
+            "banned_ip": obj.get("banned_ip")
         })
         return _obj
 

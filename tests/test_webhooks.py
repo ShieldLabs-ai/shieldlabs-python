@@ -96,7 +96,7 @@ def test_scored_event_from_raw_bytes_matches_normalization() -> None:
     event = webhooks.construct_event(body, sign(SECRET, body), SECRET)
     assert isinstance(event, IdentificationScoredEvent)
     assert event.event_type == "identification.scored"
-    assert event.schema_version == webhooks.SCHEMA_VERSION
+    assert event.schema_version == "2026-06-01"
     assert event.created_at == datetime(2026, 9, 30, 12, 34, 57, 482913, tzinfo=timezone.utc)
     assert event.data.to_dict() == NORMALIZATION["webhook_scored"]["expected"]
     assert event.data.traffic_source.landing_url.endswith("utm_medium=cpc&gclid=abc123")

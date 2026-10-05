@@ -24,7 +24,10 @@ from typing import Any, ClassVar, Dict, List, Optional
 from typing_extensions import Annotated
 from uuid import UUID
 from shieldlabs_generated.models.detection_flags import DetectionFlags
+from shieldlabs_generated.models.fingerprint import Fingerprint
+from shieldlabs_generated.models.hre import HRE
 from shieldlabs_generated.models.ip_info import IpInfo
+from shieldlabs_generated.models.risk_event import RiskEvent
 from shieldlabs_generated.models.signal import Signal
 from shieldlabs_generated.models.traffic_source import TrafficSource
 from typing import Optional, Set
@@ -33,7 +36,7 @@ from pydantic_core import to_jsonable_python
 
 class IdentificationScoredData(BaseModel):
     """
-    The scored identification. Every key is always present (no key is ever omitted); only `user_hid` can be `null`.
+    Final identification. risk_score is this scan only; no all-time entity risk. New extension fields are required by version 2026-10-06; legacy bodies remain accepted.
     """ # noqa: E501
     request_id: UUID = Field(description="Identifies one identification. The browser creates it as a UUID v4 and hands it to your page; it is the join key between the browser, the webhook and the History API. The nil UUID appears only on rate-limit marker rows that arrived with a malformed request ID.")
     visitor_id: UUID = Field(description="Server-side visitor identifier (UUID v5). It is sticky to the device: a new cookie on a known device keeps the existing visitor ID, so clearing cookies usually does not change it. The nil UUID appears on identifications without usable device data, such as rate-limit marker rows.")
@@ -52,8 +55,13 @@ class IdentificationScoredData(BaseModel):
     risk_score: Annotated[int, Field(strict=True, ge=0)] = Field(description="Risk Score from 0 (no risk found) to 100. Search-engine crawlers always score 0.  Risk bands are computed on your side from the score; no band field exists on the wire: - trusted: 0-29 - suspicious: 30-59 - dangerous: 60-100  A value above 100 is not a score. `999` is the rate-limit marker: the visitor's IP went over the ingest rate limit, and the identification carries exactly one signal, `{\"name\":\"rate_limited\",\"weight\":999}`, usually with nil identifiers. Treat every value above 100 as rate limited. One marker is written when the IP goes over the limit; request IDs issued while it stays blocked get no row and no webhook, so they stay unverified.  The score usually equals the sum of the signal weights capped at 100, but carried-forward verdicts and corrections make that unreliable: never recompute or validate it yourself.")
     signals: List[Signal] = Field(description="Weighted risk signals behind `risk_score`, in scoring order. Can be empty. The rate-limit marker carries exactly one entry, `{\"name\":\"rate_limited\",\"weight\":999}`.")
     detection_flags: DetectionFlags
-    observed_at: datetime = Field(description="When scoring finished and the event was built (not the page view time); identical to the envelope `created_at`. RFC 3339 in UTC with up to 9 fractional digits.")
-    __properties: ClassVar[List[str]] = ["request_id", "visitor_id", "device_id", "session_id", "cookie_id", "user_hid", "domain", "public_ip", "local_ip", "connection_type", "os", "browser", "device_type", "traffic_source", "risk_score", "signals", "detection_flags", "observed_at"]
+    observed_at: datetime = Field(description="Original snapshot scan clock, distinct from envelope created_at. RFC 3339 in UTC with up to 9 fractional digits.")
+    result_version: Optional[Annotated[str, Field(min_length=1, strict=True)]] = None
+    scoring_version: Optional[StrictStr] = Field(default=None, description="Core build source revision; core:unversioned on local builds.")
+    risk_events: Optional[List[RiskEvent]] = None
+    hre: Optional[HRE] = None
+    fingerprint: Optional[Fingerprint] = None
+    __properties: ClassVar[List[str]] = ["request_id", "visitor_id", "device_id", "session_id", "cookie_id", "user_hid", "domain", "public_ip", "local_ip", "connection_type", "os", "browser", "device_type", "traffic_source", "risk_score", "signals", "detection_flags", "observed_at", "result_version", "scoring_version", "risk_events", "hre", "fingerprint"]
 
     @field_validator('observed_at')
     def observed_at_validate_regular_expression(cls, value):
@@ -123,6 +131,19 @@ class IdentificationScoredData(BaseModel):
         # override the default output from pydantic by calling `to_dict()` of detection_flags
         if self.detection_flags:
             _dict['detection_flags'] = self.detection_flags.to_dict()
+        # override the default output from pydantic by calling `to_dict()` of each item in risk_events (list)
+        _items = []
+        if self.risk_events:
+            for _item_risk_events in self.risk_events:
+                if _item_risk_events:
+                    _items.append(_item_risk_events.to_dict())
+            _dict['risk_events'] = _items
+        # override the default output from pydantic by calling `to_dict()` of hre
+        if self.hre:
+            _dict['hre'] = self.hre.to_dict()
+        # override the default output from pydantic by calling `to_dict()` of fingerprint
+        if self.fingerprint:
+            _dict['fingerprint'] = self.fingerprint.to_dict()
         # set to None if user_hid (nullable) is None
         # and model_fields_set contains the field
         if self.user_hid is None and "user_hid" in self.model_fields_set:
@@ -157,7 +178,12 @@ class IdentificationScoredData(BaseModel):
             "risk_score": obj.get("risk_score"),
             "signals": [Signal.from_dict(_item) for _item in obj["signals"]] if obj.get("signals") is not None else None,
             "detection_flags": DetectionFlags.from_dict(obj["detection_flags"]) if obj.get("detection_flags") is not None else None,
-            "observed_at": obj.get("observed_at")
+            "observed_at": obj.get("observed_at"),
+            "result_version": obj.get("result_version"),
+            "scoring_version": obj.get("scoring_version"),
+            "risk_events": [RiskEvent.from_dict(_item) for _item in obj["risk_events"]] if obj.get("risk_events") is not None else None,
+            "hre": HRE.from_dict(obj["hre"]) if obj.get("hre") is not None else None,
+            "fingerprint": Fingerprint.from_dict(obj["fingerprint"]) if obj.get("fingerprint") is not None else None
         })
         return _obj
 

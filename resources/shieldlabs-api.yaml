@@ -467,38 +467,15 @@ webhooks:
         - Webhooks
       summary: Identification scored
       description: |-
-        Sent to every enabled webhook endpoint of your domain once for each identification, when its
-        scoring is final: usually about 300 ms after the browser check, and at most about 10 seconds
-        later when follow-up network checks run.
+        Sent after final snapshot scoring and mandatory fp21 + three HRE handlers. Risk score is the identification score only. AI bots and AI browser are not implemented and not emitted.
 
-        **Verify, then parse.** Compute HMAC-SHA256 over the raw request body and compare it with
-        `X-Shield-Signature` before you parse the JSON:
-        - key: the endpoint's signing secret as UTF-8 bytes, including the `whsec_` prefix (not hex-
-          or base64-decoded, not stripped);
-        - message: the exact bytes received; re-serializing parsed JSON changes them (for example, `&`
-          arrives escaped as `\u0026`);
-        - expected header: `sha256=` followed by the lowercase hex digest, compared in constant time.
+        Verify HMAC-SHA256 over exact raw bytes with the endpoint secret. Body event_id is signed; X-Shield-Event-Id is its convenience mirror. Persist and deduplicate by event_id before returning 2xx within the 1-second send timeout. Legacy bodies without event_id can use data.request_id. Retries preserve body and ID. Network/timeouts/429/5xx are retried with backoff up to 8 failed sends or 15 minutes of retry age; exhaustion/permanent 4xx goes to DLQ. Delivery is at-least-once attempts within that window, not guaranteed eternal delivery or exactly-once. Endpoints are independent. Redirects are not followed.
 
-        There is no timestamp, delivery ID or event-type header. Rotating a secret replaces it at
-        once, so accept both the old and the new secret until your deployment has switched.
-
-        **Respond fast.** Answer any 2xx status within 1 second and process the event asynchronously;
-        do not redirect. Today each identification is delivered once per endpoint, with no retries. A
-        later release adds retries that resend identical bytes, so make your handler idempotent on
-        `data.request_id`.
-
-        **Latest state.** The event is a snapshot taken when scoring finished. The History row can
-        still be refined afterwards (its `ver` increases) and no second event is sent. Use the History
-        API for guaranteed reads and for the latest state.
-
-        **Test deliveries.** The Test button in the analytics dashboard sends a fixed sample with keys
-        sorted alphabetically, second-precision timestamps and two-letter country values. Its
-        `detection_flags` lack `browser_automation` and `search_bot`: parse missing flags as `false`.
-
-        Deliveries are free and do not use your included identifications.
+        Use History for recovery/latest state; later snapshot corrections do not automatically emit another identification.scored event.
       security: []
       parameters:
         - $ref: '#/components/parameters/ShieldSignature'
+        - $ref: '#/components/parameters/ShieldEventId'
       requestBody:
         required: true
         description: The event as compact JSON. Verify the signature over these exact bytes.
@@ -513,11 +490,203 @@ webhooks:
                 $ref: '#/components/examples/IdentificationScoredRateLimited'
               testDelivery:
                 $ref: '#/components/examples/IdentificationScoredTestDelivery'
+              current:
+                summary: Current contract with fp21 and HRE
+                value:
+                  event_id: ce256c0f66536957adc5f719250f5b10ce331bd1
+                  site_id: 7
+                  event_type: identification.scored
+                  schema_version: '2026-10-06'
+                  created_at: '2026-10-06T00:00:02Z'
+                  data:
+                    result_version: '2026-10-06T00:00:01Z'
+                    scoring_version: core:fixture
+                    risk_events:
+                      - code: vpn
+                        detected: false
+                        weight: 30
+                        contribution: 0
+                        status: evaluated
+                      - code: proxy
+                        detected: false
+                        weight: 30
+                        contribution: 0
+                        status: evaluated
+                      - code: privacy_relay
+                        detected: false
+                        weight: 30
+                        contribution: 0
+                        status: evaluated
+                      - code: check_incomplete
+                        detected: false
+                        weight: 0
+                        contribution: 0
+                        status: evaluated
+                      - code: network_check_incomplete
+                        detected: false
+                        weight: 30
+                        contribution: 0
+                        status: evaluated
+                      - code: os_not_detected
+                        detected: false
+                        weight: 30
+                        contribution: 0
+                        status: evaluated
+                      - code: timezone_mismatch
+                        detected: false
+                        weight: 10
+                        contribution: 0
+                        status: evaluated
+                      - code: javascript_disabled
+                        detected: false
+                        weight: 90
+                        contribution: 0
+                        status: evaluated
+                      - code: os_mismatch
+                        detected: false
+                        weight: 60
+                        contribution: 0
+                        status: evaluated
+                      - code: os_mismatch2
+                        detected: false
+                        weight: 60
+                        contribution: 0
+                        status: evaluated
+                      - code: ip_mismatch
+                        detected: false
+                        weight: 45
+                        contribution: 0
+                        status: evaluated
+                      - code: latency_test
+                        detected: false
+                        weight: 60
+                        contribution: 0
+                        status: evaluated
+                      - code: anti_detect_browser
+                        detected: false
+                        weight: 60
+                        contribution: 0
+                        status: evaluated
+                      - code: device_spoofing
+                        detected: false
+                        weight: 90
+                        contribution: 0
+                        status: evaluated
+                      - code: banned_ip
+                        detected: false
+                        weight: 999
+                        contribution: 0
+                        status: evaluated
+                      - code: incognito
+                        detected: true
+                        weight: 0
+                        contribution: 0
+                        status: evaluated
+                      - code: search_bot
+                        detected: false
+                        weight: 0
+                        contribution: 0
+                        status: evaluated
+                      - code: browser_automation
+                        detected: false
+                        weight: 60
+                        contribution: 0
+                        status: evaluated
+                      - code: tor
+                        detected: false
+                        weight: 99
+                        contribution: 0
+                        status: evaluated
+                    hre:
+                      rules_version: fp21-fixture
+                      account_sharing:
+                        status: evaluated
+                        level: high
+                        reason: ''
+                        devices: 4
+                        min_devices: 4
+                      account_takeover:
+                        status: evaluated
+                        level: medium
+                        reason: fixture
+                      impossible_travel:
+                        status: evaluated
+                        level: null
+                        reason: below_distance
+                    request_id: 13f84f05-7c2a-4e9b-9f1d-2a6b8c0e4d11
+                    visitor_id: 161dfbad-8e7f-4a6b-9c5d-0e1f2a3b4c5d
+                    device_id: 5eb7fd5c-2a1b-4c3d-9e8f-7a6b5c4d3e2f
+                    session_id: 7a1b2c3d-4e5f-4789-abcd-ef0123456789
+                    cookie_id: 3f2e1d0c-9b8a-4654-b210-fedcba987654
+                    user_hid: test-user
+                    domain: example.com
+                    public_ip:
+                      ip: 203.0.113.1
+                      country: ''
+                    local_ip:
+                      ip: ''
+                      country: ''
+                    connection_type: direct
+                    os: Windows
+                    browser: Chrome
+                    device_type: desktop
+                    traffic_source:
+                      channel: ''
+                      referrer_domain: ''
+                      landing_url: ''
+                      click_id_type: ''
+                      utm_source: ''
+                      utm_medium: ''
+                      utm_campaign: ''
+                      utm_content: ''
+                      utm_term: ''
+                    risk_score: 0
+                    signals: []
+                    detection_flags:
+                      os_mismatch2: false
+                      device_spoofing: false
+                      latency_test: false
+                      banned_ip: false
+                      vpn: false
+                      privacy_relay: false
+                      browser_vpn_proxy: false
+                      tor: false
+                      proxy: false
+                      datacenter_ip: false
+                      abuser: false
+                      os_mismatch: false
+                      os_not_detected: false
+                      timezone_mismatch: false
+                      anti_detect_browser: false
+                      browser_automation: false
+                      ip_mismatch: false
+                      incognito: true
+                      search_bot: false
+                      suspicious_paid_click: false
+                      javascript_disabled: false
+                      stun_not_checked: false
+                      check_incomplete: false
+                    observed_at: '2026-10-06T00:00:00Z'
+                    fingerprint:
+                      outcome: new_record
+                      record_id: sample-record
+                      hardware_id: sample-hardware
+                      rules_version: fp21-fixture
+                      sharing:
+                        level: high
+                        devices: 4
+                        min_devices: 4
+                      takeover:
+                        level: medium
+                        reason: fixture
+                      travel:
+                        level: ''
+                        reason: below_distance
       responses:
         2XX:
           description: Delivery accepted. The response body is ignored.
         4XX:
-          description: Delivery rejected, for example with `401` when the signature does not verify. Any status other than 2xx, and a timeout after 1 second, counts as a failed delivery; failed deliveries are not retried today.
+          description: Permanent 4xx are terminal; 429 is retried. 2xx acknowledges durable acceptance.
   webhook.ping:
     post:
       operationId: webhookPing
@@ -541,6 +710,7 @@ webhooks:
       security: []
       parameters:
         - $ref: '#/components/parameters/ShieldSignature'
+        - $ref: '#/components/parameters/ShieldEventId'
       requestBody:
         required: true
         description: The ping as compact JSON with sorted keys.
@@ -751,6 +921,17 @@ components:
         webhookPing:
           summary: Signature of the webhook.ping example
           value: sha256=ea2685733d254f7028fb031c4214583b0650de01e6c8c93131236024edd9fdd8
+    ShieldEventId:
+      name: X-Shield-Event-Id
+      in: header
+      required: false
+      description: Convenience mirror of signed body event_id. Trust the body after HMAC verification. Absent on older bodies. Retries reuse the logical ID across attempts; it is not a separate delivery-attempt identity.
+      schema:
+        type: string
+      examples:
+        event:
+          summary: Logical event identity
+          value: 79e23184cd0b5aae43125e3b14910f13b107a54b
   schemas:
     RequestId:
       type: string
@@ -1418,8 +1599,9 @@ components:
     SchemaVersion:
       type: string
       minLength: 1
-      description: Version of the webhook payload contract. Every event sent today carries `2026-06-01`. Accept other values, so that a future version does not break your handler.
+      description: Webhook contract version. Current release 2026-10-06; parsers also accept legacy 2026-06-01.
       examples:
+        - '2026-10-06'
         - '2026-06-01'
     Rfc3339Timestamp:
       type: string
@@ -1570,7 +1752,7 @@ components:
     DetectionFlags:
       type: object
       description: |-
-        Stable yes/no verdicts for the identification. Always all 19 keys. Branch on these flags and on
+        Stable yes/no verdicts for the identification. Legacy 19 keys are always present; the four extension flags are present in schema 2026-10-06. Branch on these flags and on
         the Risk Score; signal names are for display and logging.
 
         When `search_bot` is `true`, `incognito`, `check_incomplete`, `ip_mismatch` and
@@ -1653,9 +1835,109 @@ components:
         check_incomplete:
           type: boolean
           description: Part of the browser checks timed out, so the verdict rests on partial data. Informational.
+        os_mismatch2:
+          type: boolean
+        device_spoofing:
+          type: boolean
+        latency_test:
+          type: boolean
+        banned_ip:
+          type: boolean
+    RiskEvent:
+      type: object
+      required:
+        - code
+        - detected
+        - weight
+        - contribution
+        - status
+      properties:
+        code:
+          type: string
+        detected:
+          type: boolean
+          description: Final scoring flag. false does not assert that every underlying probe completed.
+        weight:
+          type: integer
+          description: Catalogue weight, not an additive score. Banned IP 999 is a marker.
+        contribution:
+          type: integer
+          description: Matching score details, may contain corrections. Never recompute risk_score by summing.
+        status:
+          type: string
+          description: The final scoring flag has been evaluated. Probe incompleteness is reported by dedicated risk events.
+          examples:
+            - evaluated
+    HREResult:
+      type: object
+      required:
+        - status
+        - level
+        - reason
+      properties:
+        status:
+          type: string
+          examples:
+            - evaluated
+            - not_evaluated
+            - not_applicable
+        level:
+          type:
+            - string
+            - 'null'
+          examples:
+            - medium
+            - high
+            - null
+        reason:
+          type: string
+        devices:
+          type: integer
+          minimum: 0
+        min_devices:
+          type: integer
+          minimum: 1
+    HRE:
+      type: object
+      required:
+        - account_sharing
+        - account_takeover
+        - impossible_travel
+      properties:
+        rules_version:
+          type: string
+        account_sharing:
+          $ref: '#/components/schemas/HREResult'
+        account_takeover:
+          $ref: '#/components/schemas/HREResult'
+        impossible_travel:
+          $ref: '#/components/schemas/HREResult'
+      description: Three completed on-demand handler results. Technical errors block emission; no_history/skipped are explicit not_evaluated results. Anonymous checks are not_applicable. Multiaccount is separate.
+    Fingerprint:
+      type: object
+      required:
+        - outcome
+        - rules_version
+      properties:
+        outcome:
+          type: string
+        record_id:
+          type: string
+        hardware_id:
+          type: string
+          description: FP21 hardware identity, distinct from device_id.
+        rules_version:
+          type: string
+        sharing:
+          type: object
+        takeover:
+          type: object
+        travel:
+          type: object
+      description: FP21 for tracked users. Legacy sharing/takeover/travel mirrors are retained; prefer data.hre. Absent on anonymous checks.
     IdentificationScoredData:
       type: object
-      description: The scored identification. Every key is always present (no key is ever omitted); only `user_hid` can be `null`.
+      description: Final identification. risk_score is this scan only; no all-time entity risk. New extension fields are required by version 2026-10-06; legacy bodies remain accepted.
       required:
         - request_id
         - visitor_id
@@ -1720,7 +2002,21 @@ components:
           $ref: '#/components/schemas/DetectionFlags'
         observed_at:
           $ref: '#/components/schemas/Rfc3339Timestamp'
-          description: When scoring finished and the event was built (not the page view time); identical to the envelope `created_at`. RFC 3339 in UTC with up to 9 fractional digits.
+          description: Original snapshot scan clock, distinct from envelope created_at. RFC 3339 in UTC with up to 9 fractional digits.
+        result_version:
+          type: string
+          minLength: 1
+        scoring_version:
+          type: string
+          description: Core build source revision; core:unversioned on local builds.
+        risk_events:
+          type: array
+          items:
+            $ref: '#/components/schemas/RiskEvent'
+        hre:
+          $ref: '#/components/schemas/HRE'
+        fingerprint:
+          $ref: '#/components/schemas/Fingerprint'
     IdentificationScoredEvent:
       type: object
       description: 'Body of an `identification.scored` delivery. The signature is not part of the body: it arrives in the `X-Shield-Signature` header.'
@@ -1738,9 +2034,47 @@ components:
           $ref: '#/components/schemas/SchemaVersion'
         created_at:
           $ref: '#/components/schemas/Rfc3339Timestamp'
-          description: When the event was built. Equal to `data.observed_at`.
+          description: When the event envelope was created, distinct from data.observed_at (scan time).
         data:
           $ref: '#/components/schemas/IdentificationScoredData'
+        event_id:
+          type: string
+          minLength: 1
+          description: Logical site/request/final-result-version/type identity. Stable across retries and endpoints.
+        site_id:
+          type: integer
+          minimum: 1
+          description: Site scope when available; legacy domain-only accounts omit it.
+      allOf:
+        - if:
+            properties:
+              schema_version:
+                const: '2026-10-06'
+            required:
+              - schema_version
+          then:
+            required:
+              - event_id
+            properties:
+              data:
+                required:
+                  - result_version
+                  - scoring_version
+                  - risk_events
+                  - hre
+                type: object
+                additionalProperties: true
+                properties:
+                  result_version: {}
+                  scoring_version: {}
+                  risk_events: {}
+                  hre: {}
+              event_id:
+                type: string
+                minLength: 1
+                description: Logical site/request/final-result-version/type identity. Stable across retries and endpoints.
+            type: object
+            additionalProperties: true
     WebhookPingEvent:
       type: object
       description: Body of a `webhook.ping` delivery, sent when you verify an endpoint. It has no `data`. The keys arrive sorted alphabetically and `created_at` has second precision.
@@ -1758,6 +2092,9 @@ components:
         created_at:
           $ref: '#/components/schemas/Rfc3339Timestamp'
           description: When the ping was sent, with second precision.
+        event_id:
+          type: string
+          minLength: 1
   examples:
     HistoryPage:
       summary: Five identifications

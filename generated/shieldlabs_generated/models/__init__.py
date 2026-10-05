@@ -17,6 +17,9 @@
 from shieldlabs_generated.models.detection_flags import DetectionFlags
 from shieldlabs_generated.models.domain_profile import DomainProfile
 from shieldlabs_generated.models.error_body import ErrorBody
+from shieldlabs_generated.models.fingerprint import Fingerprint
+from shieldlabs_generated.models.hre import HRE
+from shieldlabs_generated.models.hre_result import HREResult
 from shieldlabs_generated.models.health_status import HealthStatus
 from shieldlabs_generated.models.history_page import HistoryPage
 from shieldlabs_generated.models.history_row import HistoryRow
@@ -24,6 +27,7 @@ from shieldlabs_generated.models.identification_scored_data import Identificatio
 from shieldlabs_generated.models.identification_scored_event import IdentificationScoredEvent
 from shieldlabs_generated.models.ip_info import IpInfo
 from shieldlabs_generated.models.legacy_snapshot import LegacySnapshot
+from shieldlabs_generated.models.risk_event import RiskEvent
 from shieldlabs_generated.models.score_detail import ScoreDetail
 from shieldlabs_generated.models.signal import Signal
 from shieldlabs_generated.models.traffic_source import TrafficSource
