@@ -131,19 +131,25 @@ info:
 
     ## Webhooks
 
-    ShieldLabs sends one signed `POST` for each identification to every enabled endpoint of the
-    domain. A delivery has a 1-second timeout and is not retried today; a later release adds
-    retries that resend identical bytes. Answer 2xx within a second, process the event
-    asynchronously, make the handler idempotent on `data.request_id`, and use the History API for
-    guaranteed reads. A History row can be refined after its webhook was sent (its `ver`
-    increases); the webhook is not sent again. See the `identification.scored` and `webhook.ping`
-    entries for the signature algorithm.
+    ShieldLabs creates one logical signed event per identification and enabled endpoint.
+    Contract `2026-10-06` includes the identification score, final risk-event catalogue,
+    fp21 and three completed on-demand HRE results. AI bots/browser are planned only;
+    multiaccount is separate and all-time entity risks are not exported.
+    Delivery attempts have a 1-second HTTP timeout. Network errors, timeouts, 429 and 5xx
+    retry with backoff, up to 8 failed sends or a 15-minute retry age; other 4xx are terminal.
+    Worker/Redis waits can extend wall time. Retries preserve the exact signed body and
+    `event_id`; duplicate deliveries remain possible after an accepted request loses its response.
+    Verify the signature, durably store the event using its signed `event_id` (legacy fallback:
+    `data.request_id`), then answer 2xx within a second and process asynchronously.
+    Redirects are not followed. A later History refinement does not create a new webhook event.
+    Use the History API for the latest stored result. See the `identification.scored` and
+    `webhook.ping` entries for the signature algorithm.
 
     ## Compatibility
 
     Ignore fields you do not know, keep unknown values of string fields (such as new signal names
     or channels) instead of failing, and accept webhook `schema_version` values other than
-    `2026-06-01`.
+    `2026-10-06` (current) or `2026-06-01` (legacy).
 
     Start free at https://app.shieldlabs.ai. Guides: https://docs.shieldlabs.ai.
   contact:
