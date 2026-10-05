@@ -64,7 +64,7 @@ def test_search_sends_expected_request(client: ShieldLabs, mock: Any) -> None:
     assert request.headers["authorization"] == f"Bearer {API_KEY}"
     assert request.headers["accept"] == "application/json"
     assert request.headers["user-agent"] == USER_AGENT
-    assert USER_AGENT.startswith("shieldlabs-python/1.0.0 ")
+    assert USER_AGENT.startswith("shieldlabs-python/1.0.1 ")
 
 
 def test_search_defaults_and_empty_page(client: ShieldLabs, mock: Any) -> None:
