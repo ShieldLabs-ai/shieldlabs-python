@@ -14,6 +14,7 @@ Quick start::
 
 from . import webhooks
 from ._client import AsyncShieldLabs, ShieldLabs
+from ._client_identity import ClientIdentity
 from ._errors import (
     APIConnectionError,
     ApiError,
@@ -62,6 +63,7 @@ __all__ = [
     "AsyncShieldLabsManagement",
     "AuthenticationError",
     "BadRequestError",
+    "ClientIdentity",
     "DetectionFlags",
     "DomainProfile",
     "Evaluation",
