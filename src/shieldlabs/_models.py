@@ -8,6 +8,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Literal, Optional
 
+from ._client_identity import ClientIdentity, parse_client_identity
 from ._normalize import (
     FLAG_KEYS,
     HISTORY_FLAG_MAP,
@@ -218,6 +219,7 @@ class Identification:
     """When the identification was observed, as an aware UTC datetime. ``None`` only when the
     server value could not be parsed."""
     source: IdentificationSource
+    client_identity: Optional[ClientIdentity] = None
     raw: Mapping[str, Any] = field(default_factory=dict, compare=False, repr=False)
     """The original webhook ``data`` object or History row, including fields the model omits."""
 
@@ -268,6 +270,7 @@ class Identification:
             observed_at=parse_rfc3339(data.get("observed_at")),
             source="webhook",
             raw=dict(data),
+            client_identity=parse_client_identity(data.get("client_identity")),
         )
 
     @classmethod
@@ -350,6 +353,7 @@ class Identification:
             observed_at=parse_history_time(row.get("created_at")),
             source="history",
             raw=dict(row),
+            client_identity=parse_client_identity(row.get("client_identity")),
         )
 
     @classmethod
@@ -389,6 +393,7 @@ class Identification:
             else parse_rfc3339(observed_at),
             source="history" if source == "history" else "webhook",
             raw=dict(data),
+            client_identity=parse_client_identity(data.get("client_identity")),
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -413,6 +418,11 @@ class Identification:
             "detection_flags": self.detection_flags.to_dict(),
             "observed_at": format_timestamp(self.observed_at),
             "source": self.source,
+            **(
+                {"client_identity": self.client_identity}
+                if self.client_identity is not None
+                else {}
+            ),
         }
 
 

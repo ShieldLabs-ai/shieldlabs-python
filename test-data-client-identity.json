@@ -1,0 +1,48 @@
+{
+  "schema_version": "1",
+  "classification_revision": 1,
+  "classifier_version": "192.1",
+  "registry_revision": "2026-10-06.1",
+  "availability": "available",
+  "observed_at": "2026-10-06T12:00:00Z",
+  "decided_at": "2026-10-06T12:00:00Z",
+  "claims": [
+    {
+      "profile_id": "gptbot",
+      "provider_id": "openai",
+      "provider_name": "OpenAI",
+      "agent_name": "GPTBot",
+      "client_kind": "crawler",
+      "purpose": "training",
+      "source": "http_ua"
+    }
+  ],
+  "verified": [
+    {
+      "subject": "provider",
+      "value_id": "openai",
+      "evidence_ids": [
+        "ip:fixture"
+      ]
+    }
+  ],
+  "assessments": [
+    {
+      "status": "unverified",
+      "reason": "ua_only"
+    }
+  ],
+  "evidence": [
+    {
+      "id": "ip:fixture",
+      "method": "published_ip",
+      "source_id": "https://openai.com/gptbot.json",
+      "source_revision": "fixture-digest",
+      "checked_at": "2026-10-06T12:00:00Z",
+      "evaluated_at": "2026-10-06T12:00:00Z",
+      "covered_attributes": [
+        "provider"
+      ]
+    }
+  ]
+}
