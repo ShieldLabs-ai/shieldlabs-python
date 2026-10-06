@@ -1,4 +1,5 @@
 """Open string types for scoped server attribution; no global verified flag."""
+
 from typing import Any, Optional, TypedDict, cast
 
 
