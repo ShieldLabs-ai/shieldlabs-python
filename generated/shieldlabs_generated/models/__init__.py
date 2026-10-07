@@ -14,10 +14,14 @@
 """  # noqa: E501
 
 # import models into model package
+from shieldlabs_generated.models.client_identity import ClientIdentity
+from shieldlabs_generated.models.client_identity_assessments_inner import ClientIdentityAssessmentsInner
+from shieldlabs_generated.models.client_identity_claims_inner import ClientIdentityClaimsInner
+from shieldlabs_generated.models.client_identity_evidence_inner import ClientIdentityEvidenceInner
+from shieldlabs_generated.models.client_identity_verified_inner import ClientIdentityVerifiedInner
 from shieldlabs_generated.models.detection_flags import DetectionFlags
 from shieldlabs_generated.models.domain_profile import DomainProfile
 from shieldlabs_generated.models.error_body import ErrorBody
-from shieldlabs_generated.models.fingerprint import Fingerprint
 from shieldlabs_generated.models.hre import HRE
 from shieldlabs_generated.models.hre_result import HREResult
 from shieldlabs_generated.models.health_status import HealthStatus
@@ -27,6 +31,10 @@ from shieldlabs_generated.models.identification_scored_data import Identificatio
 from shieldlabs_generated.models.identification_scored_event import IdentificationScoredEvent
 from shieldlabs_generated.models.ip_info import IpInfo
 from shieldlabs_generated.models.legacy_snapshot import LegacySnapshot
+from shieldlabs_generated.models.multiaccount_changed_data import MultiaccountChangedData
+from shieldlabs_generated.models.multiaccount_changed_data_evidence_summary import MultiaccountChangedDataEvidenceSummary
+from shieldlabs_generated.models.multiaccount_changed_data_source import MultiaccountChangedDataSource
+from shieldlabs_generated.models.multiaccount_changed_event import MultiaccountChangedEvent
 from shieldlabs_generated.models.risk_event import RiskEvent
 from shieldlabs_generated.models.score_detail import ScoreDetail
 from shieldlabs_generated.models.signal import Signal
