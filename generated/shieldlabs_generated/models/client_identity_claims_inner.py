@@ -18,40 +18,25 @@ import pprint
 import re  # noqa: F401
 import json
 
-from datetime import datetime
-from pydantic import BaseModel, ConfigDict, Field, StrictStr, field_validator
-from typing import Any, ClassVar, Dict, List, Optional
-from typing_extensions import Annotated
+from pydantic import BaseModel, ConfigDict, StrictStr
+from typing import Any, ClassVar, Dict, List
 from typing import Optional, Set
 from typing_extensions import Self
 from pydantic_core import to_jsonable_python
 
-class WebhookPingEvent(BaseModel):
+class ClientIdentityClaimsInner(BaseModel):
     """
-    Body of a `webhook.ping` delivery, sent when you verify an endpoint. It has no `data`. The keys arrive sorted alphabetically and `created_at` has second precision.
+    ClientIdentityClaimsInner
     """ # noqa: E501
-    event_type: StrictStr = Field(description="Event type.")
-    schema_version: Annotated[str, Field(min_length=1, strict=True)] = Field(description="Webhook contract version. Scored release 2026-10-06; multi-account group release 2026-10-07; parsers also accept legacy 2026-06-01.")
-    created_at: datetime = Field(description="When the ping was sent, with second precision.")
-    event_id: Optional[Annotated[str, Field(min_length=1, strict=True)]] = None
-    __properties: ClassVar[List[str]] = ["event_type", "schema_version", "created_at", "event_id"]
-
-    @field_validator('event_type')
-    def event_type_validate_enum(cls, value):
-        """Validates the enum"""
-        if value not in set(['webhook.ping']):
-            raise ValueError("must be one of enum values ('webhook.ping')")
-        return value
-
-    @field_validator('created_at')
-    def created_at_validate_regular_expression(cls, value):
-        """Validates the regular expression"""
-        if not isinstance(value, str):
-            value = str(value)
-
-        if not re.match(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]{1,9})?Z$", value):
-            raise ValueError(r"must validate the regular expression /^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]{1,9})?Z$/")
-        return value
+    profile_id: StrictStr
+    provider_id: StrictStr
+    provider_name: StrictStr
+    agent_name: StrictStr
+    client_kind: StrictStr
+    purpose: StrictStr
+    source: StrictStr
+    additional_properties: Dict[str, Any] = {}
+    __properties: ClassVar[List[str]] = ["profile_id", "provider_id", "provider_name", "agent_name", "client_kind", "purpose", "source"]
 
     model_config = ConfigDict(
         validate_by_name=True,
@@ -71,7 +56,7 @@ class WebhookPingEvent(BaseModel):
 
     @classmethod
     def from_json(cls, json_str: str) -> Optional[Self]:
-        """Create an instance of WebhookPingEvent from a JSON string"""
+        """Create an instance of ClientIdentityClaimsInner from a JSON string"""
         return cls.from_dict(json.loads(json_str))
 
     def to_dict(self) -> Dict[str, Any]:
@@ -83,8 +68,10 @@ class WebhookPingEvent(BaseModel):
         * `None` is only added to the output dict for nullable fields that
           were set at model initialization. Other fields with value `None`
           are ignored.
+        * Fields in `self.additional_properties` are added to the output dict.
         """
         excluded_fields: Set[str] = set([
+            "additional_properties",
         ])
 
         _dict = self.model_dump(
@@ -92,11 +79,16 @@ class WebhookPingEvent(BaseModel):
             exclude=excluded_fields,
             exclude_none=True,
         )
+        # puts key-value pairs in additional_properties in the top level
+        if self.additional_properties is not None:
+            for _key, _value in self.additional_properties.items():
+                _dict[_key] = _value
+
         return _dict
 
     @classmethod
     def from_dict(cls, obj: Optional[Dict[str, Any]]) -> Optional[Self]:
-        """Create an instance of WebhookPingEvent from a dict"""
+        """Create an instance of ClientIdentityClaimsInner from a dict"""
         if obj is None:
             return None
 
@@ -104,11 +96,19 @@ class WebhookPingEvent(BaseModel):
             return cls.model_validate(obj)
 
         _obj = cls.model_validate({
-            "event_type": obj.get("event_type"),
-            "schema_version": obj.get("schema_version"),
-            "created_at": obj.get("created_at"),
-            "event_id": obj.get("event_id")
+            "profile_id": obj.get("profile_id"),
+            "provider_id": obj.get("provider_id"),
+            "provider_name": obj.get("provider_name"),
+            "agent_name": obj.get("agent_name"),
+            "client_kind": obj.get("client_kind"),
+            "purpose": obj.get("purpose"),
+            "source": obj.get("source")
         })
+        # store additional fields in additional_properties
+        for _key in obj.keys():
+            if _key not in cls.__properties:
+                _obj.additional_properties[_key] = obj.get(_key)
+
         return _obj
 
 

@@ -8,6 +8,8 @@ All notable changes to this project are documented in this file. The format foll
 
 ### Added
 
+- Accept webhook contract `2026-10-06` with signed event IDs, final result/scoring versions, the complete risk-event catalogue, three HRE results and distinct fp21 hardware identity. Legacy webhook bodies remain supported.
+
 - `sync.sh` downloads the OpenAPI description and `generate.sh` rebuilds `generated/` from it. The supported client is unchanged.
 
 ## [1.0.0] - 2026-09-30

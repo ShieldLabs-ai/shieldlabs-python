@@ -19,14 +19,14 @@ import re  # noqa: F401
 import json
 
 from pydantic import BaseModel, ConfigDict, Field, StrictBool
-from typing import Any, ClassVar, Dict, List
+from typing import Any, ClassVar, Dict, List, Optional
 from typing import Optional, Set
 from typing_extensions import Self
 from pydantic_core import to_jsonable_python
 
 class DetectionFlags(BaseModel):
     """
-    Stable yes/no verdicts for the identification. Always all 19 keys. Branch on these flags and on the Risk Score; signal names are for display and logging.  When `search_bot` is `true`, `incognito`, `check_incomplete`, `ip_mismatch` and `javascript_disabled` are always `false`.
+    Stable yes/no verdicts for the identification. Legacy 19 keys are always present; the extension flags depend on the scoring release. Task 204 adds optional ai_bot and ai_browser flags; older payloads omit them. Branch on these flags and on the Risk Score; signal names are for display and logging.  When `search_bot` is `true`, `incognito`, `check_incomplete`, `ip_mismatch` and `javascript_disabled` are always `false`.
     """ # noqa: E501
     vpn: StrictBool = Field(description="A VPN was detected (scored `vpn` signal).")
     privacy_relay: StrictBool = Field(description="A privacy relay such as iCloud Private Relay was detected.")
@@ -35,11 +35,11 @@ class DetectionFlags(BaseModel):
     proxy: StrictBool = Field(description="A proxy was detected.")
     datacenter_ip: StrictBool = Field(description="The public IP belongs to a datacenter or hosting range.")
     abuser: StrictBool = Field(description="The public IP has a record of abuse in IP intelligence.")
-    os_mismatch: StrictBool = Field(description="The operating system seen on the network differs from the one the browser reports.")
+    os_mismatch: StrictBool = Field(description="Either internal OS consistency check detected a mismatch. The public flag combines browser/network and TCP behaviour checks.")
     os_not_detected: StrictBool = Field(description="The operating system could not be determined from the User-Agent or the network.")
     timezone_mismatch: StrictBool = Field(description="The browser timezone differs from the timezone of the IP location.")
     anti_detect_browser: StrictBool = Field(description="An anti-detect browser was detected.")
-    browser_automation: StrictBool = Field(description="Browser automation was detected, for example a WebDriver-controlled browser.")
+    browser_automation: StrictBool = Field(description="Browser automation was detected, for example a WebDriver-controlled browser. Catalogue weight is 90 for task 204 scoring releases; historical result versions may retain the earlier weight 60.")
     ip_mismatch: StrictBool = Field(description="The public IP differs from the local IP found by the browser network check. Informational: it does not add to the score.")
     incognito: StrictBool = Field(description="The browser runs in a private window.")
     search_bot: StrictBool = Field(description="A search-engine crawler. Its Risk Score is always 0.")
@@ -47,7 +47,13 @@ class DetectionFlags(BaseModel):
     javascript_disabled: StrictBool = Field(description="JavaScript, or the browser APIs the checks need, were unavailable.")
     stun_not_checked: StrictBool = Field(description="The browser network (STUN) check did not complete. Cleared again when a late network result arrives.")
     check_incomplete: StrictBool = Field(description="Part of the browser checks timed out, so the verdict rests on partial data. Informational.")
-    __properties: ClassVar[List[str]] = ["vpn", "privacy_relay", "browser_vpn_proxy", "tor", "proxy", "datacenter_ip", "abuser", "os_mismatch", "os_not_detected", "timezone_mismatch", "anti_detect_browser", "browser_automation", "ip_mismatch", "incognito", "search_bot", "suspicious_paid_click", "javascript_disabled", "stun_not_checked", "check_incomplete"]
+    device_spoofing: Optional[StrictBool] = None
+    latency_test: Optional[StrictBool] = None
+    banned_ip: Optional[StrictBool] = None
+    ai_bot: Optional[StrictBool] = Field(default=None, description="An accepted bot is classified as AI training or user-requested fetch. ChatGPT-User, Claude-User and Perplexity-User are AI bots, not AI browsers. Weight 0. The flag is optional on older payloads; its absence is not an evaluated negative result. Provider claims alone do not grant zero risk.")
+    ai_browser: Optional[StrictBool] = Field(default=None, description="A browser is identified by separate verified browser infrastructure. A generic browser User-Agent or a verified provider alone is insufficient. Weight 0. Optional on older payloads; absence is not an evaluated negative.")
+    os_mismatch2: Optional[StrictBool] = Field(default=None, description="Legacy 2026-10-06 only; current payloads combine this check into os_mismatch.")
+    __properties: ClassVar[List[str]] = ["vpn", "privacy_relay", "browser_vpn_proxy", "tor", "proxy", "datacenter_ip", "abuser", "os_mismatch", "os_not_detected", "timezone_mismatch", "anti_detect_browser", "browser_automation", "ip_mismatch", "incognito", "search_bot", "suspicious_paid_click", "javascript_disabled", "stun_not_checked", "check_incomplete", "device_spoofing", "latency_test", "banned_ip", "ai_bot", "ai_browser", "os_mismatch2"]
 
     model_config = ConfigDict(
         validate_by_name=True,
@@ -118,7 +124,13 @@ class DetectionFlags(BaseModel):
             "suspicious_paid_click": obj.get("suspicious_paid_click"),
             "javascript_disabled": obj.get("javascript_disabled"),
             "stun_not_checked": obj.get("stun_not_checked"),
-            "check_incomplete": obj.get("check_incomplete")
+            "check_incomplete": obj.get("check_incomplete"),
+            "device_spoofing": obj.get("device_spoofing"),
+            "latency_test": obj.get("latency_test"),
+            "banned_ip": obj.get("banned_ip"),
+            "ai_bot": obj.get("ai_bot"),
+            "ai_browser": obj.get("ai_browser"),
+            "os_mismatch2": obj.get("os_mismatch2")
         })
         return _obj
 

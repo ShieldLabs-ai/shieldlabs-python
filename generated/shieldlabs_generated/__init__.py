@@ -31,9 +31,16 @@ __all__ = [
     "ApiKeyError",
     "ApiAttributeError",
     "ApiException",
+    "ClientIdentity",
+    "ClientIdentityAssessmentsInner",
+    "ClientIdentityClaimsInner",
+    "ClientIdentityEvidenceInner",
+    "ClientIdentityVerifiedInner",
     "DetectionFlags",
     "DomainProfile",
     "ErrorBody",
+    "HRE",
+    "HREResult",
     "HealthStatus",
     "HistoryPage",
     "HistoryRow",
@@ -41,6 +48,11 @@ __all__ = [
     "IdentificationScoredEvent",
     "IpInfo",
     "LegacySnapshot",
+    "MultiaccountChangedData",
+    "MultiaccountChangedDataEvidenceSummary",
+    "MultiaccountChangedDataSource",
+    "MultiaccountChangedEvent",
+    "RiskEvent",
     "ScoreDetail",
     "Signal",
     "TrafficSource",
@@ -64,9 +76,16 @@ from shieldlabs_generated.exceptions import ApiAttributeError as ApiAttributeErr
 from shieldlabs_generated.exceptions import ApiException as ApiException
 
 # import models into sdk package
+from shieldlabs_generated.models.client_identity import ClientIdentity as ClientIdentity
+from shieldlabs_generated.models.client_identity_assessments_inner import ClientIdentityAssessmentsInner as ClientIdentityAssessmentsInner
+from shieldlabs_generated.models.client_identity_claims_inner import ClientIdentityClaimsInner as ClientIdentityClaimsInner
+from shieldlabs_generated.models.client_identity_evidence_inner import ClientIdentityEvidenceInner as ClientIdentityEvidenceInner
+from shieldlabs_generated.models.client_identity_verified_inner import ClientIdentityVerifiedInner as ClientIdentityVerifiedInner
 from shieldlabs_generated.models.detection_flags import DetectionFlags as DetectionFlags
 from shieldlabs_generated.models.domain_profile import DomainProfile as DomainProfile
 from shieldlabs_generated.models.error_body import ErrorBody as ErrorBody
+from shieldlabs_generated.models.hre import HRE as HRE
+from shieldlabs_generated.models.hre_result import HREResult as HREResult
 from shieldlabs_generated.models.health_status import HealthStatus as HealthStatus
 from shieldlabs_generated.models.history_page import HistoryPage as HistoryPage
 from shieldlabs_generated.models.history_row import HistoryRow as HistoryRow
@@ -74,6 +93,11 @@ from shieldlabs_generated.models.identification_scored_data import Identificatio
 from shieldlabs_generated.models.identification_scored_event import IdentificationScoredEvent as IdentificationScoredEvent
 from shieldlabs_generated.models.ip_info import IpInfo as IpInfo
 from shieldlabs_generated.models.legacy_snapshot import LegacySnapshot as LegacySnapshot
+from shieldlabs_generated.models.multiaccount_changed_data import MultiaccountChangedData as MultiaccountChangedData
+from shieldlabs_generated.models.multiaccount_changed_data_evidence_summary import MultiaccountChangedDataEvidenceSummary as MultiaccountChangedDataEvidenceSummary
+from shieldlabs_generated.models.multiaccount_changed_data_source import MultiaccountChangedDataSource as MultiaccountChangedDataSource
+from shieldlabs_generated.models.multiaccount_changed_event import MultiaccountChangedEvent as MultiaccountChangedEvent
+from shieldlabs_generated.models.risk_event import RiskEvent as RiskEvent
 from shieldlabs_generated.models.score_detail import ScoreDetail as ScoreDetail
 from shieldlabs_generated.models.signal import Signal as Signal
 from shieldlabs_generated.models.traffic_source import TrafficSource as TrafficSource

@@ -299,12 +299,10 @@ def handle_delivery(raw_body: bytes, signature: Optional[str]) -> int:
 - Verify the raw bytes exactly as received, before parsing. Re-serialized JSON does not match.
 - `secret` can be a list: a delivery is valid when any secret matches, so you can rotate an
   endpoint secret without downtime.
-- ShieldLabs sends one delivery per identification and endpoint, with a 1-second timeout and no
-  retries. Respond with a 2xx within 1 second and do slow work afterwards.
-- Make handlers idempotent on `data.request_id`: a future release retries deliveries, and a
+- Each endpoint has independent delivery state, a 1-second send timeout and bounded retries. Persist before 2xx and process asynchronously.
+- Make handlers idempotent on `data.request_id`: current retries reuse event_id, and a
   retry resends identical bytes.
-- Use the History API for guaranteed reads and for the latest state: a delivery that fails is
-  not sent again, and a History row can be refined after its webhook was sent.
+- Use the History API for guaranteed reads and for the latest state: retry exhaustion requires recovery, and a History row can be refined after its webhook was sent.
 - `construct_event` returns `IdentificationScoredEvent`, `WebhookPingEvent` or
   `UnknownWebhookEvent`, and never raises for an unknown event type. The **Test** delivery sent
   from the analytics dashboard parses like production traffic.
@@ -470,3 +468,19 @@ error responses) that every ShieldLabs server SDK passes. See
 ## License
 
 [MIT](LICENSE)
+
+
+### Webhook contract 2026-10-06
+
+Current events include signed `event_id`, optional `site_id`, the complete `data.risk_events`
+catalogue (including zero-weight events), `data.fingerprint` (FP21 hardware ID distinct from
+`device_id`), and `data.hre` for sharing/takeover/travel with explicit statuses. Older envelopes
+remain supported. Only identification risk score is sent; AI bots/browser are planned only,
+and all-time entity risks are excluded.
+
+Persist the verified event in a durable inbox **before** returning 2xx and deduplicate by
+`event_id` (legacy scored bodies: `data.request_id`). Timeout/network/429/5xx retry with
+backoff in a bounded window (8 failed sends / 15-minute retry age), then DLQ. Other 4xx are
+terminal. Retried bodies and event IDs stay unchanged. `X-Shield-Event-Id` mirrors the body ID;
+trust the signed body. Signature verification remains raw-body HMAC-SHA256. Delivery is not
+exactly-once and later History corrections do not automatically create a new webhook event.

@@ -32,6 +32,7 @@ __all__ = [
     "Identification",
     "IdentificationSource",
     "IpInfo",
+    "RiskEvent",
     "Signal",
     "SignalName",
     "TrafficSource",
@@ -174,19 +175,83 @@ class DetectionFlags:
     javascript_disabled: bool = False
     stun_not_checked: bool = False
     check_incomplete: bool = False
+    ai_bot: Optional[bool] = None
+    ai_browser: Optional[bool] = None
+    os_mismatch2: Optional[bool] = None
+    device_spoofing: Optional[bool] = None
+    latency_test: Optional[bool] = None
+    banned_ip: Optional[bool] = None
 
     @classmethod
     def from_dict(cls, data: Mapping[str, Any]) -> DetectionFlags:
         """Build from a webhook ``detection_flags`` object. A missing key is ``False``."""
         data = _mapping(data)
-        return cls(**{key: bool(data.get(key, False)) for key in FLAG_KEYS})
+        return cls(
+            **{key: bool(data.get(key, False)) for key in FLAG_KEYS},
+            **{
+                key: data[key]
+                for key in (
+                    "os_mismatch2",
+                    "device_spoofing",
+                    "latency_test",
+                    "banned_ip",
+                    "ai_bot",
+                    "ai_browser",
+                )
+                if isinstance(data.get(key), bool)
+            },
+        )
 
     def to_dict(self) -> dict[str, bool]:
-        return {key: getattr(self, key) for key in FLAG_KEYS}
+        return {
+            **{key: getattr(self, key) for key in FLAG_KEYS},
+            **{
+                key: getattr(self, key)
+                for key in (
+                    "os_mismatch2",
+                    "device_spoofing",
+                    "latency_test",
+                    "banned_ip",
+                    "ai_bot",
+                    "ai_browser",
+                )
+                if getattr(self, key) is not None
+            },
+        }
 
     def active(self) -> tuple[str, ...]:
         """Names of the flags that are set, in wire order."""
         return tuple(key for key in FLAG_KEYS if getattr(self, key))
+
+
+@dataclass(frozen=True)
+class RiskEvent:
+    """Final scoring flag. Weight is catalog metadata; never sum it for Risk Score."""
+
+    code: str
+    detected: bool
+    weight: int
+    contribution: int
+    status: str
+
+    @classmethod
+    def from_dict(cls, data: Mapping[str, Any]) -> RiskEvent:
+        return cls(
+            code=as_str(data.get("code")),
+            detected=data.get("detected") is True,
+            weight=as_int(data.get("weight")),
+            contribution=as_int(data.get("contribution")),
+            status=as_str(data.get("status")),
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "code": self.code,
+            "detected": self.detected,
+            "weight": self.weight,
+            "contribution": self.contribution,
+            "status": self.status,
+        }
 
 
 @dataclass(frozen=True)
@@ -218,6 +283,14 @@ class Identification:
     """When the identification was observed, as an aware UTC datetime. ``None`` only when the
     server value could not be parsed."""
     source: IdentificationSource
+    result_version: Optional[str] = None
+    scoring_version: Optional[str] = None
+    search_bot_owner: Optional[str] = None
+    ai_bot_owner: Optional[str] = None
+    ai_browser_owner: Optional[str] = None
+    risk_events: Optional[tuple[RiskEvent, ...]] = None
+    hre: Optional[Mapping[str, Any]] = None
+    fingerprint: Optional[Mapping[str, Any]] = None
     raw: Mapping[str, Any] = field(default_factory=dict, compare=False, repr=False)
     """The original webhook ``data`` object or History row, including fields the model omits."""
 
@@ -267,6 +340,24 @@ class Identification:
             detection_flags=DetectionFlags.from_dict(flags),
             observed_at=parse_rfc3339(data.get("observed_at")),
             source="webhook",
+            search_bot_owner=as_str(data["search_bot_owner"])
+            if "search_bot_owner" in data
+            else None,
+            ai_bot_owner=as_str(data["ai_bot_owner"]) if "ai_bot_owner" in data else None,
+            ai_browser_owner=as_str(data["ai_browser_owner"])
+            if "ai_browser_owner" in data
+            else None,
+            result_version=as_str(data["result_version"]) if "result_version" in data else None,
+            scoring_version=as_str(data["scoring_version"]) if "scoring_version" in data else None,
+            risk_events=tuple(
+                RiskEvent.from_dict(r) for r in data["risk_events"] if isinstance(r, Mapping)
+            )
+            if isinstance(data.get("risk_events"), list)
+            else None,
+            hre=dict(data["hre"]) if isinstance(data.get("hre"), Mapping) else None,
+            fingerprint=dict(data["fingerprint"])
+            if isinstance(data.get("fingerprint"), Mapping)
+            else None,
             raw=dict(data),
         )
 
@@ -388,6 +479,24 @@ class Identification:
             if isinstance(observed_at, datetime)
             else parse_rfc3339(observed_at),
             source="history" if source == "history" else "webhook",
+            search_bot_owner=as_str(data["search_bot_owner"])
+            if "search_bot_owner" in data
+            else None,
+            ai_bot_owner=as_str(data["ai_bot_owner"]) if "ai_bot_owner" in data else None,
+            ai_browser_owner=as_str(data["ai_browser_owner"])
+            if "ai_browser_owner" in data
+            else None,
+            result_version=as_str(data["result_version"]) if "result_version" in data else None,
+            scoring_version=as_str(data["scoring_version"]) if "scoring_version" in data else None,
+            risk_events=tuple(
+                RiskEvent.from_dict(r) for r in data["risk_events"] if isinstance(r, Mapping)
+            )
+            if isinstance(data.get("risk_events"), list)
+            else None,
+            hre=dict(data["hre"]) if isinstance(data.get("hre"), Mapping) else None,
+            fingerprint=dict(data["fingerprint"])
+            if isinstance(data.get("fingerprint"), Mapping)
+            else None,
             raw=dict(data),
         )
 
@@ -413,6 +522,30 @@ class Identification:
             "detection_flags": self.detection_flags.to_dict(),
             "observed_at": format_timestamp(self.observed_at),
             "source": self.source,
+            **({"result_version": self.result_version} if self.result_version is not None else {}),
+            **(
+                {"scoring_version": self.scoring_version}
+                if self.scoring_version is not None
+                else {}
+            ),
+            **(
+                {"risk_events": [r.to_dict() for r in self.risk_events]}
+                if self.risk_events is not None
+                else {}
+            ),
+            **(
+                {"search_bot_owner": self.search_bot_owner}
+                if self.search_bot_owner is not None
+                else {}
+            ),
+            **({"ai_bot_owner": self.ai_bot_owner} if self.ai_bot_owner is not None else {}),
+            **(
+                {"ai_browser_owner": self.ai_browser_owner}
+                if self.ai_browser_owner is not None
+                else {}
+            ),
+            **({"hre": dict(self.hre)} if self.hre is not None else {}),
+            **({"fingerprint": dict(self.fingerprint)} if self.fingerprint is not None else {}),
         }
 
 

@@ -87,5 +87,5 @@ def test_version_and_typing_marker() -> None:
 
 def test_webhooks_module_surface() -> None:
     assert shieldlabs.webhooks.SIGNATURE_HEADER == "X-Shield-Signature"
-    assert shieldlabs.webhooks.SCHEMA_VERSION == "2026-06-01"
+    assert shieldlabs.webhooks.SCHEMA_VERSION == "2026-10-07"
     assert shieldlabs.webhooks.IdentificationScoredEvent is shieldlabs.IdentificationScoredEvent

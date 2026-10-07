@@ -22,6 +22,7 @@ from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictInt, Strict
 from typing import Any, ClassVar, Dict, List, Optional
 from typing_extensions import Annotated
 from uuid import UUID
+from shieldlabs_generated.models.client_identity import ClientIdentity
 from typing import Optional, Set
 from typing_extensions import Self
 from pydantic_core import to_jsonable_python
@@ -30,6 +31,7 @@ class HistoryRow(BaseModel):
     """
     One identification as stored, in its latest version. It describes the same identification as a webhook `data` object, with different field names:  | Webhook `data` | History row | |---|---| | `risk_score` | `score` | | `signals` | `score_details` (JSON-encoded string, zero weights included) | | `detection_flags` | the `is_*` columns and `check_incomplete` (each column names its flag) | | `detection_flags.browser_vpn_proxy` | derive it: `connection_type == \"browser_vpn_proxy\"` | | `domain` | `site_domain` when present, otherwise `domain` | | `public_ip` | `ip` (`0.0.0.0` instead of `\"\"`) and `country` | | `local_ip` | `webrtc_leak_ip` and `webrtc_leak_country` when `webrtc_leak_source` is set and not `none`, otherwise `web_rtc_ip` and `web_rtc_country` | | `traffic_source` | `traffic_channel`, `referrer_domain`, `entry_url`, `click_id_type`, `utm_*` (omitted when empty) | | `observed_at` (when scoring finished) | `created_at` (when the identification was made) |  The `ip_mismatch` flag has no column. Rows also carry diagnostic network fields (TCP, MTU and STUN measurements) that are not part of the stable contract: ignore fields you do not know.
     """ # noqa: E501
+    client_identity: Optional[ClientIdentity] = None
     request_id: UUID = Field(description="Identifies one identification. The browser creates it as a UUID v4 and hands it to your page; it is the join key between the browser, the webhook and the History API. The nil UUID appears only on rate-limit marker rows that arrived with a malformed request ID.")
     session_id: UUID = Field(description="One visit on one origin (UUID v4 created in the browser), shared by the open tabs of that origin. The next visit after the last tab closes gets a new session ID. The nil UUID appears on rate-limit marker rows.")
     cookie_id: UUID = Field(description="First-party browser identifier kept by the ShieldLabs agent (UUID v4). A missing or malformed value is stored as the nil UUID.")
@@ -84,7 +86,7 @@ class HistoryRow(BaseModel):
     referrer_domain: Optional[StrictStr] = Field(default=None, description="Registrable domain of the referrer without `www.`; the crawler name (for example `GoogleBot`) for search-engine crawlers. Omitted when empty.")
     click_id_type: Optional[StrictStr] = Field(default=None, description="Ad click identifier type found in the landing URL. Omitted when empty.")
     additional_properties: Dict[str, Any] = {}
-    __properties: ClassVar[List[str]] = ["request_id", "session_id", "cookie_id", "domain", "site_domain", "user_hid", "device_id", "visitor_id", "ip", "os", "browser", "device_type", "country", "connection_type", "score", "score_details", "created_at", "ver", "web_rtc_ip", "web_rtc_country", "web_rtc_connection_type", "webrtc_leak_ip", "webrtc_leak_country", "webrtc_leak_connection_type", "webrtc_leak_source", "is_vpn", "is_tor", "is_proxy", "is_datacenter", "is_abuser", "is_privacy_relay", "is_stun_not_checked", "check_incomplete", "is_antidetect", "is_os_mismatch", "is_os_not_detected", "is_timezone_mismatch", "is_js_disabled", "is_browser_automation", "is_incognito", "is_search_bot", "is_suspicious_paid_click", "entry_url", "utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term", "traffic_channel", "traffic_channel_group", "traffic_reason", "referrer_domain", "click_id_type"]
+    __properties: ClassVar[List[str]] = ["client_identity", "request_id", "session_id", "cookie_id", "domain", "site_domain", "user_hid", "device_id", "visitor_id", "ip", "os", "browser", "device_type", "country", "connection_type", "score", "score_details", "created_at", "ver", "web_rtc_ip", "web_rtc_country", "web_rtc_connection_type", "webrtc_leak_ip", "webrtc_leak_country", "webrtc_leak_connection_type", "webrtc_leak_source", "is_vpn", "is_tor", "is_proxy", "is_datacenter", "is_abuser", "is_privacy_relay", "is_stun_not_checked", "check_incomplete", "is_antidetect", "is_os_mismatch", "is_os_not_detected", "is_timezone_mismatch", "is_js_disabled", "is_browser_automation", "is_incognito", "is_search_bot", "is_suspicious_paid_click", "entry_url", "utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term", "traffic_channel", "traffic_channel_group", "traffic_reason", "referrer_domain", "click_id_type"]
 
     @field_validator('created_at')
     def created_at_validate_regular_expression(cls, value):
@@ -137,6 +139,9 @@ class HistoryRow(BaseModel):
             exclude=excluded_fields,
             exclude_none=True,
         )
+        # override the default output from pydantic by calling `to_dict()` of client_identity
+        if self.client_identity:
+            _dict['client_identity'] = self.client_identity.to_dict()
         # puts key-value pairs in additional_properties in the top level
         if self.additional_properties is not None:
             for _key, _value in self.additional_properties.items():
@@ -154,6 +159,7 @@ class HistoryRow(BaseModel):
             return cls.model_validate(obj)
 
         _obj = cls.model_validate({
+            "client_identity": ClientIdentity.from_dict(obj["client_identity"]) if obj.get("client_identity") is not None else None,
             "request_id": obj.get("request_id"),
             "session_id": obj.get("session_id"),
             "cookie_id": obj.get("cookie_id"),
