@@ -466,6 +466,53 @@ paths:
           source: |
             curl "https://account.shieldlabs.ai/health"
 webhooks:
+  multi-account-changed:
+    post:
+      operationId: multiaccountChanged
+      tags:
+        - Webhooks
+      summary: A multi-account group changed
+      description: |-
+        Opt-in notification when a complete background detector publication detects, updates, or
+        resolves an exact group of accounts. Enable `multiaccount: true` on the webhook endpoint.
+        The default is false; existing identification.scored subscriptions are preserved.
+
+        A repeated build with unchanged membership, level, and rules does not produce a new event.
+        A membership change produces resolved for the previous exact group and detected for the new
+        exact group. Resolved means the group is no longer supported by the current complete source
+        cut, including evidence expiry; it does not certify that its accounts are safe.
+
+        Delivery is at least once, with no global ordering guarantee. Save event_id atomically with
+        your business operation. Within a site, publication epoch, and cluster_id, compare revision
+        as an integer and ignore older transitions. Verify HMAC-SHA256 over the raw received bytes;
+        X-Shield-Event-Id is a convenience header, and the signed body is authoritative.
+
+        This event has no request_id or risk_score. Its source identifies the published group result;
+        it does not mutate an earlier identification.scored body or an already pinned Console view.
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/ShieldSignature'
+        - $ref: '#/components/parameters/ShieldEventId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MultiaccountChangedEvent'
+            examples:
+              detected:
+                $ref: '#/components/examples/MultiaccountDetected'
+              updated:
+                $ref: '#/components/examples/MultiaccountUpdated'
+              resolved:
+                $ref: '#/components/examples/MultiaccountResolved'
+      responses:
+        2XX:
+          description: Durably accepted by the receiver. The response body is ignored.
+        4XX:
+          description: Terminal delivery failure, except 429 which is retried.
+        5XX:
+          description: Retried within the delivery attempt and age limits.
   identification.scored:
     post:
       operationId: identificationScored
@@ -673,21 +720,6 @@ webhooks:
                       stun_not_checked: false
                       check_incomplete: false
                     observed_at: '2026-10-06T00:00:00Z'
-                    fingerprint:
-                      outcome: new_record
-                      record_id: sample-record
-                      hardware_id: sample-hardware
-                      rules_version: fp21-fixture
-                      sharing:
-                        level: high
-                        devices: 4
-                        min_devices: 4
-                      takeover:
-                        level: medium
-                        reason: fixture
-                      travel:
-                        level: ''
-                        reason: below_distance
       responses:
         2XX:
           description: Delivery accepted. The response body is ignored.
@@ -939,6 +971,144 @@ components:
           summary: Logical event identity
           value: 79e23184cd0b5aae43125e3b14910f13b107a54b
   schemas:
+    ClientIdentity:
+      type: object
+      additionalProperties: true
+      required:
+        - schema_version
+        - classification_revision
+        - classifier_version
+        - registry_revision
+        - availability
+        - observed_at
+        - decided_at
+        - claims
+        - verified
+        - assessments
+        - evidence
+      properties:
+        schema_version:
+          type: string
+          description: Open version identifier. Version 1 is currently emitted.
+        classification_revision:
+          type: integer
+          minimum: 1
+        classifier_version:
+          type: string
+        registry_revision:
+          type: string
+        availability:
+          type: string
+          description: available or input_unavailable. Missing object means no stored identity data; it does not mean human.
+        observed_at:
+          type: string
+          format: date-time
+        decided_at:
+          type: string
+          format: date-time
+        claims:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+            required:
+              - profile_id
+              - provider_id
+              - provider_name
+              - agent_name
+              - client_kind
+              - purpose
+              - source
+            properties:
+              profile_id:
+                type: string
+              provider_id:
+                type: string
+              provider_name:
+                type: string
+              agent_name:
+                type: string
+              client_kind:
+                type: string
+              purpose:
+                type: string
+              source:
+                type: string
+        verified:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+            required:
+              - subject
+              - value_id
+              - evidence_ids
+            properties:
+              subject:
+                type: string
+                description: 'The proved attribute: provider, service or infrastructure. Proof does not extend to other attributes.'
+              value_id:
+                type: string
+              evidence_ids:
+                type: array
+                items:
+                  type: string
+        assessments:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+            required:
+              - status
+              - reason
+            properties:
+              candidate_profile_id:
+                type: string
+              status:
+                type: string
+              reason:
+                type: string
+        evidence:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+            required:
+              - id
+              - method
+              - source_id
+              - source_revision
+              - checked_at
+              - evaluated_at
+              - covered_attributes
+            properties:
+              id:
+                type: string
+              method:
+                type: string
+              source_id:
+                type: string
+              source_revision:
+                type: string
+              checked_at:
+                type: string
+                format: date-time
+              evaluated_at:
+                type: string
+                format: date-time
+              covered_attributes:
+                type: array
+                items:
+                  type: string
+              covered_components:
+                type: array
+                items:
+                  type: string
+              request_binding:
+                type: string
+              replay_policy:
+                type: string
+      description: Stored ingest attribution, independent of risk score and browser automation. Claimed names are unverified. A verified provider does not verify the agent name, service or AI mode. Read proof scope from each attribution and its referenced evidence. Unknown string values and fields must be accepted.
     RequestId:
       type: string
       format: uuid
@@ -1222,6 +1392,8 @@ components:
         - is_incognito
         - is_search_bot
       properties:
+        client_identity:
+          $ref: '#/components/schemas/ClientIdentity'
         request_id:
           $ref: '#/components/schemas/RequestId'
         session_id:
@@ -1602,13 +1774,6 @@ components:
           type: string
           const: ok
           description: Always `ok` when the service answers.
-    SchemaVersion:
-      type: string
-      minLength: 1
-      description: Webhook contract version. Current release 2026-10-06; parsers also accept legacy 2026-06-01.
-      examples:
-        - '2026-10-06'
-        - '2026-06-01'
     Rfc3339Timestamp:
       type: string
       format: date-time
@@ -1617,6 +1782,187 @@ components:
       examples:
         - '2026-09-30T12:34:57.482913041Z'
         - '2026-09-30T12:34:56Z'
+    MultiaccountChangedData:
+      type: object
+      additionalProperties: false
+      required:
+        - kind
+        - domain
+        - action
+        - status
+        - detected
+        - level
+        - cluster_id
+        - revision
+        - previous_revision
+        - user_hids
+        - users_count
+        - members_complete
+        - evaluated_at
+        - rules_version
+        - source
+        - evidence_summary
+      properties:
+        kind:
+          const: multi_account
+        domain:
+          type: string
+          minLength: 1
+        action:
+          type: string
+          enum:
+            - detected
+            - updated
+            - resolved
+        status:
+          const: evaluated
+          description: The result comes from a complete, verified detector source cut. Pending or unavailable work does not produce this event.
+        detected:
+          type: boolean
+        level:
+          type:
+            - string
+            - 'null'
+          enum:
+            - medium
+            - high
+            - null
+        cluster_id:
+          type: string
+          format: uuid
+          description: ID of the exact sorted user set within this site. A membership change resolves the old group and detects a new group.
+        revision:
+          type: string
+          pattern: ^[1-9][0-9]{0,19}$
+          description: Publication version of this transition, as a decimal string to preserve UInt64 precision.
+        previous_revision:
+          type:
+            - string
+            - 'null'
+          pattern: ^(0|[1-9][0-9]{0,19})$
+          description: Previous transition version while the group was active; null for a newly detected or reappearing group.
+        user_hids:
+          type: array
+          minItems: 3
+          uniqueItems: true
+          description: Complete sorted group membership. Users from another site are never included. This list is not truncated.
+          items:
+            type: string
+            minLength: 1
+            not:
+              enum:
+                - anonymous
+                - '-1'
+                - fail
+                - 00000000-0000-0000-0000-000000000000
+        users_count:
+          type: integer
+          minimum: 3
+          description: Equal to the length of user_hids.
+        members_complete:
+          const: true
+        evaluated_at:
+          $ref: '#/components/schemas/Rfc3339Timestamp'
+        rules_version:
+          type: string
+          minLength: 1
+        source:
+          type: object
+          additionalProperties: false
+          required:
+            - publication_epoch
+            - publication_version
+            - coverage_id
+          properties:
+            publication_epoch:
+              const: multiaccount-v1
+            publication_version:
+              type: string
+              pattern: ^[1-9][0-9]{0,19}$
+              description: The exact immutable publication containing this result and event.
+            coverage_id:
+              type: string
+              pattern: ^[a-f0-9]{64}$
+              description: Immutable binding to the trusted source completeness proof.
+        evidence_summary:
+          type: object
+          additionalProperties: false
+          required:
+            - basis_types
+            - rules
+            - detail_truncated
+          properties:
+            basis_types:
+              type: array
+              uniqueItems: true
+              items:
+                type: string
+            rules:
+              type: array
+              uniqueItems: true
+              items:
+                type: string
+            detail_truncated:
+              type: boolean
+              description: Whether the detector's underlying detailed evidence was truncated. Group membership remains complete.
+      allOf:
+        - if:
+            properties:
+              action:
+                const: resolved
+            required:
+              - action
+          then:
+            additionalProperties: true
+            properties:
+              detected:
+                const: false
+              level:
+                type: 'null'
+          else:
+            additionalProperties: true
+            properties:
+              detected:
+                const: true
+              level:
+                type: string
+                enum:
+                  - medium
+                  - high
+    MultiaccountChangedEvent:
+      type: object
+      description: An immutable opt-in notification of a complete multi-account group transition.
+      additionalProperties: false
+      required:
+        - event_id
+        - event_type
+        - schema_version
+        - site_id
+        - created_at
+        - data
+      properties:
+        event_id:
+          type: string
+          pattern: ^[a-f0-9]{40}$
+          description: Stable logical event ID. Delivery retries preserve this ID and the signed body.
+        event_type:
+          const: hre.multi_account.changed
+        schema_version:
+          const: '2026-10-07'
+        site_id:
+          type: integer
+          minimum: 1
+        created_at:
+          $ref: '#/components/schemas/Rfc3339Timestamp'
+        data:
+          $ref: '#/components/schemas/MultiaccountChangedData'
+    SchemaVersion:
+      type: string
+      minLength: 1
+      description: Webhook contract version. Scored release 2026-10-06; multi-account group release 2026-10-07; parsers also accept legacy 2026-06-01.
+      examples:
+        - '2026-10-06'
+        - '2026-06-01'
     UserHid:
       type:
         - string
@@ -1732,7 +2078,7 @@ components:
               for anti-detect browsers;
             - `port_scan_routed_via_proxy`: `proxy_routed_antidetect` carried forward from an earlier
               identification of the same device and IP;
-            - `browser_automation`: browser automation, for example a WebDriver-controlled browser;
+            - `browser_automation`: browser automation, for example a WebDriver-controlled browser (90 in task 204 scoring releases);
             - `javascript_disabled`: JavaScript or the browser APIs the checks need were unavailable;
             - `os_mismatch`: the operating system seen on the network differs from the one the browser
               reports;
@@ -1758,7 +2104,7 @@ components:
     DetectionFlags:
       type: object
       description: |-
-        Stable yes/no verdicts for the identification. Legacy 19 keys are always present; the four extension flags are present in schema 2026-10-06. Branch on these flags and on
+        Stable yes/no verdicts for the identification. Legacy 19 keys are always present; the extension flags depend on the scoring release. Task 204 adds optional ai_bot and ai_browser flags; older payloads omit them. Branch on these flags and on
         the Risk Score; signal names are for display and logging.
 
         When `search_bot` is `true`, `incognito`, `check_incomplete`, `ip_mismatch` and
@@ -1807,7 +2153,7 @@ components:
           description: The public IP has a record of abuse in IP intelligence.
         os_mismatch:
           type: boolean
-          description: The operating system seen on the network differs from the one the browser reports.
+          description: Either internal OS consistency check detected a mismatch. The public flag combines browser/network and TCP behaviour checks.
         os_not_detected:
           type: boolean
           description: The operating system could not be determined from the User-Agent or the network.
@@ -1819,7 +2165,7 @@ components:
           description: An anti-detect browser was detected.
         browser_automation:
           type: boolean
-          description: Browser automation was detected, for example a WebDriver-controlled browser.
+          description: Browser automation was detected, for example a WebDriver-controlled browser. Catalogue weight is 90 for task 204 scoring releases; historical result versions may retain the earlier weight 60.
         ip_mismatch:
           type: boolean
           description: 'The public IP differs from the local IP found by the browser network check. Informational: it does not add to the score.'
@@ -1841,14 +2187,22 @@ components:
         check_incomplete:
           type: boolean
           description: Part of the browser checks timed out, so the verdict rests on partial data. Informational.
-        os_mismatch2:
-          type: boolean
         device_spoofing:
           type: boolean
         latency_test:
           type: boolean
         banned_ip:
           type: boolean
+        ai_bot:
+          type: boolean
+          description: An accepted bot is classified as AI training or user-requested fetch. ChatGPT-User, Claude-User and Perplexity-User are AI bots, not AI browsers. Weight 0. The flag is optional on older payloads; its absence is not an evaluated negative result. Provider claims alone do not grant zero risk.
+        ai_browser:
+          type: boolean
+          description: A browser is identified by separate verified browser infrastructure. A generic browser User-Agent or a verified provider alone is insufficient. Weight 0. Optional on older payloads; absence is not an evaluated negative.
+        os_mismatch2:
+          type: boolean
+          deprecated: true
+          description: Legacy 2026-10-06 only; current payloads combine this check into os_mismatch.
     RiskEvent:
       type: object
       required:
@@ -1860,6 +2214,7 @@ components:
       properties:
         code:
           type: string
+          description: Open catalogue of independent source signals. ai_bot and ai_browser carry weight 0; search_bot remains separate. browser_automation carries weight 90 in task 204 releases. UI Good bot and Bad bot groups are not risk event codes. Keep unknown codes and use the payload scoring_version/result_version for historical interpretation.
         detected:
           type: boolean
           description: Final scoring flag. false does not assert that every underlying probe completed.
@@ -1903,6 +2258,11 @@ components:
         min_devices:
           type: integer
           minimum: 1
+        cluster_id:
+          type:
+            - string
+            - 'null'
+          description: Authoritative cluster ID for this HRE result. Null when no cluster was published for the result, including old stored verdicts; never a device ID. Reused on retries.
     HRE:
       type: object
       required:
@@ -1919,31 +2279,9 @@ components:
         impossible_travel:
           $ref: '#/components/schemas/HREResult'
       description: Three completed on-demand handler results. Technical errors block emission; no_history/skipped are explicit not_evaluated results. Anonymous checks are not_applicable. Multiaccount is separate.
-    Fingerprint:
-      type: object
-      required:
-        - outcome
-        - rules_version
-      properties:
-        outcome:
-          type: string
-        record_id:
-          type: string
-        hardware_id:
-          type: string
-          description: FP21 hardware identity, distinct from device_id.
-        rules_version:
-          type: string
-        sharing:
-          type: object
-        takeover:
-          type: object
-        travel:
-          type: object
-      description: FP21 for tracked users. Legacy sharing/takeover/travel mirrors are retained; prefer data.hre. Absent on anonymous checks.
     IdentificationScoredData:
       type: object
-      description: Final identification. risk_score is this scan only; no all-time entity risk. New extension fields are required by version 2026-10-06; legacy bodies remain accepted.
+      description: Final identification. risk_score is this scan only. Version 2026-10-07 uses signals for score contributions, detection_flags for final decisions, and hre for account results. Older bodies remain accepted.
       required:
         - request_id
         - visitor_id
@@ -1964,6 +2302,8 @@ components:
         - detection_flags
         - observed_at
       properties:
+        client_identity:
+          $ref: '#/components/schemas/ClientIdentity'
         request_id:
           $ref: '#/components/schemas/RequestId'
         visitor_id:
@@ -2016,13 +2356,26 @@ components:
           type: string
           description: Core build source revision; core:unversioned on local builds.
         risk_events:
+          deprecated: true
+          description: Legacy 2026-10-06 only; absent from current scored events.
           type: array
           items:
             $ref: '#/components/schemas/RiskEvent'
         hre:
           $ref: '#/components/schemas/HRE'
-        fingerprint:
-          $ref: '#/components/schemas/Fingerprint'
+        search_bot_owner:
+          type: string
+          description: Owner label from accepted search-bot detection; omitted when unknown or inactive.
+          examples:
+            - Google
+        ai_bot_owner:
+          type: string
+          description: Provider company label from accepted AI-bot detection; omitted when unknown or inactive.
+          examples:
+            - OpenAI
+        ai_browser_owner:
+          type: string
+          description: Owner label from accepted AI-browser detection; omitted when unknown or inactive.
     IdentificationScoredEvent:
       type: object
       description: 'Body of an `identification.scored` delivery. The signature is not part of the body: it arrives in the `X-Shield-Signature` header.'
@@ -2080,6 +2433,83 @@ components:
                 minLength: 1
                 description: Logical site/request/final-result-version/type identity. Stable across retries and endpoints.
             type: object
+            additionalProperties: true
+        - if:
+            type: object
+            required:
+              - schema_version
+            properties:
+              schema_version:
+                const: '2026-10-07'
+            additionalProperties: true
+          then:
+            type: object
+            required:
+              - event_id
+            properties:
+              event_id:
+                type: string
+                minLength: 1
+                description: Logical site/request/final-result-version/type identity. Stable across retries and endpoints.
+              data:
+                type: object
+                required:
+                  - result_version
+                  - scoring_version
+                  - hre
+                properties:
+                  result_version: {}
+                  scoring_version: {}
+                  risk_events: {}
+                  fingerprint: {}
+                  detection_flags:
+                    type: object
+                    not:
+                      type: object
+                      required:
+                        - os_mismatch2
+                      properties:
+                        os_mismatch2: {}
+                      additionalProperties: true
+                  hre:
+                    type: object
+                    properties:
+                      account_sharing:
+                        type: object
+                        required:
+                          - cluster_id
+                        properties:
+                          cluster_id: {}
+                        additionalProperties: true
+                      account_takeover:
+                        type: object
+                        required:
+                          - cluster_id
+                        properties:
+                          cluster_id: {}
+                        additionalProperties: true
+                      impossible_travel:
+                        type: object
+                        required:
+                          - cluster_id
+                        properties:
+                          cluster_id: {}
+                        additionalProperties: true
+                additionalProperties: true
+                not:
+                  anyOf:
+                    - type: object
+                      required:
+                        - risk_events
+                      properties:
+                        risk_events: {}
+                      additionalProperties: true
+                    - type: object
+                      required:
+                        - fingerprint
+                      properties:
+                        fingerprint: {}
+                      additionalProperties: true
             additionalProperties: true
     WebhookPingEvent:
       type: object
@@ -2494,6 +2924,115 @@ components:
       description: The only successful answer.
       value:
         status: ok
+    MultiaccountDetected:
+      summary: Multi-account group detected
+      description: Generated by the Core event marshaler for a synthetic three-account group.
+      value:
+        event_id: ad5efdbb113f50d1207c3a3b1d03e54ee60dfb9a
+        site_id: 319
+        event_type: hre.multi_account.changed
+        schema_version: '2026-10-07'
+        created_at: '2026-10-07T12:01:04Z'
+        data:
+          kind: multi_account
+          domain: example.com
+          action: detected
+          status: evaluated
+          detected: true
+          level: medium
+          cluster_id: 4293f02e-7cf0-5cda-9150-b5b8c4ee685d
+          revision: '7412'
+          previous_revision: null
+          user_hids:
+            - account_a
+            - account_b
+            - account_c
+          users_count: 3
+          members_complete: true
+          evaluated_at: '2026-10-07T12:01:00Z'
+          rules_version: fp21-travel-pair-2026-10-06
+          source:
+            publication_epoch: multiaccount-v1
+            publication_version: '7412'
+            coverage_id: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+          evidence_summary:
+            basis_types:
+              - lineage
+            rules:
+              - lineage_60m
+            detail_truncated: false
+    MultiaccountUpdated:
+      summary: Multi-account group updated
+      description: Generated by the Core event marshaler for a synthetic three-account group.
+      value:
+        event_id: 27225e88895f45c6f96562578308d3afea9d4ea2
+        site_id: 319
+        event_type: hre.multi_account.changed
+        schema_version: '2026-10-07'
+        created_at: '2026-10-07T12:01:04Z'
+        data:
+          kind: multi_account
+          domain: example.com
+          action: updated
+          status: evaluated
+          detected: true
+          level: high
+          cluster_id: 4293f02e-7cf0-5cda-9150-b5b8c4ee685d
+          revision: '7414'
+          previous_revision: '7412'
+          user_hids:
+            - account_a
+            - account_b
+            - account_c
+          users_count: 3
+          members_complete: true
+          evaluated_at: '2026-10-07T12:01:00Z'
+          rules_version: fp21-travel-pair-2026-10-06
+          source:
+            publication_epoch: multiaccount-v1
+            publication_version: '7414'
+            coverage_id: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+          evidence_summary:
+            basis_types:
+              - lineage
+            rules:
+              - lineage_60m
+            detail_truncated: false
+    MultiaccountResolved:
+      summary: Multi-account group resolved
+      description: Generated by the Core event marshaler for a synthetic three-account group.
+      value:
+        event_id: 0e703af70ff450065df0457d71789d32df4de079
+        site_id: 319
+        event_type: hre.multi_account.changed
+        schema_version: '2026-10-07'
+        created_at: '2026-10-07T12:01:04Z'
+        data:
+          kind: multi_account
+          domain: example.com
+          action: resolved
+          status: evaluated
+          detected: false
+          level: null
+          cluster_id: 4293f02e-7cf0-5cda-9150-b5b8c4ee685d
+          revision: '7415'
+          previous_revision: '7412'
+          user_hids:
+            - account_a
+            - account_b
+            - account_c
+          users_count: 3
+          members_complete: true
+          evaluated_at: '2026-10-07T12:01:00Z'
+          rules_version: fp21-travel-pair-2026-10-06
+          source:
+            publication_epoch: multiaccount-v1
+            publication_version: '7415'
+            coverage_id: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+          evidence_summary:
+            basis_types: []
+            rules: []
+            detail_truncated: false
     IdentificationScored:
       summary: Dangerous identification from a paid click
       description: Risk Score 80 from a proxy, a datacenter IP and an anti-detect browser, on a visit from a Google Ads click.

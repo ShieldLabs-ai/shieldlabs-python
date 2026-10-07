@@ -5,7 +5,7 @@ Every delivery is a ``POST`` with a JSON body and the header
 string exactly as shown in the analytics dashboard, ``whsec_`` prefix included, and the message
 is the raw request body. Always verify the raw bytes you received, before parsing them.
 
-Version 2026-10-06 carries a signed event_id in the body and X-Shield-Event-Id header.
+Version 2026-10-07 carries a signed event_id in the body and X-Shield-Event-Id header.
 Failed deliveries are retried within a bounded window. Deduplicate by event_id,
 store the event durably before returning 2xx, then process asynchronously. For old
 bodies without event_id, fall back to data.request_id. History provides recovery/latest state.
@@ -49,7 +49,7 @@ __all__ = [
 SIGNATURE_HEADER = "X-Shield-Signature"
 """Name of the header that carries the signature."""
 
-SCHEMA_VERSION = "2026-10-06"
+SCHEMA_VERSION = "2026-10-07"
 """Webhook ``schema_version`` this SDK was built for. Other values are parsed with a warning."""
 
 _SIGNATURE_PREFIX = "sha256="
