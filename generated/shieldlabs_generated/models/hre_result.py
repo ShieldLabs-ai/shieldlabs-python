@@ -34,7 +34,8 @@ class HREResult(BaseModel):
     reason: StrictStr
     devices: Optional[Annotated[int, Field(strict=True, ge=0)]] = None
     min_devices: Optional[Annotated[int, Field(strict=True, ge=1)]] = None
-    __properties: ClassVar[List[str]] = ["status", "level", "reason", "devices", "min_devices"]
+    cluster_id: Optional[StrictStr] = Field(default=None, description="Authoritative cluster ID for this HRE result. Null when no cluster was published for the result, including old stored verdicts; never a device ID. Reused on retries.")
+    __properties: ClassVar[List[str]] = ["status", "level", "reason", "devices", "min_devices", "cluster_id"]
 
     model_config = ConfigDict(
         validate_by_name=True,
@@ -80,6 +81,11 @@ class HREResult(BaseModel):
         if self.level is None and "level" in self.model_fields_set:
             _dict['level'] = None
 
+        # set to None if cluster_id (nullable) is None
+        # and model_fields_set contains the field
+        if self.cluster_id is None and "cluster_id" in self.model_fields_set:
+            _dict['cluster_id'] = None
+
         return _dict
 
     @classmethod
@@ -96,7 +102,8 @@ class HREResult(BaseModel):
             "level": obj.get("level"),
             "reason": obj.get("reason"),
             "devices": obj.get("devices"),
-            "min_devices": obj.get("min_devices")
+            "min_devices": obj.get("min_devices"),
+            "cluster_id": obj.get("cluster_id")
         })
         return _obj
 

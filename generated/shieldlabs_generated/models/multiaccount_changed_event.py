@@ -19,28 +19,35 @@ import re  # noqa: F401
 import json
 
 from datetime import datetime
-from pydantic import BaseModel, ConfigDict, Field, StrictStr, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from typing import Any, ClassVar, Dict, List, Optional
 from typing_extensions import Annotated
+from shieldlabs_generated.models.multiaccount_changed_data import MultiaccountChangedData
 from typing import Optional, Set
 from typing_extensions import Self
 from pydantic_core import to_jsonable_python
 
-class WebhookPingEvent(BaseModel):
+class MultiaccountChangedEvent(BaseModel):
     """
-    Body of a `webhook.ping` delivery, sent when you verify an endpoint. It has no `data`. The keys arrive sorted alphabetically and `created_at` has second precision.
+    An immutable opt-in notification of a complete multi-account group transition.
     """ # noqa: E501
-    event_type: StrictStr = Field(description="Event type.")
-    schema_version: Annotated[str, Field(min_length=1, strict=True)] = Field(description="Webhook contract version. Scored release 2026-10-06; multi-account group release 2026-10-07; parsers also accept legacy 2026-06-01.")
-    created_at: datetime = Field(description="When the ping was sent, with second precision.")
-    event_id: Optional[Annotated[str, Field(min_length=1, strict=True)]] = None
-    __properties: ClassVar[List[str]] = ["event_type", "schema_version", "created_at", "event_id"]
+    event_id: Annotated[str, Field(strict=True)] = Field(description="Stable logical event ID. Delivery retries preserve this ID and the signed body.")
+    event_type: Optional[Any]
+    schema_version: Optional[Any]
+    site_id: Annotated[int, Field(strict=True, ge=1)]
+    created_at: datetime = Field(description="RFC 3339 timestamp in UTC with up to 9 fractional digits (trailing zeros trimmed), for example `2026-09-30T12:34:57.482913041Z`. Parse it with a parser that accepts nanoseconds.")
+    data: MultiaccountChangedData
+    additional_properties: Dict[str, Any] = {}
+    __properties: ClassVar[List[str]] = ["event_id", "event_type", "schema_version", "site_id", "created_at", "data"]
 
-    @field_validator('event_type')
-    def event_type_validate_enum(cls, value):
-        """Validates the enum"""
-        if value not in set(['webhook.ping']):
-            raise ValueError("must be one of enum values ('webhook.ping')")
+    @field_validator('event_id')
+    def event_id_validate_regular_expression(cls, value):
+        """Validates the regular expression"""
+        if not isinstance(value, str):
+            value = str(value)
+
+        if not re.match(r"^[a-f0-9]{40}$", value):
+            raise ValueError(r"must validate the regular expression /^[a-f0-9]{40}$/")
         return value
 
     @field_validator('created_at')
@@ -71,7 +78,7 @@ class WebhookPingEvent(BaseModel):
 
     @classmethod
     def from_json(cls, json_str: str) -> Optional[Self]:
-        """Create an instance of WebhookPingEvent from a JSON string"""
+        """Create an instance of MultiaccountChangedEvent from a JSON string"""
         return cls.from_dict(json.loads(json_str))
 
     def to_dict(self) -> Dict[str, Any]:
@@ -83,8 +90,10 @@ class WebhookPingEvent(BaseModel):
         * `None` is only added to the output dict for nullable fields that
           were set at model initialization. Other fields with value `None`
           are ignored.
+        * Fields in `self.additional_properties` are added to the output dict.
         """
         excluded_fields: Set[str] = set([
+            "additional_properties",
         ])
 
         _dict = self.model_dump(
@@ -92,11 +101,29 @@ class WebhookPingEvent(BaseModel):
             exclude=excluded_fields,
             exclude_none=True,
         )
+        # override the default output from pydantic by calling `to_dict()` of data
+        if self.data:
+            _dict['data'] = self.data.to_dict()
+        # puts key-value pairs in additional_properties in the top level
+        if self.additional_properties is not None:
+            for _key, _value in self.additional_properties.items():
+                _dict[_key] = _value
+
+        # set to None if event_type (nullable) is None
+        # and model_fields_set contains the field
+        if self.event_type is None and "event_type" in self.model_fields_set:
+            _dict['event_type'] = None
+
+        # set to None if schema_version (nullable) is None
+        # and model_fields_set contains the field
+        if self.schema_version is None and "schema_version" in self.model_fields_set:
+            _dict['schema_version'] = None
+
         return _dict
 
     @classmethod
     def from_dict(cls, obj: Optional[Dict[str, Any]]) -> Optional[Self]:
-        """Create an instance of WebhookPingEvent from a dict"""
+        """Create an instance of MultiaccountChangedEvent from a dict"""
         if obj is None:
             return None
 
@@ -104,11 +131,18 @@ class WebhookPingEvent(BaseModel):
             return cls.model_validate(obj)
 
         _obj = cls.model_validate({
+            "event_id": obj.get("event_id"),
             "event_type": obj.get("event_type"),
             "schema_version": obj.get("schema_version"),
+            "site_id": obj.get("site_id"),
             "created_at": obj.get("created_at"),
-            "event_id": obj.get("event_id")
+            "data": MultiaccountChangedData.from_dict(obj["data"]) if obj.get("data") is not None else None
         })
+        # store additional fields in additional_properties
+        for _key in obj.keys():
+            if _key not in cls.__properties:
+                _obj.additional_properties[_key] = obj.get(_key)
+
         return _obj
 
 

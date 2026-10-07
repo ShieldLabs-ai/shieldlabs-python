@@ -18,24 +18,21 @@ import pprint
 import re  # noqa: F401
 import json
 
-from pydantic import BaseModel, ConfigDict, Field, StrictStr
+from pydantic import BaseModel, ConfigDict, StrictStr
 from typing import Any, ClassVar, Dict, List, Optional
 from typing import Optional, Set
 from typing_extensions import Self
 from pydantic_core import to_jsonable_python
 
-class Fingerprint(BaseModel):
+class ClientIdentityAssessmentsInner(BaseModel):
     """
-    FP21 for tracked users. Legacy sharing/takeover/travel mirrors are retained; prefer data.hre. Absent on anonymous checks.
+    ClientIdentityAssessmentsInner
     """ # noqa: E501
-    outcome: StrictStr
-    record_id: Optional[StrictStr] = None
-    hardware_id: Optional[StrictStr] = Field(default=None, description="FP21 hardware identity, distinct from device_id.")
-    rules_version: StrictStr
-    sharing: Optional[Dict[str, Any]] = None
-    takeover: Optional[Dict[str, Any]] = None
-    travel: Optional[Dict[str, Any]] = None
-    __properties: ClassVar[List[str]] = ["outcome", "record_id", "hardware_id", "rules_version", "sharing", "takeover", "travel"]
+    candidate_profile_id: Optional[StrictStr] = None
+    status: StrictStr
+    reason: StrictStr
+    additional_properties: Dict[str, Any] = {}
+    __properties: ClassVar[List[str]] = ["candidate_profile_id", "status", "reason"]
 
     model_config = ConfigDict(
         validate_by_name=True,
@@ -55,7 +52,7 @@ class Fingerprint(BaseModel):
 
     @classmethod
     def from_json(cls, json_str: str) -> Optional[Self]:
-        """Create an instance of Fingerprint from a JSON string"""
+        """Create an instance of ClientIdentityAssessmentsInner from a JSON string"""
         return cls.from_dict(json.loads(json_str))
 
     def to_dict(self) -> Dict[str, Any]:
@@ -67,8 +64,10 @@ class Fingerprint(BaseModel):
         * `None` is only added to the output dict for nullable fields that
           were set at model initialization. Other fields with value `None`
           are ignored.
+        * Fields in `self.additional_properties` are added to the output dict.
         """
         excluded_fields: Set[str] = set([
+            "additional_properties",
         ])
 
         _dict = self.model_dump(
@@ -76,11 +75,16 @@ class Fingerprint(BaseModel):
             exclude=excluded_fields,
             exclude_none=True,
         )
+        # puts key-value pairs in additional_properties in the top level
+        if self.additional_properties is not None:
+            for _key, _value in self.additional_properties.items():
+                _dict[_key] = _value
+
         return _dict
 
     @classmethod
     def from_dict(cls, obj: Optional[Dict[str, Any]]) -> Optional[Self]:
-        """Create an instance of Fingerprint from a dict"""
+        """Create an instance of ClientIdentityAssessmentsInner from a dict"""
         if obj is None:
             return None
 
@@ -88,14 +92,15 @@ class Fingerprint(BaseModel):
             return cls.model_validate(obj)
 
         _obj = cls.model_validate({
-            "outcome": obj.get("outcome"),
-            "record_id": obj.get("record_id"),
-            "hardware_id": obj.get("hardware_id"),
-            "rules_version": obj.get("rules_version"),
-            "sharing": obj.get("sharing"),
-            "takeover": obj.get("takeover"),
-            "travel": obj.get("travel")
+            "candidate_profile_id": obj.get("candidate_profile_id"),
+            "status": obj.get("status"),
+            "reason": obj.get("reason")
         })
+        # store additional fields in additional_properties
+        for _key in obj.keys():
+            if _key not in cls.__properties:
+                _obj.additional_properties[_key] = obj.get(_key)
+
         return _obj
 
 

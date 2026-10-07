@@ -32,7 +32,7 @@ class IdentificationScoredEvent(BaseModel):
     Body of an `identification.scored` delivery. The signature is not part of the body: it arrives in the `X-Shield-Signature` header.
     """ # noqa: E501
     event_type: StrictStr = Field(description="Event type. Ignore events whose type you do not know instead of failing.")
-    schema_version: Annotated[str, Field(min_length=1, strict=True)] = Field(description="Webhook contract version. Current release 2026-10-06; parsers also accept legacy 2026-06-01.")
+    schema_version: Annotated[str, Field(min_length=1, strict=True)] = Field(description="Webhook contract version. Scored release 2026-10-06; multi-account group release 2026-10-07; parsers also accept legacy 2026-06-01.")
     created_at: datetime = Field(description="RFC 3339 timestamp in UTC with up to 9 fractional digits (trailing zeros trimmed), for example `2026-09-30T12:34:57.482913041Z`. Parse it with a parser that accepts nanoseconds.")
     data: IdentificationScoredData
     event_id: Optional[Annotated[str, Field(min_length=1, strict=True)]] = Field(default=None, description="Logical site/request/final-result-version/type identity. Stable across retries and endpoints.")

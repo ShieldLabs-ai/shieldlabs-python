@@ -23,8 +23,8 @@ from pydantic import BaseModel, ConfigDict, Field, StrictStr, field_validator
 from typing import Any, ClassVar, Dict, List, Optional
 from typing_extensions import Annotated
 from uuid import UUID
+from shieldlabs_generated.models.client_identity import ClientIdentity
 from shieldlabs_generated.models.detection_flags import DetectionFlags
-from shieldlabs_generated.models.fingerprint import Fingerprint
 from shieldlabs_generated.models.hre import HRE
 from shieldlabs_generated.models.ip_info import IpInfo
 from shieldlabs_generated.models.risk_event import RiskEvent
@@ -36,8 +36,9 @@ from pydantic_core import to_jsonable_python
 
 class IdentificationScoredData(BaseModel):
     """
-    Final identification. risk_score is this scan only; no all-time entity risk. New extension fields are required by version 2026-10-06; legacy bodies remain accepted.
+    Final identification. risk_score is this scan only. Version 2026-10-07 uses signals for score contributions, detection_flags for final decisions, and hre for account results. Older bodies remain accepted.
     """ # noqa: E501
+    client_identity: Optional[ClientIdentity] = None
     request_id: UUID = Field(description="Identifies one identification. The browser creates it as a UUID v4 and hands it to your page; it is the join key between the browser, the webhook and the History API. The nil UUID appears only on rate-limit marker rows that arrived with a malformed request ID.")
     visitor_id: UUID = Field(description="Server-side visitor identifier (UUID v5). It is sticky to the device: a new cookie on a known device keeps the existing visitor ID, so clearing cookies usually does not change it. The nil UUID appears on identifications without usable device data, such as rate-limit marker rows.")
     device_id: UUID = Field(description="Server-side device identifier (UUID v5). It survives cleared cookies and private windows. The nil UUID `00000000-0000-0000-0000-000000000000` means that no usable device signals were collected (for example on rate-limit marker rows): never group identifications by it.")
@@ -58,10 +59,12 @@ class IdentificationScoredData(BaseModel):
     observed_at: datetime = Field(description="Original snapshot scan clock, distinct from envelope created_at. RFC 3339 in UTC with up to 9 fractional digits.")
     result_version: Optional[Annotated[str, Field(min_length=1, strict=True)]] = None
     scoring_version: Optional[StrictStr] = Field(default=None, description="Core build source revision; core:unversioned on local builds.")
-    risk_events: Optional[List[RiskEvent]] = None
+    risk_events: Optional[List[RiskEvent]] = Field(default=None, description="Legacy 2026-10-06 only; absent from current scored events.")
     hre: Optional[HRE] = None
-    fingerprint: Optional[Fingerprint] = None
-    __properties: ClassVar[List[str]] = ["request_id", "visitor_id", "device_id", "session_id", "cookie_id", "user_hid", "domain", "public_ip", "local_ip", "connection_type", "os", "browser", "device_type", "traffic_source", "risk_score", "signals", "detection_flags", "observed_at", "result_version", "scoring_version", "risk_events", "hre", "fingerprint"]
+    search_bot_owner: Optional[StrictStr] = Field(default=None, description="Owner label from accepted search-bot detection; omitted when unknown or inactive.")
+    ai_bot_owner: Optional[StrictStr] = Field(default=None, description="Provider company label from accepted AI-bot detection; omitted when unknown or inactive.")
+    ai_browser_owner: Optional[StrictStr] = Field(default=None, description="Owner label from accepted AI-browser detection; omitted when unknown or inactive.")
+    __properties: ClassVar[List[str]] = ["client_identity", "request_id", "visitor_id", "device_id", "session_id", "cookie_id", "user_hid", "domain", "public_ip", "local_ip", "connection_type", "os", "browser", "device_type", "traffic_source", "risk_score", "signals", "detection_flags", "observed_at", "result_version", "scoring_version", "risk_events", "hre", "search_bot_owner", "ai_bot_owner", "ai_browser_owner"]
 
     @field_validator('observed_at')
     def observed_at_validate_regular_expression(cls, value):
@@ -112,6 +115,9 @@ class IdentificationScoredData(BaseModel):
             exclude=excluded_fields,
             exclude_none=True,
         )
+        # override the default output from pydantic by calling `to_dict()` of client_identity
+        if self.client_identity:
+            _dict['client_identity'] = self.client_identity.to_dict()
         # override the default output from pydantic by calling `to_dict()` of public_ip
         if self.public_ip:
             _dict['public_ip'] = self.public_ip.to_dict()
@@ -141,9 +147,6 @@ class IdentificationScoredData(BaseModel):
         # override the default output from pydantic by calling `to_dict()` of hre
         if self.hre:
             _dict['hre'] = self.hre.to_dict()
-        # override the default output from pydantic by calling `to_dict()` of fingerprint
-        if self.fingerprint:
-            _dict['fingerprint'] = self.fingerprint.to_dict()
         # set to None if user_hid (nullable) is None
         # and model_fields_set contains the field
         if self.user_hid is None and "user_hid" in self.model_fields_set:
@@ -161,6 +164,7 @@ class IdentificationScoredData(BaseModel):
             return cls.model_validate(obj)
 
         _obj = cls.model_validate({
+            "client_identity": ClientIdentity.from_dict(obj["client_identity"]) if obj.get("client_identity") is not None else None,
             "request_id": obj.get("request_id"),
             "visitor_id": obj.get("visitor_id"),
             "device_id": obj.get("device_id"),
@@ -183,7 +187,9 @@ class IdentificationScoredData(BaseModel):
             "scoring_version": obj.get("scoring_version"),
             "risk_events": [RiskEvent.from_dict(_item) for _item in obj["risk_events"]] if obj.get("risk_events") is not None else None,
             "hre": HRE.from_dict(obj["hre"]) if obj.get("hre") is not None else None,
-            "fingerprint": Fingerprint.from_dict(obj["fingerprint"]) if obj.get("fingerprint") is not None else None
+            "search_bot_owner": obj.get("search_bot_owner"),
+            "ai_bot_owner": obj.get("ai_bot_owner"),
+            "ai_browser_owner": obj.get("ai_browser_owner")
         })
         return _obj
 

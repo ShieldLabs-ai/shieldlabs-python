@@ -18,22 +18,25 @@ import pprint
 import re  # noqa: F401
 import json
 
-from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictInt, StrictStr
+from pydantic import BaseModel, ConfigDict, StrictStr
 from typing import Any, ClassVar, Dict, List
 from typing import Optional, Set
 from typing_extensions import Self
 from pydantic_core import to_jsonable_python
 
-class RiskEvent(BaseModel):
+class ClientIdentityClaimsInner(BaseModel):
     """
-    RiskEvent
+    ClientIdentityClaimsInner
     """ # noqa: E501
-    code: StrictStr = Field(description="Open catalogue of independent source signals. ai_bot and ai_browser carry weight 0; search_bot remains separate. browser_automation carries weight 90 in task 204 releases. UI Good bot and Bad bot groups are not risk event codes. Keep unknown codes and use the payload scoring_version/result_version for historical interpretation.")
-    detected: StrictBool = Field(description="Final scoring flag. false does not assert that every underlying probe completed.")
-    weight: StrictInt = Field(description="Catalogue weight, not an additive score. Banned IP 999 is a marker.")
-    contribution: StrictInt = Field(description="Matching score details, may contain corrections. Never recompute risk_score by summing.")
-    status: StrictStr = Field(description="The final scoring flag has been evaluated. Probe incompleteness is reported by dedicated risk events.")
-    __properties: ClassVar[List[str]] = ["code", "detected", "weight", "contribution", "status"]
+    profile_id: StrictStr
+    provider_id: StrictStr
+    provider_name: StrictStr
+    agent_name: StrictStr
+    client_kind: StrictStr
+    purpose: StrictStr
+    source: StrictStr
+    additional_properties: Dict[str, Any] = {}
+    __properties: ClassVar[List[str]] = ["profile_id", "provider_id", "provider_name", "agent_name", "client_kind", "purpose", "source"]
 
     model_config = ConfigDict(
         validate_by_name=True,
@@ -53,7 +56,7 @@ class RiskEvent(BaseModel):
 
     @classmethod
     def from_json(cls, json_str: str) -> Optional[Self]:
-        """Create an instance of RiskEvent from a JSON string"""
+        """Create an instance of ClientIdentityClaimsInner from a JSON string"""
         return cls.from_dict(json.loads(json_str))
 
     def to_dict(self) -> Dict[str, Any]:
@@ -65,8 +68,10 @@ class RiskEvent(BaseModel):
         * `None` is only added to the output dict for nullable fields that
           were set at model initialization. Other fields with value `None`
           are ignored.
+        * Fields in `self.additional_properties` are added to the output dict.
         """
         excluded_fields: Set[str] = set([
+            "additional_properties",
         ])
 
         _dict = self.model_dump(
@@ -74,11 +79,16 @@ class RiskEvent(BaseModel):
             exclude=excluded_fields,
             exclude_none=True,
         )
+        # puts key-value pairs in additional_properties in the top level
+        if self.additional_properties is not None:
+            for _key, _value in self.additional_properties.items():
+                _dict[_key] = _value
+
         return _dict
 
     @classmethod
     def from_dict(cls, obj: Optional[Dict[str, Any]]) -> Optional[Self]:
-        """Create an instance of RiskEvent from a dict"""
+        """Create an instance of ClientIdentityClaimsInner from a dict"""
         if obj is None:
             return None
 
@@ -86,12 +96,19 @@ class RiskEvent(BaseModel):
             return cls.model_validate(obj)
 
         _obj = cls.model_validate({
-            "code": obj.get("code"),
-            "detected": obj.get("detected"),
-            "weight": obj.get("weight"),
-            "contribution": obj.get("contribution"),
-            "status": obj.get("status")
+            "profile_id": obj.get("profile_id"),
+            "provider_id": obj.get("provider_id"),
+            "provider_name": obj.get("provider_name"),
+            "agent_name": obj.get("agent_name"),
+            "client_kind": obj.get("client_kind"),
+            "purpose": obj.get("purpose"),
+            "source": obj.get("source")
         })
+        # store additional fields in additional_properties
+        for _key in obj.keys():
+            if _key not in cls.__properties:
+                _obj.additional_properties[_key] = obj.get(_key)
+
         return _obj
 
 

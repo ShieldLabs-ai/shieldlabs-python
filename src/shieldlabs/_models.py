@@ -175,6 +175,8 @@ class DetectionFlags:
     javascript_disabled: bool = False
     stun_not_checked: bool = False
     check_incomplete: bool = False
+    ai_bot: Optional[bool] = None
+    ai_browser: Optional[bool] = None
     os_mismatch2: Optional[bool] = None
     device_spoofing: Optional[bool] = None
     latency_test: Optional[bool] = None
@@ -188,7 +190,14 @@ class DetectionFlags:
             **{key: bool(data.get(key, False)) for key in FLAG_KEYS},
             **{
                 key: data[key]
-                for key in ("os_mismatch2", "device_spoofing", "latency_test", "banned_ip")
+                for key in (
+                    "os_mismatch2",
+                    "device_spoofing",
+                    "latency_test",
+                    "banned_ip",
+                    "ai_bot",
+                    "ai_browser",
+                )
                 if isinstance(data.get(key), bool)
             },
         )
@@ -198,7 +207,14 @@ class DetectionFlags:
             **{key: getattr(self, key) for key in FLAG_KEYS},
             **{
                 key: getattr(self, key)
-                for key in ("os_mismatch2", "device_spoofing", "latency_test", "banned_ip")
+                for key in (
+                    "os_mismatch2",
+                    "device_spoofing",
+                    "latency_test",
+                    "banned_ip",
+                    "ai_bot",
+                    "ai_browser",
+                )
                 if getattr(self, key) is not None
             },
         }
@@ -269,6 +285,9 @@ class Identification:
     source: IdentificationSource
     result_version: Optional[str] = None
     scoring_version: Optional[str] = None
+    search_bot_owner: Optional[str] = None
+    ai_bot_owner: Optional[str] = None
+    ai_browser_owner: Optional[str] = None
     risk_events: Optional[tuple[RiskEvent, ...]] = None
     hre: Optional[Mapping[str, Any]] = None
     fingerprint: Optional[Mapping[str, Any]] = None
@@ -321,6 +340,13 @@ class Identification:
             detection_flags=DetectionFlags.from_dict(flags),
             observed_at=parse_rfc3339(data.get("observed_at")),
             source="webhook",
+            search_bot_owner=as_str(data["search_bot_owner"])
+            if "search_bot_owner" in data
+            else None,
+            ai_bot_owner=as_str(data["ai_bot_owner"]) if "ai_bot_owner" in data else None,
+            ai_browser_owner=as_str(data["ai_browser_owner"])
+            if "ai_browser_owner" in data
+            else None,
             result_version=as_str(data["result_version"]) if "result_version" in data else None,
             scoring_version=as_str(data["scoring_version"]) if "scoring_version" in data else None,
             risk_events=tuple(
@@ -453,6 +479,13 @@ class Identification:
             if isinstance(observed_at, datetime)
             else parse_rfc3339(observed_at),
             source="history" if source == "history" else "webhook",
+            search_bot_owner=as_str(data["search_bot_owner"])
+            if "search_bot_owner" in data
+            else None,
+            ai_bot_owner=as_str(data["ai_bot_owner"]) if "ai_bot_owner" in data else None,
+            ai_browser_owner=as_str(data["ai_browser_owner"])
+            if "ai_browser_owner" in data
+            else None,
             result_version=as_str(data["result_version"]) if "result_version" in data else None,
             scoring_version=as_str(data["scoring_version"]) if "scoring_version" in data else None,
             risk_events=tuple(
@@ -498,6 +531,17 @@ class Identification:
             **(
                 {"risk_events": [r.to_dict() for r in self.risk_events]}
                 if self.risk_events is not None
+                else {}
+            ),
+            **(
+                {"search_bot_owner": self.search_bot_owner}
+                if self.search_bot_owner is not None
+                else {}
+            ),
+            **({"ai_bot_owner": self.ai_bot_owner} if self.ai_bot_owner is not None else {}),
+            **(
+                {"ai_browser_owner": self.ai_browser_owner}
+                if self.ai_browser_owner is not None
                 else {}
             ),
             **({"hre": dict(self.hre)} if self.hre is not None else {}),
