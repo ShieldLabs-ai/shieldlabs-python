@@ -69,7 +69,7 @@ def test_normalization_cases(case: dict[str, Any]) -> None:
     assert identification.observed_at.utcoffset() == timedelta(0)
     assert isinstance(identification.signals, tuple)
     assert all(isinstance(signal.weight, int) for signal in identification.signals)
-    assert len(identification.detection_flags.to_dict()) == 19
+    assert len(identification.detection_flags.to_dict()) == 20
 
 
 @pytest.mark.parametrize("case", NORMALIZATION, ids=[c["name"] for c in NORMALIZATION])
@@ -115,10 +115,8 @@ def test_identification_band_properties() -> None:
     assert scored.has_device_signals
     assert scored.detection_flags.active() == (
         "proxy",
-        "datacenter_ip",
-        "anti_detect_browser",
         "ip_mismatch",
-        "suspicious_paid_click",
+        "anti_detect_browser",
     )
 
 
@@ -181,9 +179,9 @@ def test_history_ip_mismatch_rules() -> None:
     assert Identification.from_history_row(detail).detection_flags.ip_mismatch
 
 
-def test_history_browser_vpn_proxy_is_derived_from_connection_type() -> None:
+def test_history_browser_vpn_sets_the_vpn_flag() -> None:
     row = {"connection_type": "browser_vpn_proxy"}
-    assert Identification.from_history_row(row).detection_flags.browser_vpn_proxy
+    assert Identification.from_history_row(row).detection_flags.vpn
     assert Identification.from_history_row(row).connection_type == "browser_vpn_proxy"
 
 

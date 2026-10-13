@@ -5,23 +5,26 @@
     "connection_type": "proxy",
     "cookie_id": "2c9d1e8f-4b7a-4c3e-9d2f-1a8b7c6d5e4f",
     "detection_flags": {
-      "abuser": true,
-      "anti_detect_browser": false,
-      "browser_vpn_proxy": false,
+      "vpn": false,
+      "proxy": true,
+      "privacy_relay": false,
       "check_incomplete": false,
-      "datacenter_ip": true,
-      "incognito": false,
-      "ip_mismatch": false,
+      "stun_not_checked": false,
+      "os_not_detected": false,
+      "timezone_mismatch": false,
       "javascript_disabled": false,
       "os_mismatch": false,
-      "os_not_detected": false,
-      "privacy_relay": false,
-      "proxy": true,
-      "stun_not_checked": false,
-      "suspicious_paid_click": false,
-      "timezone_mismatch": false,
-      "tor": false,
-      "vpn": false
+      "ip_mismatch": false,
+      "ws_tcp_latency": false,
+      "anti_detect_browser": false,
+      "device_spoofing": false,
+      "rate_limited": false,
+      "incognito": false,
+      "search_bot": false,
+      "ai_bot": false,
+      "browser_automation": false,
+      "ai_browser": false,
+      "tor": false
     },
     "device_id": "6f1e2d3c-4b5a-5968-8776-655443322110",
     "device_type": "desktop",
@@ -68,5 +71,5 @@
     "visitor_id": "7a6b5c4d-3e2f-5a1b-9c8d-7e6f5a4b3c2d"
   },
   "event_type": "identification.scored",
-  "schema_version": "2026-06-01"
+  "schema_version": "2026-10-13"
 }

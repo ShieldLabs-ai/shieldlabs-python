@@ -153,27 +153,28 @@ class Signal:
 
 @dataclass(frozen=True)
 class DetectionFlags:
-    """The 19 detection flags. Branch on these and on ``risk_score``."""
+    """The 20 public detection flags. Branch on these and on ``risk_score``."""
 
     vpn: bool = False
-    privacy_relay: bool = False
-    browser_vpn_proxy: bool = False
-    tor: bool = False
     proxy: bool = False
-    datacenter_ip: bool = False
-    abuser: bool = False
-    os_mismatch: bool = False
+    privacy_relay: bool = False
+    check_incomplete: bool = False
+    stun_not_checked: bool = False
     os_not_detected: bool = False
     timezone_mismatch: bool = False
-    anti_detect_browser: bool = False
-    browser_automation: bool = False
+    javascript_disabled: bool = False
+    os_mismatch: bool = False
     ip_mismatch: bool = False
+    ws_tcp_latency: bool = False
+    anti_detect_browser: bool = False
+    device_spoofing: bool = False
+    rate_limited: bool = False
     incognito: bool = False
     search_bot: bool = False
-    suspicious_paid_click: bool = False
-    javascript_disabled: bool = False
-    stun_not_checked: bool = False
-    check_incomplete: bool = False
+    ai_bot: bool = False
+    browser_automation: bool = False
+    ai_browser: bool = False
+    tor: bool = False
 
     @classmethod
     def from_dict(cls, data: Mapping[str, Any]) -> DetectionFlags:
@@ -311,8 +312,16 @@ class Identification:
         search_bot = bool(row.get("is_search_bot", False))
         flags: dict[str, bool] = {}
         for key in FLAG_KEYS:
-            if key == "browser_vpn_proxy":
-                flags[key] = row.get("connection_type") == "browser_vpn_proxy"
+            if key == "vpn":
+                flags[key] = bool(
+                    row.get("is_vpn", False)
+                    or row.get("is_browser_vpn_proxy", False)
+                    or row.get("connection_type") == "browser_vpn_proxy"
+                )
+            elif key == "os_mismatch":
+                flags[key] = bool(
+                    row.get("is_os_mismatch", False) or row.get("is_os_mismatch2", False)
+                )
             elif key == "ip_mismatch":
                 differs = public_ip != "" and local_ip != "" and public_ip != local_ip
                 flags[key] = (not search_bot) and (ip_leak_detail or differs)
