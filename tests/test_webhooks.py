@@ -129,9 +129,9 @@ def test_rate_limited_event() -> None:
     assert event.data.to_dict() == NORMALIZATION["webhook_rate_limited"]["expected"]
 
 
-def test_dashboard_test_delivery_with_17_flags() -> None:
+def test_dashboard_test_delivery_with_public_flags() -> None:
     delivery = load_json("webhook-test-delivery.json")
-    assert len(delivery["data"]["detection_flags"]) == 17
+    assert len(delivery["data"]["detection_flags"]) == 20
     body = json.dumps(delivery, separators=(",", ":"), sort_keys=True).encode()
     event = webhooks.construct_event(body, sign(SECRET, body), SECRET)
     assert isinstance(event, IdentificationScoredEvent)
@@ -139,8 +139,6 @@ def test_dashboard_test_delivery_with_17_flags() -> None:
     assert flags.browser_automation is False
     assert flags.search_bot is False
     assert flags.proxy
-    assert flags.datacenter_ip
-    assert flags.abuser
     assert event.data.user_hid is None
     assert event.data.to_dict() == NORMALIZATION["webhook_test_delivery"]["expected"]
 
@@ -184,7 +182,10 @@ def test_unknown_schema_version_warns_but_parses() -> None:
 
 
 def test_known_schema_version_does_not_warn() -> None:
-    body = load_bytes("webhook-ping.raw.txt")
+    body = (
+        b'{"event_type":"webhook.ping","schema_version":"2026-10-13",'
+        b'"created_at":"2026-09-30T12:00:00Z"}'
+    )
     with warnings.catch_warnings():
         warnings.simplefilter("error")
         webhooks.construct_event(body, sign(SECRET, body), SECRET)

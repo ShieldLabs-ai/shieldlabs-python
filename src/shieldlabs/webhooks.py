@@ -49,7 +49,7 @@ __all__ = [
 SIGNATURE_HEADER = "X-Shield-Signature"
 """Name of the header that carries the signature."""
 
-SCHEMA_VERSION = "2026-06-01"
+SCHEMA_VERSION = "2026-10-13"
 """Webhook ``schema_version`` this SDK was built for. Other values are parsed with a warning."""
 
 _SIGNATURE_PREFIX = "sha256="
@@ -65,7 +65,7 @@ class IdentificationScoredEvent:
 
     Attributes:
         event_type: Always ``"identification.scored"``.
-        schema_version: Envelope schema version, for example ``"2026-06-01"``.
+        schema_version: Envelope schema version, for example ``"2026-10-13"``.
         created_at: When the event was created (aware UTC datetime), ``None`` if unparsable.
         data: The normalized identification.
         raw: The whole parsed envelope.

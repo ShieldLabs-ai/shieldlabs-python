@@ -6,6 +6,10 @@ All notable changes to this project are documented in this file. The format foll
 
 ## [Unreleased]
 
+### Changed
+
+- `DetectionFlags` follows webhook schema `2026-10-13`: 20 public booleans. `vpn` covers a network VPN and an in-browser VPN or proxy. `os_mismatch` covers either operating-system mismatch check. The public set adds `ws_tcp_latency`, `device_spoofing`, `rate_limited`, `ai_bot` and `ai_browser`.
+
 ### Added
 
 - `sync.sh` downloads the OpenAPI description and `generate.sh` rebuilds `generated/` from it. The supported client is unchanged.

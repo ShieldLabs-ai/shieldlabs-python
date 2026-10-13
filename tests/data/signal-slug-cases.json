@@ -47,7 +47,7 @@
     },
     {
       "description": "Browser VPN/Proxy",
-      "slug": "browser_vpn_proxy"
+      "slug": "vpn"
     },
     {
       "description": "Browser Automation",
@@ -75,7 +75,7 @@
     },
     {
       "description": "OS mismatch2 (TCP behaviour: ttl)",
-      "slug": "os_mismatch2"
+      "slug": "os_mismatch"
     },
     {
       "description": "TCP handshake (window)",
