@@ -82,7 +82,8 @@ def evaluate_identification(
     Checks run in this order and the first failure wins:
 
     1. ``missing``: no identification (unverified, never clean).
-    2. ``replayed``: ``is_replay(identification_id)`` returned ``True``. The SDK stores nothing; keep
+    2. ``replayed``: ``is_replay(identification_id)`` returned ``True``.
+       The SDK stores nothing; keep
        used request IDs in your own store.
     3. ``stale``: ``observed_at`` is older than ``max_age`` (a finite number of seconds, 0 or
        greater, or a timedelta).

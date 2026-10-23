@@ -61,7 +61,9 @@ def app_client(monkeypatch: pytest.MonkeyPatch) -> Iterator[tuple[TestClient, An
 
 
 def _signup(client: TestClient, identification_id: str = REQUEST_ID) -> httpx.Response:
-    return client.post("/signup", json={"email": "user@example.com", "identificationId": identification_id})
+    return client.post(
+        "/signup", json={"email": "user@example.com", "identificationId": identification_id}
+    )
 
 
 def test_trusted_signup_is_created_once(app_client: tuple[TestClient, Any]) -> None:

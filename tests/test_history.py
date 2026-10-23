@@ -241,7 +241,9 @@ def test_validation_error_is_also_value_error(client: ShieldLabs) -> None:
 # --- iteration ---------------------------------------------------------------------------
 
 
-def test_iter_dedupes_on_identification_id_and_stops_at_total(client: ShieldLabs, mock: Any) -> None:
+def test_iter_dedupes_on_identification_id_and_stops_at_total(
+    client: ShieldLabs, mock: Any
+) -> None:
     route = mock.get(host=HISTORY_HOST).mock(
         side_effect=[
             httpx.Response(200, json=history_body(row(uuid_for(1)), row(uuid_for(2)), total=5)),
