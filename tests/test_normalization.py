@@ -162,9 +162,9 @@ def test_history_row_keeps_negative_and_repeated_signals_and_skips_non_integers(
     ]
     identification = Identification.from_history_row({"score_details": json.dumps(details)})
     assert [(s.name, s.weight) for s in identification.signals] == [
-        ("stun_not_checked", 30),
+        ("network_check_incomplete", 30),
         ("stun_late_correction", -30),
-        ("stun_not_checked", 30),
+        ("network_check_incomplete", 30),
     ]
 
 
@@ -272,7 +272,7 @@ def test_history_page_rows_match_normalization_cases() -> None:
 def test_known_signal_names_are_plain_strings() -> None:
     assert SignalName.ANTIDETECT_BROWSER == "antidetect_browser"
     assert SignalName.STUN_LATE_CORRECTION == "stun_late_correction"
-    assert SignalName.RATE_LIMITED == "rate_limited"
+    assert SignalName.RATE_LIMITED == "banned_ip"
 
 
 def test_models_are_frozen() -> None:

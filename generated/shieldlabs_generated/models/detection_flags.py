@@ -29,7 +29,7 @@ class DetectionFlags(BaseModel):
     Stable yes/no verdicts for the identification. Always all 19 keys. Branch on these flags and on the Risk Score; signal names are for display and logging.  When `search_bot` is `true`, `incognito`, `check_incomplete`, `ip_mismatch` and `javascript_disabled` are always `false`.
     """ # noqa: E501
     vpn: StrictBool = Field(description="A VPN was detected (scored `vpn` signal).")
-    privacy_relay: StrictBool = Field(description="A privacy relay such as iCloud Private Relay was detected.")
+    private_relay: StrictBool = Field(description="A privacy relay such as iCloud Private Relay was detected.")
     browser_vpn_proxy: StrictBool = Field(description="A VPN or proxy built into the browser or one of its extensions. `true` exactly when `connection_type` is `browser_vpn_proxy`.")
     tor: StrictBool = Field(description="The request came through the Tor network.")
     proxy: StrictBool = Field(description="A proxy was detected.")
@@ -45,9 +45,9 @@ class DetectionFlags(BaseModel):
     search_bot: StrictBool = Field(description="A search-engine crawler. Its Risk Score is always 0.")
     suspicious_paid_click: StrictBool = Field(description="The visit came from a paid ad click (Google Ads, Meta, TikTok, Microsoft Ads, LinkedIn, Pinterest or X) and the Risk Score is 60 or more (the 999 marker included).")
     javascript_disabled: StrictBool = Field(description="JavaScript, or the browser APIs the checks need, were unavailable.")
-    stun_not_checked: StrictBool = Field(description="The browser network (STUN) check did not complete. Cleared again when a late network result arrives.")
+    network_check_incomplete: StrictBool = Field(description="The browser network (STUN) check did not complete. Cleared again when a late network result arrives.")
     check_incomplete: StrictBool = Field(description="Part of the browser checks timed out, so the verdict rests on partial data. Informational.")
-    __properties: ClassVar[List[str]] = ["vpn", "privacy_relay", "browser_vpn_proxy", "tor", "proxy", "datacenter_ip", "abuser", "os_mismatch", "os_not_detected", "timezone_mismatch", "anti_detect_browser", "browser_automation", "ip_mismatch", "incognito", "search_bot", "suspicious_paid_click", "javascript_disabled", "stun_not_checked", "check_incomplete"]
+    __properties: ClassVar[List[str]] = ["vpn", "private_relay", "browser_vpn_proxy", "tor", "proxy", "datacenter_ip", "abuser", "os_mismatch", "os_not_detected", "timezone_mismatch", "anti_detect_browser", "browser_automation", "ip_mismatch", "incognito", "search_bot", "suspicious_paid_click", "javascript_disabled", "network_check_incomplete", "check_incomplete"]
 
     model_config = ConfigDict(
         validate_by_name=True,
@@ -101,7 +101,7 @@ class DetectionFlags(BaseModel):
 
         _obj = cls.model_validate({
             "vpn": obj.get("vpn"),
-            "privacy_relay": obj.get("privacy_relay"),
+            "private_relay": obj.get("private_relay") if "private_relay" in obj else obj.get("privacy_relay"),
             "browser_vpn_proxy": obj.get("browser_vpn_proxy"),
             "tor": obj.get("tor"),
             "proxy": obj.get("proxy"),
@@ -117,7 +117,7 @@ class DetectionFlags(BaseModel):
             "search_bot": obj.get("search_bot"),
             "suspicious_paid_click": obj.get("suspicious_paid_click"),
             "javascript_disabled": obj.get("javascript_disabled"),
-            "stun_not_checked": obj.get("stun_not_checked"),
+            "network_check_incomplete": obj.get("network_check_incomplete") if "network_check_incomplete" in obj else obj.get("stun_not_checked"),
             "check_incomplete": obj.get("check_incomplete")
         })
         return _obj

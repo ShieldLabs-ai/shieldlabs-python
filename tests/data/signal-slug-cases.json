@@ -11,7 +11,7 @@
     },
     {
       "description": "Is privacy relay",
-      "slug": "privacy_relay"
+      "slug": "private_relay"
     },
     {
       "description": "Is proxy",
@@ -27,7 +27,7 @@
     },
     {
       "description": "Stun is not checked",
-      "slug": "stun_not_checked"
+      "slug": "network_check_incomplete"
     },
     {
       "description": "Stun passed (late arrival, corrected)",
@@ -42,7 +42,7 @@
       "slug": "os_not_detected"
     },
     {
-      "description": "Browser timezone ≠ IP-timezone",
+      "description": "Browser timezone \u2260 IP-timezone",
       "slug": "timezone_mismatch"
     },
     {
@@ -59,7 +59,7 @@
     },
     {
       "description": "User has been banned 1H, to many requests",
-      "slug": "rate_limited"
+      "slug": "banned_ip"
     },
     {
       "description": "Antidetect browser (turn_block)",
@@ -83,7 +83,7 @@
     },
     {
       "description": "Latency test (WS vs TCP: 40ms)",
-      "slug": "ws_tcp_latency"
+      "slug": "latency_test"
     },
     {
       "description": "JavaScript disabled (WebRTC, WebGL)",
@@ -98,7 +98,7 @@
       "slug": "port_scan_routed_via_proxy"
     },
     {
-      "description": "IP ≠ leakIP (198.51.100.7 ≠ 203.0.113.9, source=scanner)",
+      "description": "IP \u2260 leakIP (198.51.100.7 \u2260 203.0.113.9, source=scanner)",
       "slug": "ip__neq__leakip"
     },
     {
@@ -110,8 +110,8 @@
       "slug": "weird_name_here"
     },
     {
-      "description": "État Spécial (x)",
-      "slug": "état_spécial"
+      "description": "\u00c9tat Sp\u00e9cial (x)",
+      "slug": "\u00e9tat_sp\u00e9cial"
     },
     {
       "description": "(only parens)",
