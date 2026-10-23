@@ -26,28 +26,30 @@ from pydantic_core import to_jsonable_python
 
 class DetectionFlags(BaseModel):
     """
-    Stable yes/no verdicts for the identification. Always all 19 keys. Branch on these flags and on the Risk Score; signal names are for display and logging.  When `search_bot` is `true`, `incognito`, `check_incomplete`, `ip_mismatch` and `javascript_disabled` are always `false`.
+    The 20 public detection signals in scored webhook contract 2026-10-13. os_mismatch is true when either OS detector fired. browser_vpn_proxy contributes to vpn and is not its own flag. Groups and owner attribution are separate from this set.
     """ # noqa: E501
-    vpn: StrictBool = Field(description="A VPN was detected (scored `vpn` signal).")
-    privacy_relay: StrictBool = Field(description="A privacy relay such as iCloud Private Relay was detected.")
-    browser_vpn_proxy: StrictBool = Field(description="A VPN or proxy built into the browser or one of its extensions. `true` exactly when `connection_type` is `browser_vpn_proxy`.")
-    tor: StrictBool = Field(description="The request came through the Tor network.")
+    vpn: StrictBool = Field(description="A VPN was detected, including a VPN or proxy built into the browser. connection_type may still be browser_vpn_proxy.")
     proxy: StrictBool = Field(description="A proxy was detected.")
-    datacenter_ip: StrictBool = Field(description="The public IP belongs to a datacenter or hosting range.")
-    abuser: StrictBool = Field(description="The public IP has a record of abuse in IP intelligence.")
-    os_mismatch: StrictBool = Field(description="The operating system seen on the network differs from the one the browser reports.")
+    private_relay: StrictBool = Field(description="A privacy relay such as iCloud Private Relay was detected. Older payloads used privacy_relay.")
+    check_incomplete: StrictBool = Field(description="Part of the browser checks timed out, so the verdict rests on partial data. Informational. Weight 0, and present in signals when true.")
+    network_check_incomplete: StrictBool = Field(description="The browser network (STUN) check did not complete. Cleared again when a late network result arrives. Older payloads used stun_not_checked.")
     os_not_detected: StrictBool = Field(description="The operating system could not be determined from the User-Agent or the network.")
     timezone_mismatch: StrictBool = Field(description="The browser timezone differs from the timezone of the IP location.")
-    anti_detect_browser: StrictBool = Field(description="An anti-detect browser was detected.")
-    browser_automation: StrictBool = Field(description="Browser automation was detected, for example a WebDriver-controlled browser.")
-    ip_mismatch: StrictBool = Field(description="The public IP differs from the local IP found by the browser network check. Informational: it does not add to the score.")
-    incognito: StrictBool = Field(description="The browser runs in a private window.")
-    search_bot: StrictBool = Field(description="A search-engine crawler. Its Risk Score is always 0.")
-    suspicious_paid_click: StrictBool = Field(description="The visit came from a paid ad click (Google Ads, Meta, TikTok, Microsoft Ads, LinkedIn, Pinterest or X) and the Risk Score is 60 or more (the 999 marker included).")
     javascript_disabled: StrictBool = Field(description="JavaScript, or the browser APIs the checks need, were unavailable.")
-    stun_not_checked: StrictBool = Field(description="The browser network (STUN) check did not complete. Cleared again when a late network result arrives.")
-    check_incomplete: StrictBool = Field(description="Part of the browser checks timed out, so the verdict rests on partial data. Informational.")
-    __properties: ClassVar[List[str]] = ["vpn", "privacy_relay", "browser_vpn_proxy", "tor", "proxy", "datacenter_ip", "abuser", "os_mismatch", "os_not_detected", "timezone_mismatch", "anti_detect_browser", "browser_automation", "ip_mismatch", "incognito", "search_bot", "suspicious_paid_click", "javascript_disabled", "stun_not_checked", "check_incomplete"]
+    os_mismatch: StrictBool = Field(description="Either operating-system consistency detector fired. The two detectors are not separate public flags.")
+    ip_mismatch: StrictBool = Field(description="A qualifying mismatch between the public IP and the browser's network evidence was detected. Nominal weight 45; read the returned Risk Score.")
+    latency_test: StrictBool = Field(description="The WebSocket-to-TCP latency test fired. Older payloads used ws_tcp_latency.")
+    anti_detect_browser: StrictBool = Field(description="An anti-detect browser was detected.")
+    device_spoofing: StrictBool
+    banned_ip: StrictBool = Field(description="The visitor IP is banned for this window. The matching signal weight is 999. Older payloads used rate_limited.")
+    incognito: StrictBool = Field(description="The browser runs in a private window. Weight 0, and present in signals when true.")
+    search_bot: StrictBool = Field(description="A search-engine crawler. Its Risk Score is always 0. Weight 0, and present in signals when true.")
+    ai_bot: StrictBool = Field(description="A recognized AI bot or crawler. Its Risk Score is always 0. ShieldLabs identifies the provider when available. Weight 0, and present in signals when true.")
+    browser_automation: StrictBool = Field(description="Browser automation was detected, for example a WebDriver-controlled browser. Catalogue weight is 90 for task 204 scoring releases; historical result versions may retain the earlier weight 60.")
+    ai_browser: StrictBool = Field(description="A recognized AI browser. Its Risk Score is always 0. ShieldLabs identifies the provider when available. Weight 0, and present in signals when true.")
+    tor: StrictBool = Field(description="The request came through the Tor network.")
+    additional_properties: Dict[str, Any] = {}
+    __properties: ClassVar[List[str]] = ["vpn", "proxy", "private_relay", "check_incomplete", "network_check_incomplete", "os_not_detected", "timezone_mismatch", "javascript_disabled", "os_mismatch", "ip_mismatch", "latency_test", "anti_detect_browser", "device_spoofing", "banned_ip", "incognito", "search_bot", "ai_bot", "browser_automation", "ai_browser", "tor"]
 
     model_config = ConfigDict(
         validate_by_name=True,
@@ -79,8 +81,10 @@ class DetectionFlags(BaseModel):
         * `None` is only added to the output dict for nullable fields that
           were set at model initialization. Other fields with value `None`
           are ignored.
+        * Fields in `self.additional_properties` are added to the output dict.
         """
         excluded_fields: Set[str] = set([
+            "additional_properties",
         ])
 
         _dict = self.model_dump(
@@ -88,6 +92,11 @@ class DetectionFlags(BaseModel):
             exclude=excluded_fields,
             exclude_none=True,
         )
+        # puts key-value pairs in additional_properties in the top level
+        if self.additional_properties is not None:
+            for _key, _value in self.additional_properties.items():
+                _dict[_key] = _value
+
         return _dict
 
     @classmethod
@@ -101,25 +110,31 @@ class DetectionFlags(BaseModel):
 
         _obj = cls.model_validate({
             "vpn": obj.get("vpn"),
-            "privacy_relay": obj.get("privacy_relay"),
-            "browser_vpn_proxy": obj.get("browser_vpn_proxy"),
-            "tor": obj.get("tor"),
             "proxy": obj.get("proxy"),
-            "datacenter_ip": obj.get("datacenter_ip"),
-            "abuser": obj.get("abuser"),
-            "os_mismatch": obj.get("os_mismatch"),
+            "private_relay": obj.get("private_relay"),
+            "check_incomplete": obj.get("check_incomplete"),
+            "network_check_incomplete": obj.get("network_check_incomplete"),
             "os_not_detected": obj.get("os_not_detected"),
             "timezone_mismatch": obj.get("timezone_mismatch"),
-            "anti_detect_browser": obj.get("anti_detect_browser"),
-            "browser_automation": obj.get("browser_automation"),
+            "javascript_disabled": obj.get("javascript_disabled"),
+            "os_mismatch": obj.get("os_mismatch"),
             "ip_mismatch": obj.get("ip_mismatch"),
+            "latency_test": obj.get("latency_test"),
+            "anti_detect_browser": obj.get("anti_detect_browser"),
+            "device_spoofing": obj.get("device_spoofing"),
+            "banned_ip": obj.get("banned_ip"),
             "incognito": obj.get("incognito"),
             "search_bot": obj.get("search_bot"),
-            "suspicious_paid_click": obj.get("suspicious_paid_click"),
-            "javascript_disabled": obj.get("javascript_disabled"),
-            "stun_not_checked": obj.get("stun_not_checked"),
-            "check_incomplete": obj.get("check_incomplete")
+            "ai_bot": obj.get("ai_bot"),
+            "browser_automation": obj.get("browser_automation"),
+            "ai_browser": obj.get("ai_browser"),
+            "tor": obj.get("tor")
         })
+        # store additional fields in additional_properties
+        for _key in obj.keys():
+            if _key not in cls.__properties:
+                _obj.additional_properties[_key] = obj.get(_key)
+
         return _obj
 
 

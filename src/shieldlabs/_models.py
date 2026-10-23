@@ -73,17 +73,17 @@ class SignalName:
     PROXY_ROUTED_ANTIDETECT = "proxy_routed_antidetect"
     PORT_SCAN_ROUTED_VIA_PROXY = "port_scan_routed_via_proxy"
     BROWSER_AUTOMATION = "browser_automation"
-    STUN_NOT_CHECKED = "stun_not_checked"
+    STUN_NOT_CHECKED = "network_check_incomplete"
     STUN_LATE_CORRECTION = "stun_late_correction"
     OS_NOT_DETECTED = "os_not_detected"
     BROWSER_VPN_PROXY = "browser_vpn_proxy"
     VPN = "vpn"
-    PRIVACY_RELAY = "privacy_relay"
+    PRIVACY_RELAY = "private_relay"
     PROXY = "proxy"
     DATACENTER_IP = "datacenter_ip"
     ABUSER = "abuser"
     TIMEZONE_MISMATCH = "timezone_mismatch"
-    RATE_LIMITED = "rate_limited"
+    RATE_LIMITED = "banned_ip"
 
 
 @dataclass(frozen=True)
@@ -163,18 +163,18 @@ class DetectionFlags:
 
     vpn: bool = False
     proxy: bool = False
-    privacy_relay: bool = False
+    private_relay: bool = False
     check_incomplete: bool = False
-    stun_not_checked: bool = False
+    network_check_incomplete: bool = False
     os_not_detected: bool = False
     timezone_mismatch: bool = False
     javascript_disabled: bool = False
     os_mismatch: bool = False
     ip_mismatch: bool = False
-    ws_tcp_latency: bool = False
+    latency_test: bool = False
     anti_detect_browser: bool = False
     device_spoofing: bool = False
-    rate_limited: bool = False
+    banned_ip: bool = False
     incognito: bool = False
     search_bot: bool = False
     ai_bot: bool = False
@@ -186,7 +186,18 @@ class DetectionFlags:
     def from_dict(cls, data: Mapping[str, Any]) -> DetectionFlags:
         """Build from a webhook ``detection_flags`` object. A missing key is ``False``."""
         data = _mapping(data)
-        return cls(**{key: bool(data.get(key, False)) for key in FLAG_KEYS})
+        legacy = {
+            "private_relay": "privacy_relay",
+            "network_check_incomplete": "stun_not_checked",
+            "latency_test": "ws_tcp_latency",
+            "banned_ip": "rate_limited",
+        }
+        return cls(
+            **{
+                key: bool(data.get(key, False) or data.get(legacy.get(key, ""), False))
+                for key in FLAG_KEYS
+            }
+        )
 
     def to_dict(self) -> dict[str, bool]:
         return {key: getattr(self, key) for key in FLAG_KEYS}

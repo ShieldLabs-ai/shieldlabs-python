@@ -8,6 +8,7 @@ All notable changes to this project are documented in this file. The format foll
 
 ### Changed
 
+- Public risk-signal slugs are `network_check_incomplete`, `banned_ip`, `private_relay` and `latency_test`. Webhook flag parsers still accept `stun_not_checked`, `rate_limited`, `privacy_relay` and `ws_tcp_latency`. The score marker band stays `rate_limited`. History columns stay `is_stun_not_checked`, `is_rate_limited`, `is_privacy_relay` and `is_latency_test`.
 - `DetectionFlags` follows webhook schema `2026-10-13`: 20 public booleans. `vpn` covers a network VPN and an in-browser VPN or proxy. `os_mismatch` covers either operating-system mismatch check. The public set adds `ws_tcp_latency`, `device_spoofing`, `rate_limited`, `ai_bot` and `ai_browser`.
 
 ### Added

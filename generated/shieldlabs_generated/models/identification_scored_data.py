@@ -23,18 +23,22 @@ from pydantic import BaseModel, ConfigDict, Field, StrictStr, field_validator
 from typing import Any, ClassVar, Dict, List, Optional
 from typing_extensions import Annotated
 from uuid import UUID
-from shieldlabs_generated.models.detection_flags import DetectionFlags
+from shieldlabs_generated.models.hre import HRE
+from shieldlabs_generated.models.identification_scored_data_detection_flags import IdentificationScoredDataDetectionFlags
 from shieldlabs_generated.models.ip_info import IpInfo
+from shieldlabs_generated.models.risk_event import RiskEvent
 from shieldlabs_generated.models.signal import Signal
 from shieldlabs_generated.models.traffic_source import TrafficSource
+from shieldlabs_generated.models.webhook_client_identity import WebhookClientIdentity
 from typing import Optional, Set
 from typing_extensions import Self
 from pydantic_core import to_jsonable_python
 
 class IdentificationScoredData(BaseModel):
     """
-    The scored identification. Every key is always present (no key is ever omitted); only `user_hid` can be `null`.
+    Final identification. risk_score is this scan only. Version 2026-10-13 uses signals for score contributions, including fired signals of weight 0, detection_flags for 20 public signals, and hre for account results. Older bodies remain accepted.
     """ # noqa: E501
+    client_identity: Optional[WebhookClientIdentity] = Field(default=None, description="Optional best-effort attribution. May be omitted or null; every nested field is also optional and nullable. Integrations must work without these values.")
     identification_id: UUID = Field(description="Identifies one identification. The browser creates it as a UUID v4 and hands it to your page; it is the join key between the browser, the webhook and the History API. The nil UUID appears only on rate-limit marker rows that arrived with a malformed request ID.")
     visitor_id: UUID = Field(description="Server-side visitor identifier (UUID v5). It is sticky to the device: a new cookie on a known device keeps the existing visitor ID, so clearing cookies usually does not change it. The nil UUID appears on identifications without usable device data, such as rate-limit marker rows.")
     device_id: UUID = Field(description="Server-side device identifier (UUID v5). It survives cleared cookies and private windows. The nil UUID `00000000-0000-0000-0000-000000000000` means that no usable device signals were collected (for example on rate-limit marker rows): never group identifications by it.")
@@ -49,11 +53,18 @@ class IdentificationScoredData(BaseModel):
     browser: StrictStr = Field(description="Browser name, for example `Chrome`, `Safari`, `Firefox`, `Microsoft Edge`, `Opera`, `Samsung Internet`, `Brave`, `Chrome (iOS)`, `Safari (iOS)` or `Unknown`. Open set: display it, do not branch on it.")
     device_type: StrictStr = Field(description="Device class from the browser. Known values: `desktop`, `mobile`, `tablet` and `unknown` (the class could not be determined). The set is open: keep values added in later versions and treat them as `unknown`.")
     traffic_source: TrafficSource
-    risk_score: Annotated[int, Field(strict=True, ge=0)] = Field(description="Risk Score from 0 (no risk found) to 100. Search-engine crawlers always score 0.  Risk bands are computed on your side from the score; no band field exists on the wire: - trusted: 0-29 - suspicious: 30-59 - dangerous: 60-100  A value above 100 is not a score. `999` is the rate-limit marker: the visitor's IP went over the ingest rate limit, and the identification carries exactly one signal, `{\"name\":\"rate_limited\",\"weight\":999}`, usually with nil identifiers. Treat every value above 100 as rate limited. One marker is written when the IP goes over the limit; request IDs issued while it stays blocked get no row and no webhook, so they stay unverified.  The score usually equals the sum of the signal weights capped at 100, but carried-forward verdicts and corrections make that unreliable: never recompute or validate it yourself.")
-    signals: List[Signal] = Field(description="Weighted risk signals behind `risk_score`, in scoring order. Can be empty. The rate-limit marker carries exactly one entry, `{\"name\":\"rate_limited\",\"weight\":999}`.")
-    detection_flags: DetectionFlags
-    observed_at: datetime = Field(description="When scoring finished and the event was built (not the page view time); identical to the envelope `created_at`. RFC 3339 in UTC with up to 9 fractional digits.")
-    __properties: ClassVar[List[str]] = ["identification_id", "visitor_id", "device_id", "session_id", "cookie_id", "user_hid", "domain", "public_ip", "local_ip", "connection_type", "os", "browser", "device_type", "traffic_source", "risk_score", "signals", "detection_flags", "observed_at"]
+    risk_score: Annotated[int, Field(strict=True, ge=0)] = Field(description="Risk Score from 0 (no risk found) to 100. Search-engine crawlers always score 0.  Risk bands are computed on your side from the score; no band field exists on the wire: - trusted: 0-29 - suspicious: 30-59 - dangerous: 60-100  A value above 100 is not a score. `999` is the rate-limit marker: the visitor's IP went over the ingest rate limit, and the identification carries exactly one signal, `{\"name\":\"banned_ip\",\"weight\":999}`, usually with nil identifiers. Treat every value above 100 as rate limited. One marker is written when the IP goes over the limit; request IDs issued while it stays blocked get no row and no webhook, so they stay unverified.  The score usually equals the sum of the signal weights capped at 100, but carried-forward verdicts and corrections make that unreliable: never recompute or validate it yourself.")
+    signals: List[Signal] = Field(description="Weighted risk signals behind `risk_score`, in scoring order. Can be empty. The rate-limit marker carries exactly one entry, `{\"name\":\"banned_ip\",\"weight\":999}`.")
+    detection_flags: IdentificationScoredDataDetectionFlags
+    observed_at: datetime = Field(description="Original snapshot scan clock, distinct from envelope created_at. RFC 3339 in UTC with up to 9 fractional digits.")
+    result_version: Optional[Annotated[str, Field(min_length=1, strict=True)]] = Field(default=None, description="Legacy through 2026-10-08 only; omitted by current emitters.")
+    scoring_version: Optional[StrictStr] = Field(default=None, description="Legacy through 2026-10-08 only; omitted by current emitters.")
+    risk_events: Optional[List[RiskEvent]] = Field(default=None, description="Legacy 2026-10-06 only; absent from current scored events.")
+    hre: Optional[HRE] = None
+    search_bot_owner: Optional[StrictStr] = Field(default=None, description="Owner label from accepted search-bot detection; omitted when unknown or inactive.")
+    ai_bot_owner: Optional[StrictStr] = Field(default=None, description="Provider company label from accepted AI-bot detection; omitted when unknown or inactive.")
+    ai_browser_owner: Optional[StrictStr] = Field(default=None, description="Owner label from accepted AI-browser detection; omitted when unknown or inactive.")
+    __properties: ClassVar[List[str]] = ["client_identity", "identification_id", "visitor_id", "device_id", "session_id", "cookie_id", "user_hid", "domain", "public_ip", "local_ip", "connection_type", "os", "browser", "device_type", "traffic_source", "risk_score", "signals", "detection_flags", "observed_at", "result_version", "scoring_version", "risk_events", "hre", "search_bot_owner", "ai_bot_owner", "ai_browser_owner"]
 
     @field_validator('observed_at')
     def observed_at_validate_regular_expression(cls, value):
@@ -104,6 +115,9 @@ class IdentificationScoredData(BaseModel):
             exclude=excluded_fields,
             exclude_none=True,
         )
+        # override the default output from pydantic by calling `to_dict()` of client_identity
+        if self.client_identity:
+            _dict['client_identity'] = self.client_identity.to_dict()
         # override the default output from pydantic by calling `to_dict()` of public_ip
         if self.public_ip:
             _dict['public_ip'] = self.public_ip.to_dict()
@@ -123,6 +137,16 @@ class IdentificationScoredData(BaseModel):
         # override the default output from pydantic by calling `to_dict()` of detection_flags
         if self.detection_flags:
             _dict['detection_flags'] = self.detection_flags.to_dict()
+        # override the default output from pydantic by calling `to_dict()` of each item in risk_events (list)
+        _items = []
+        if self.risk_events:
+            for _item_risk_events in self.risk_events:
+                if _item_risk_events:
+                    _items.append(_item_risk_events.to_dict())
+            _dict['risk_events'] = _items
+        # override the default output from pydantic by calling `to_dict()` of hre
+        if self.hre:
+            _dict['hre'] = self.hre.to_dict()
         # set to None if user_hid (nullable) is None
         # and model_fields_set contains the field
         if self.user_hid is None and "user_hid" in self.model_fields_set:
@@ -140,6 +164,7 @@ class IdentificationScoredData(BaseModel):
             return cls.model_validate(obj)
 
         _obj = cls.model_validate({
+            "client_identity": WebhookClientIdentity.from_dict(obj["client_identity"]) if obj.get("client_identity") is not None else None,
             "identification_id": obj.get("identification_id"),
             "visitor_id": obj.get("visitor_id"),
             "device_id": obj.get("device_id"),
@@ -156,8 +181,15 @@ class IdentificationScoredData(BaseModel):
             "traffic_source": TrafficSource.from_dict(obj["traffic_source"]) if obj.get("traffic_source") is not None else None,
             "risk_score": obj.get("risk_score"),
             "signals": [Signal.from_dict(_item) for _item in obj["signals"]] if obj.get("signals") is not None else None,
-            "detection_flags": DetectionFlags.from_dict(obj["detection_flags"]) if obj.get("detection_flags") is not None else None,
-            "observed_at": obj.get("observed_at")
+            "detection_flags": IdentificationScoredDataDetectionFlags.from_dict(obj["detection_flags"]) if obj.get("detection_flags") is not None else None,
+            "observed_at": obj.get("observed_at"),
+            "result_version": obj.get("result_version"),
+            "scoring_version": obj.get("scoring_version"),
+            "risk_events": [RiskEvent.from_dict(_item) for _item in obj["risk_events"]] if obj.get("risk_events") is not None else None,
+            "hre": HRE.from_dict(obj["hre"]) if obj.get("hre") is not None else None,
+            "search_bot_owner": obj.get("search_bot_owner"),
+            "ai_bot_owner": obj.get("ai_bot_owner"),
+            "ai_browser_owner": obj.get("ai_browser_owner")
         })
         return _obj
 

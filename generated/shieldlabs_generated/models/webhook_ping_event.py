@@ -20,7 +20,7 @@ import json
 
 from datetime import datetime
 from pydantic import BaseModel, ConfigDict, Field, StrictStr, field_validator
-from typing import Any, ClassVar, Dict, List
+from typing import Any, ClassVar, Dict, List, Optional
 from typing_extensions import Annotated
 from typing import Optional, Set
 from typing_extensions import Self
@@ -31,9 +31,10 @@ class WebhookPingEvent(BaseModel):
     Body of a `webhook.ping` delivery, sent when you verify an endpoint. It has no `data`. The keys arrive sorted alphabetically and `created_at` has second precision.
     """ # noqa: E501
     event_type: StrictStr = Field(description="Event type.")
-    schema_version: Annotated[str, Field(min_length=1, strict=True)] = Field(description="Version of the webhook payload contract. Every event sent today carries `2026-06-01`. Accept other values, so that a future version does not break your handler.")
+    schema_version: Annotated[str, Field(min_length=1, strict=True)] = Field(description="Webhook contract version. Scored release 2026-10-13 (20 public signals); 2026-10-12 keeps 21 independent source signals; multi-account group release 2026-10-07; parsers also accept legacy 2026-06-01.")
     created_at: datetime = Field(description="When the ping was sent, with second precision.")
-    __properties: ClassVar[List[str]] = ["event_type", "schema_version", "created_at"]
+    event_id: Optional[Annotated[str, Field(min_length=1, strict=True)]] = None
+    __properties: ClassVar[List[str]] = ["event_type", "schema_version", "created_at", "event_id"]
 
     @field_validator('event_type')
     def event_type_validate_enum(cls, value):
@@ -105,7 +106,8 @@ class WebhookPingEvent(BaseModel):
         _obj = cls.model_validate({
             "event_type": obj.get("event_type"),
             "schema_version": obj.get("schema_version"),
-            "created_at": obj.get("created_at")
+            "created_at": obj.get("created_at"),
+            "event_id": obj.get("event_id")
         })
         return _obj
 

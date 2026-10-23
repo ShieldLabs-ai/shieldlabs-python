@@ -328,7 +328,7 @@ class ManagementAPIApi:
     def search_history_deprecated(
         self,
         x_shield_domain: Annotated[str, Field(min_length=1, strict=True, max_length=253, description="Your registered domain. The server matches it exactly against the domain registered in the analytics dashboard, so send it normalized: lowercase, without scheme, path, trailing slash or a leading `www.` (`https://www.Example.com/` becomes `example.com`). A missing or wrong value gets a `401` with an empty body.")],
-        type: Annotated[StrictStr, Field(description="Identifier to search by. Other values get a `404` with a bare JSON string such as `\"auto is not supported\"`.")],
+        type: Annotated[StrictStr, Field(description="Identifier to search by. `request_id` is a legacy alias of `identification_id`. Other values get a `404` with a bare JSON string such as `\"auto is not supported\"`.")],
         value: Annotated[str, Field(min_length=1, strict=True, description="Value of the identifier. UUID types accept a UUID of any version; `ip` must be an IP address (an IPv6 address passes validation but then fails with `400` and a `null` body); `user_hid` is free text.")],
         limit: Annotated[Optional[Annotated[int, Field(le=100, strict=True, ge=1)]], Field(description="Maximum number of identifications, from 1 to 100. Any other value becomes 100. There is no `offset`.")] = None,
         _request_timeout: Union[
@@ -350,7 +350,7 @@ class ManagementAPIApi:
 
         :param x_shield_domain: Your registered domain. The server matches it exactly against the domain registered in the analytics dashboard, so send it normalized: lowercase, without scheme, path, trailing slash or a leading `www.` (`https://www.Example.com/` becomes `example.com`). A missing or wrong value gets a `401` with an empty body. (required)
         :type x_shield_domain: str
-        :param type: Identifier to search by. Other values get a `404` with a bare JSON string such as `\"auto is not supported\"`. (required)
+        :param type: Identifier to search by. `request_id` is a legacy alias of `identification_id`. Other values get a `404` with a bare JSON string such as `\"auto is not supported\"`. (required)
         :type type: str
         :param value: Value of the identifier. UUID types accept a UUID of any version; `ip` must be an IP address (an IPv6 address passes validation but then fails with `400` and a `null` body); `user_hid` is free text. (required)
         :type value: str
@@ -415,7 +415,7 @@ class ManagementAPIApi:
     def search_history_deprecated_with_http_info(
         self,
         x_shield_domain: Annotated[str, Field(min_length=1, strict=True, max_length=253, description="Your registered domain. The server matches it exactly against the domain registered in the analytics dashboard, so send it normalized: lowercase, without scheme, path, trailing slash or a leading `www.` (`https://www.Example.com/` becomes `example.com`). A missing or wrong value gets a `401` with an empty body.")],
-        type: Annotated[StrictStr, Field(description="Identifier to search by. Other values get a `404` with a bare JSON string such as `\"auto is not supported\"`.")],
+        type: Annotated[StrictStr, Field(description="Identifier to search by. `request_id` is a legacy alias of `identification_id`. Other values get a `404` with a bare JSON string such as `\"auto is not supported\"`.")],
         value: Annotated[str, Field(min_length=1, strict=True, description="Value of the identifier. UUID types accept a UUID of any version; `ip` must be an IP address (an IPv6 address passes validation but then fails with `400` and a `null` body); `user_hid` is free text.")],
         limit: Annotated[Optional[Annotated[int, Field(le=100, strict=True, ge=1)]], Field(description="Maximum number of identifications, from 1 to 100. Any other value becomes 100. There is no `offset`.")] = None,
         _request_timeout: Union[
@@ -437,7 +437,7 @@ class ManagementAPIApi:
 
         :param x_shield_domain: Your registered domain. The server matches it exactly against the domain registered in the analytics dashboard, so send it normalized: lowercase, without scheme, path, trailing slash or a leading `www.` (`https://www.Example.com/` becomes `example.com`). A missing or wrong value gets a `401` with an empty body. (required)
         :type x_shield_domain: str
-        :param type: Identifier to search by. Other values get a `404` with a bare JSON string such as `\"auto is not supported\"`. (required)
+        :param type: Identifier to search by. `request_id` is a legacy alias of `identification_id`. Other values get a `404` with a bare JSON string such as `\"auto is not supported\"`. (required)
         :type type: str
         :param value: Value of the identifier. UUID types accept a UUID of any version; `ip` must be an IP address (an IPv6 address passes validation but then fails with `400` and a `null` body); `user_hid` is free text. (required)
         :type value: str
@@ -502,7 +502,7 @@ class ManagementAPIApi:
     def search_history_deprecated_without_preload_content(
         self,
         x_shield_domain: Annotated[str, Field(min_length=1, strict=True, max_length=253, description="Your registered domain. The server matches it exactly against the domain registered in the analytics dashboard, so send it normalized: lowercase, without scheme, path, trailing slash or a leading `www.` (`https://www.Example.com/` becomes `example.com`). A missing or wrong value gets a `401` with an empty body.")],
-        type: Annotated[StrictStr, Field(description="Identifier to search by. Other values get a `404` with a bare JSON string such as `\"auto is not supported\"`.")],
+        type: Annotated[StrictStr, Field(description="Identifier to search by. `request_id` is a legacy alias of `identification_id`. Other values get a `404` with a bare JSON string such as `\"auto is not supported\"`.")],
         value: Annotated[str, Field(min_length=1, strict=True, description="Value of the identifier. UUID types accept a UUID of any version; `ip` must be an IP address (an IPv6 address passes validation but then fails with `400` and a `null` body); `user_hid` is free text.")],
         limit: Annotated[Optional[Annotated[int, Field(le=100, strict=True, ge=1)]], Field(description="Maximum number of identifications, from 1 to 100. Any other value becomes 100. There is no `offset`.")] = None,
         _request_timeout: Union[
@@ -524,7 +524,7 @@ class ManagementAPIApi:
 
         :param x_shield_domain: Your registered domain. The server matches it exactly against the domain registered in the analytics dashboard, so send it normalized: lowercase, without scheme, path, trailing slash or a leading `www.` (`https://www.Example.com/` becomes `example.com`). A missing or wrong value gets a `401` with an empty body. (required)
         :type x_shield_domain: str
-        :param type: Identifier to search by. Other values get a `404` with a bare JSON string such as `\"auto is not supported\"`. (required)
+        :param type: Identifier to search by. `request_id` is a legacy alias of `identification_id`. Other values get a `404` with a bare JSON string such as `\"auto is not supported\"`. (required)
         :type type: str
         :param value: Value of the identifier. UUID types accept a UUID of any version; `ip` must be an IP address (an IPv6 address passes validation but then fails with `400` and a `null` body); `user_hid` is free text. (required)
         :type value: str
