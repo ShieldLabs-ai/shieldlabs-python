@@ -55,7 +55,9 @@ def allow_signup(identification_id: str) -> bool:
     identification = client.identifications.get(identification_id)
 
     # 2. Evaluate it: missing, reused, stale, rate-limited, automated or dangerous is refused.
-    verdict = evaluate_identification(identification, is_replay=lambda rid: rid in used_identification_ids)
+    verdict = evaluate_identification(
+        identification, is_replay=lambda rid: rid in used_identification_ids
+    )
     if identification is not None:
         used_identification_ids.add(identification.identification_id)
     return verdict.ok
