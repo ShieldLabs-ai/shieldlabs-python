@@ -123,7 +123,7 @@ def test_identification_band_properties() -> None:
 def test_history_row_tolerates_missing_and_malformed_fields() -> None:
     identification = Identification.from_history_row(
         {
-            "request_id": 42,
+            "identification_id": 42,
             "score": "high",
             "score_details": "not json",
             "created_at": "yesterday",
@@ -131,7 +131,7 @@ def test_history_row_tolerates_missing_and_malformed_fields() -> None:
             "ip": " 0.0.0.0 ",
         }
     )
-    assert identification.request_id == ""
+    assert identification.identification_id == ""
     assert identification.risk_score == 0
     assert identification.signals == ()
     assert identification.observed_at is None
@@ -209,7 +209,7 @@ def test_history_local_ip_uses_leak_source_only_when_set() -> None:
 def test_webhook_data_tolerates_partial_objects() -> None:
     identification = Identification.from_webhook_data(
         {
-            "request_id": "3f2b8c1e-9d4a-4e6b-8a7c-2d1e0f9b6a53",
+            "identification_id": "3f2b8c1e-9d4a-4e6b-8a7c-2d1e0f9b6a53",
             "risk_score": 35,
             "user_hid": None,
             "signals": [{"name": "vpn", "weight": 15}, "bad", {"weight": 5}],
@@ -237,7 +237,7 @@ def test_from_dict_accepts_datetime_and_signal_descriptions() -> None:
     moment = datetime(2026, 9, 30, 12, 0, tzinfo=timezone.utc)
     identification = Identification.from_dict(
         {
-            "request_id": "3f2b8c1e-9d4a-4e6b-8a7c-2d1e0f9b6a53",
+            "identification_id": "3f2b8c1e-9d4a-4e6b-8a7c-2d1e0f9b6a53",
             "signals": [{"name": "proxy", "weight": 10, "description": "Is proxy"}],
             "observed_at": moment,
             "source": "history",
@@ -256,7 +256,7 @@ def test_history_page_from_dict() -> None:
     assert all(item.source == "history" for item in page.data)
     empty = HistoryPage.from_dict(load_json("history-empty.json"))
     assert empty == HistoryPage(data=(), total=0)
-    odd = HistoryPage.from_dict({"data": [{"request_id": "x"}, "junk"], "total": None})
+    odd = HistoryPage.from_dict({"data": [{"identification_id": "x"}, "junk"], "total": None})
     assert odd.total == 1
     assert HistoryPage.from_dict({"data": "nope"}).data == ()
 
@@ -264,9 +264,9 @@ def test_history_page_from_dict() -> None:
 def test_history_page_rows_match_normalization_cases() -> None:
     page = HistoryPage.from_dict(load_json("history-page.json"))
     expected = {c["name"]: c["expected"] for c in NORMALIZATION if c["source"] == "history"}
-    by_request = {v["request_id"]: v for v in expected.values()}
+    by_request = {v["identification_id"]: v for v in expected.values()}
     for identification in page.data:
-        assert identification.to_dict() == by_request[identification.request_id]
+        assert identification.to_dict() == by_request[identification.identification_id]
 
 
 def test_known_signal_names_are_plain_strings() -> None:

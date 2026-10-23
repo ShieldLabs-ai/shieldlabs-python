@@ -15,8 +15,8 @@ ShieldLabs identifies visitors and scores risk with device intelligence. New to 
 
 ```
  1. Browser            2. Your backend                          3. Decision
- ShieldLabs agent ---> receives requestId with the signup,  ---> allow, step up,
- returns requestId     login or checkout; reads the verdict      review or refuse
+ ShieldLabs agent ---> receives identificationId with the signup,  ---> allow, step up,
+ returns identificationId     login or checkout; reads the verdict      review or refuse
                        with this SDK (History API) or gets it
                        as a signed identification.scored webhook
 ```
@@ -46,18 +46,20 @@ from typing import Optional
 from shieldlabs import ShieldLabs, evaluate_identification, webhooks
 
 client = ShieldLabs(api_key=os.environ["SHIELDLABS_API_KEY"])  # Private API Key, sec_...
-used_request_ids: set[str] = set()  # use your database or cache in production
+used_identification_ids: set[str] = set()  # use your database or cache in production
 
 
-def allow_signup(request_id: str) -> bool:
+def allow_signup(identification_id: str) -> bool:
     # 1. Read the identification for the request ID the browser sent with the form.
     #    Scoring is asynchronous, so this waits (up to 10 s by default) for the verdict.
-    identification = client.identifications.get(request_id)
+    identification = client.identifications.get(identification_id)
 
     # 2. Evaluate it: missing, reused, stale, rate-limited, automated or dangerous is refused.
-    verdict = evaluate_identification(identification, is_replay=lambda rid: rid in used_request_ids)
+    verdict = evaluate_identification(
+        identification, is_replay=lambda rid: rid in used_identification_ids
+    )
     if identification is not None:
-        used_request_ids.add(identification.request_id)
+        used_identification_ids.add(identification.identification_id)
     return verdict.ok
 
 
@@ -84,13 +86,13 @@ start filling in the signup form) rather than on submit, so the verdict is usual
 your backend asks for it. An identification older than `max_age` (5 minutes by default) counts
 as stale, so start a new one when the user comes back later.
 
-`identifications.get` polls the History API by `request_id` until the row appears and returns
+`identifications.get` polls the History API by `identification_id` until the row appears and returns
 that first version:
 
 ```python
-identification = client.identifications.get(request_id)  # wait up to 10 s
-identification = client.identifications.get(request_id, timeout=5)  # shorter budget
-identification = client.identifications.get(request_id, wait=False)  # one lookup only
+identification = client.identifications.get(identification_id)  # wait up to 10 s
+identification = client.identifications.get(identification_id, timeout=5)  # shorter budget
+identification = client.identifications.get(identification_id, wait=False)  # one lookup only
 
 if identification is None:
     ...  # not scored in time: treat it as unverified, never as clean
@@ -121,9 +123,9 @@ How the wait works:
   raises `BadRequestError`, `AuthenticationError` or `NotFoundError`.
 - **`wait=False`** makes one lookup with the client's regular retries and returns `None` when
   there is no row yet.
-- `request_id` must be a UUID. An invalid value raises `ValidationError` before any request.
+- `identification_id` must be a UUID. An invalid value raises `ValidationError` before any request.
 - For the refined state (for example in a later review job), read the row again with
-  `client.history.search("request_id", request_id, limit=1)`.
+  `client.history.search("identification_id", identification_id, limit=1)`.
 
 ### Decide with `evaluate_identification`
 
@@ -133,7 +135,7 @@ this order, and reports the first one that fails:
 | `reason` | Refused when |
 |---|---|
 | `missing` | there is no identification (unverified, never clean) |
-| `replayed` | `is_replay(request_id)` returns `True` (one identification authorizes one action) |
+| `replayed` | `is_replay(identification_id)` returns `True` (one identification authorizes one action) |
 | `stale` | `observed_at` is older than `max_age` (default 300 seconds) |
 | `rate_limited` | the Risk Score is the rate-limit marker (above 100, in practice 999) |
 | `no_device_signals` | the device ID is the all-zero UUID `00000000-0000-0000-0000-000000000000` |
@@ -192,7 +194,7 @@ field names:
 
 | Field | Type | Notes |
 |---|---|---|
-| `request_id`, `visitor_id`, `device_id`, `session_id`, `cookie_id` | `str` | UUIDs; the all-zero UUID is possible |
+| `identification_id`, `visitor_id`, `device_id`, `session_id`, `cookie_id` | `str` | UUIDs; the all-zero UUID is possible |
 | `user_hid` | `str` or `None` | your User HID; `"anonymous"` for anonymous checks |
 | `domain` | `str` | the registered domain |
 | `public_ip`, `local_ip` | `IpInfo(ip, country)` | IPv4 or `""`; `country` is an English country name such as `"Germany"`, or `""` |
@@ -230,12 +232,12 @@ if identification.has_device_signals:  # the all-zero device ID matches unrelate
         if item.user_hid not in NOT_ACCOUNTS
     }
     if len(accounts) > 2:
-        send_to_review(identification.request_id, accounts)
+        send_to_review(identification.identification_id, accounts)
 ```
 
 | `type` | `value` |
 |---|---|
-| `request_id`, `device_id`, `visitor_id`, `session_id`, `cookie_id` | a UUID (sent lowercase) |
+| `identification_id`, `device_id`, `visitor_id`, `session_id`, `cookie_id` | a UUID (sent lowercase) |
 | `user_hid` | a non-empty string, matched exactly and case-sensitively |
 | `ip` | a dotted IPv4 address |
 
@@ -288,7 +290,7 @@ def handle_delivery(raw_body: bytes, signature: Optional[str]) -> int:
     except WebhookParseError:
         return 400
     if isinstance(event, IdentificationScoredEvent):
-        if already_processed(event.data.request_id):
+        if already_processed(event.data.identification_id):
             return 200
         enqueue(event.data)  # do slow work after responding
     elif isinstance(event, WebhookPingEvent):
@@ -301,7 +303,7 @@ def handle_delivery(raw_body: bytes, signature: Optional[str]) -> int:
   endpoint secret without downtime.
 - ShieldLabs sends one delivery per identification and endpoint, with a 1-second timeout and no
   retries. Respond with a 2xx within 1 second and do slow work afterwards.
-- Make handlers idempotent on `data.request_id`: a future release retries deliveries, and a
+- Make handlers idempotent on `data.identification_id`: a future release retries deliveries, and a
   retry resends identical bytes.
 - Use the History API for guaranteed reads and for the latest state: a delivery that fails is
   not sent again, and a History row can be refined after its webhook was sent.
@@ -345,7 +347,7 @@ for 10 minutes. The client never retries a `429`, so call it sparingly and cache
 from shieldlabs import AsyncShieldLabs
 
 async with AsyncShieldLabs() as client:  # reads SHIELDLABS_API_KEY
-    identification = await client.identifications.get(request_id)
+    identification = await client.identifications.get(identification_id)
     async for item in client.history.iter("user_hid", account_hid, max_items=200):
         ...
 ```
@@ -376,7 +378,7 @@ its keys with the default hosts.
 | Call | Returns |
 |---|---|
 | `ShieldLabs(api_key=None, base_url=None, timeout=10.0, max_retries=2, http_client=None)` | History API client |
-| `client.identifications.get(request_id, wait=True, timeout=10.0, poll_interval=0.25)` | `Identification` or `None`; `timeout` is the total wait in seconds; `poll_interval` p sets the waits p, 2p, 4p, 6p, 8p, then 8p again, each at most 2 seconds, or p when p is longer |
+| `client.identifications.get(identification_id, wait=True, timeout=10.0, poll_interval=0.25)` | `Identification` or `None`; `timeout` is the total wait in seconds; `poll_interval` p sets the waits p, 2p, 4p, 6p, 8p, then 8p again, each at most 2 seconds, or p when p is longer |
 | `client.history.search(type, value, limit=20, offset=0)` | `HistoryPage(data, total)` |
 | `client.history.iter(type, value, page_size=100, max_items=None)` | iterator of `Identification`; `max_items=0` yields nothing |
 | `AsyncShieldLabs(...)` | same methods as coroutines; `history.iter` is an async iterator |

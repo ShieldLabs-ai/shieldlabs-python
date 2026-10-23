@@ -4,12 +4,12 @@
 
 A FastAPI app that does both halves of a server integration:
 
-- `POST /signup` reads the `requestId` sent by the browser, waits for the verdict with
+- `POST /signup` reads the `identificationId` sent by the browser, waits for the verdict with
   `identifications.get`, and refuses the signup when the identification is missing, reused,
   stale, carries the rate-limit marker, has no device signals, shows browser automation or
   disabled JavaScript, or falls in the dangerous band (`evaluate_identification` defaults).
 - `POST /webhooks/shieldlabs` verifies `X-Shield-Signature` over the raw body, parses the event,
-  handles each `request_id` once (so a retried delivery is harmless), and logs it.
+  handles each `identification_id` once (so a retried delivery is harmless), and logs it.
 
 Run it from the repository root:
 
@@ -26,7 +26,7 @@ Try the signup route with a request ID from your page:
 ```bash
 curl -X POST http://localhost:8000/signup \
   -H 'content-type: application/json' \
-  -d '{"email": "user@example.com", "requestId": "8f14e45f-ceea-4c1e-a3b2-1d2c3b4a5f60"}'
+  -d '{"email": "user@example.com", "identificationId": "8f14e45f-ceea-4c1e-a3b2-1d2c3b4a5f60"}'
 ```
 
 To receive webhooks locally, expose port 8000 with an HTTPS tunnel and register

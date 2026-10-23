@@ -51,7 +51,7 @@ def _call(surface: str, fake_time: FakeTime, max_retries: int = 1) -> None:
     if surface == "history":
         client = ShieldLabs(api_key=API_KEY, max_retries=max_retries)
         fake_time.install(client._transport)
-        client.history.search("request_id", REQUEST_ID)
+        client.history.search("identification_id", REQUEST_ID)
     else:
         management = ShieldLabsManagement(
             secret_key=SECRET_KEY, domain=DOMAIN, max_retries=max_retries
@@ -151,7 +151,7 @@ def test_retries_use_backoff_then_raise(mock: Any, fake_time: FakeTime) -> None:
     client = ShieldLabs(api_key=API_KEY, max_retries=3)
     fake_time.install(client._transport)
     with pytest.raises(ServerError):
-        client.history.search("request_id", REQUEST_ID)
+        client.history.search("identification_id", REQUEST_ID)
     assert route.call_count == 4
     assert fake_time.sleeps == [0.5, 1.0, 2.0]
 
@@ -163,7 +163,7 @@ def test_rate_limit_without_retry_after_waits_at_least_one_second(
     client = ShieldLabs(api_key=API_KEY, max_retries=3)
     fake_time.install(client._transport)
     with pytest.raises(RateLimitError):
-        client.history.search("request_id", REQUEST_ID)
+        client.history.search("identification_id", REQUEST_ID)
     assert route.call_count == 4
     assert fake_time.sleeps == [1.0, 1.0, 2.0]  # backoff 0.5, 1, 2 with a 1 s floor
 
@@ -178,7 +178,7 @@ def test_retry_after_is_honoured_and_capped(mock: Any, fake_time: FakeTime) -> N
     )
     client = ShieldLabs(api_key=API_KEY, max_retries=2)
     fake_time.install(client._transport)
-    page = client.history.search("request_id", REQUEST_ID)
+    page = client.history.search("identification_id", REQUEST_ID)
     assert page.total == 0
     assert route.call_count == 3
     assert fake_time.sleeps == [3.0, 10.0]
@@ -197,7 +197,7 @@ def test_retry_after_is_followed_as_sent_even_below_one_second(
     )
     client = ShieldLabs(api_key=API_KEY, max_retries=2)
     fake_time.install(client._transport)
-    assert client.history.search("request_id", REQUEST_ID).total == 0
+    assert client.history.search("identification_id", REQUEST_ID).total == 0
     assert route.call_count == 3
     assert fake_time.sleeps == [0.0, 0.5]
 
@@ -208,7 +208,7 @@ def test_client_errors_are_never_retried(mock: Any, fake_time: FakeTime, status:
     client = ShieldLabs(api_key=API_KEY, max_retries=5)
     fake_time.install(client._transport)
     with pytest.raises(ApiError):
-        client.history.search("request_id", REQUEST_ID)
+        client.history.search("identification_id", REQUEST_ID)
     assert route.call_count == 1
     assert fake_time.sleeps == []
 
@@ -219,7 +219,7 @@ def test_connection_errors_are_retried(mock: Any, fake_time: FakeTime) -> None:
     )
     client = ShieldLabs(api_key=API_KEY)
     fake_time.install(client._transport)
-    assert client.history.search("request_id", REQUEST_ID).total == 0
+    assert client.history.search("identification_id", REQUEST_ID).total == 0
     assert route.call_count == 2
     assert fake_time.sleeps == [0.5]
 
@@ -229,7 +229,7 @@ def test_connection_error_after_retries(mock: Any, fake_time: FakeTime) -> None:
     client = ShieldLabs(api_key=API_KEY, max_retries=1)
     fake_time.install(client._transport)
     with pytest.raises(APIConnectionError, match="refused") as caught:
-        client.history.search("request_id", REQUEST_ID)
+        client.history.search("identification_id", REQUEST_ID)
     assert isinstance(caught.value.__cause__, httpx.ConnectError)
     assert API_KEY not in str(caught.value)
 
@@ -239,7 +239,7 @@ def test_timeouts_are_retried_then_raised(mock: Any, fake_time: FakeTime) -> Non
     client = ShieldLabs(api_key=API_KEY, timeout=2.5, max_retries=2)
     fake_time.install(client._transport)
     with pytest.raises(APITimeoutError, match=r"2\.5 s"):
-        client.history.search("request_id", REQUEST_ID)
+        client.history.search("identification_id", REQUEST_ID)
     assert route.call_count == 3
     assert fake_time.sleeps == [0.5, 1.0]
 
@@ -249,11 +249,11 @@ def test_max_retries_zero(mock: Any, fake_time: FakeTime) -> None:
     client = ShieldLabs(api_key=API_KEY, max_retries=0)
     fake_time.install(client._transport)
     with pytest.raises(ServerError):
-        client.history.search("request_id", REQUEST_ID)
+        client.history.search("identification_id", REQUEST_ID)
     assert route.call_count == 1
 
 
 def test_timeout_is_passed_to_each_attempt(mock: Any) -> None:
     route = mock.get(host=HISTORY_HOST).respond(200, json={"data": [], "total": 0})
-    ShieldLabs(api_key=API_KEY, timeout=4).history.search("request_id", REQUEST_ID)
+    ShieldLabs(api_key=API_KEY, timeout=4).history.search("identification_id", REQUEST_ID)
     assert route.calls.last.request.extensions["timeout"]["read"] == 4.0

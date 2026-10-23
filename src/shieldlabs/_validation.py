@@ -33,7 +33,14 @@ __all__ = [
 ]
 
 LookupType = Literal[
-    "ip", "user_hid", "visitor_id", "request_id", "device_id", "session_id", "cookie_id"
+    "ip",
+    "user_hid",
+    "visitor_id",
+    "identification_id",
+    "request_id",
+    "device_id",
+    "session_id",
+    "cookie_id",
 ]
 """The identifier a History API lookup searches by."""
 
@@ -41,6 +48,7 @@ LOOKUP_TYPES: tuple[str, ...] = (
     "ip",
     "user_hid",
     "visitor_id",
+    "identification_id",
     "request_id",
     "device_id",
     "session_id",
@@ -50,7 +58,9 @@ LOOKUP_TYPES: tuple[str, ...] = (
 DEFAULT_HISTORY_BASE_URL = "https://account.shieldlabs.ai"
 DEFAULT_MANAGEMENT_BASE_URL = "https://api.shieldlabs.ai"
 
-_UUID_TYPES = frozenset({"visitor_id", "request_id", "device_id", "session_id", "cookie_id"})
+_UUID_TYPES = frozenset(
+    {"visitor_id", "identification_id", "request_id", "device_id", "session_id", "cookie_id"}
+)
 _UUID_PATTERN = re.compile(
     r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
 )
@@ -74,7 +84,7 @@ def _text(value: Union[str, UUID], name: str) -> str:
     return value
 
 
-def validate_uuid(value: Union[str, UUID], name: str = "request_id") -> str:
+def validate_uuid(value: Union[str, UUID], name: str = "identification_id") -> str:
     """Return the UUID in lowercase, or raise ``ValidationError``. Any version, nil allowed."""
     text = _text(value, name)
     if not _UUID_PATTERN.fullmatch(text):

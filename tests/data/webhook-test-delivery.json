@@ -39,7 +39,7 @@
       "country": "BY",
       "ip": "203.0.113.10"
     },
-    "request_id": "13f84f05-7c2a-4e9b-9f1d-2a6b8c0e4d11",
+    "identification_id": "13f84f05-7c2a-4e9b-9f1d-2a6b8c0e4d11",
     "risk_score": 30,
     "session_id": "3a2b1c0d-9e8f-4a7b-8c6d-5e4f3a2b1c0d",
     "signals": [

@@ -21,7 +21,7 @@ First stable release. It replaces the 0.1.0 preview package completely.
 ### Added
 
 - `ShieldLabs` and `AsyncShieldLabs` History API clients: `history.search`, `history.iter`
-  (de-duplicated on `request_id`) and `identifications.get`, which waits for the verdict:
+  (de-duplicated on `identification_id`) and `identifications.get`, which waits for the verdict:
   - `timeout` (10 s by default) is the total budget of the call. Polls run immediately, then
     after waits of `poll_interval` times 1, 2, 4, 6 and 8, then 8 again, each capped at 2 s, or
     at `poll_interval` when that is longer (0.25 s, 0.5 s, 1 s, 1.5 s and every 2 s by default;

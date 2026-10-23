@@ -247,7 +247,7 @@ class History:
         """Read one page of identifications that match ``type`` = ``value``, newest first.
 
         Args:
-            type: ``ip``, ``user_hid``, ``visitor_id``, ``request_id``, ``device_id``,
+            type: ``ip``, ``user_hid``, ``visitor_id``, ``identification_id``, ``device_id``,
                 ``session_id`` or ``cookie_id``.
             value: A UUID for the ID types, a dotted IPv4 address for ``ip``, a non-empty
                 string for ``user_hid`` (matched exactly; ``.``, ``..`` and values that contain
@@ -270,7 +270,7 @@ class History:
     ) -> Iterator[Identification]:
         """Iterate over every identification that matches, newest first, page by page.
 
-        Rows are de-duplicated on ``request_id`` (offset paging can repeat a row while new
+        Rows are de-duplicated on ``identification_id`` (offset paging can repeat a row while new
         identifications arrive). Iteration stops at ``total``, at an empty page, or after
         ``max_items`` identifications.
         """
@@ -295,9 +295,9 @@ class History:
             if not page.data:
                 return
             for identification in page.data:
-                if identification.request_id in seen:
+                if identification.identification_id in seen:
                     continue
-                seen.add(identification.request_id)
+                seen.add(identification.identification_id)
                 yield identification
                 count += 1
                 if max_items is not None and count >= max_items:
@@ -315,12 +315,12 @@ class Identifications:
 
     def get(
         self,
-        request_id: Union[str, UUID],
+        identification_id: Union[str, UUID],
         wait: bool = True,
         timeout: float = 10.0,
         poll_interval: float = 0.25,
     ) -> Optional[Identification]:
-        """Return the identification for ``request_id``, waiting for it to be scored.
+        """Return the identification for ``identification_id``, waiting for it to be scored.
 
         Scoring is asynchronous: the History row appears about 1-3 s after the browser call
         and can be refined for up to about 10 s while follow-up checks finish. This method
@@ -346,18 +346,18 @@ class Identifications:
             that as unverified, never as clean).
 
         Raises:
-            ValidationError: ``request_id`` is not a UUID (nothing is sent).
+            ValidationError: ``identification_id`` is not a UUID (nothing is sent).
             BadRequestError, AuthenticationError, NotFoundError: A 400, a 401 or 403, or a 404
                 answer; polling stops at once.
             RateLimitError, ServerError, APIConnectionError, APITimeoutError: The last poll
                 failed with this error, or a 429 asked for a pause longer than the time left.
         """
-        rid = validate_uuid(request_id, "request_id")
+        rid = validate_uuid(identification_id, "identification_id")
         total_timeout = validate_seconds(timeout, "timeout", allow_zero=True)
         initial_wait = validate_seconds(poll_interval, "poll_interval", allow_zero=False)
         client = self._client
         if not wait:
-            page = client._search("request_id", rid, 1, 0)
+            page = client._search("identification_id", rid, 1, 0)
             return page.data[0] if page.data else None
 
         transport = client._transport
@@ -366,7 +366,7 @@ class Identifications:
             error: Optional[ShieldLabsError] = None
             try:
                 page = client._search(
-                    "request_id", rid, 1, 0, timeout=plan.attempt_timeout(), max_retries=0
+                    "identification_id", rid, 1, 0, timeout=plan.attempt_timeout(), max_retries=0
                 )
             except _TRANSIENT_ERRORS as exc:
                 error = exc
@@ -487,9 +487,9 @@ class AsyncHistory:
             if not page.data:
                 return
             for identification in page.data:
-                if identification.request_id in seen:
+                if identification.identification_id in seen:
                     continue
-                seen.add(identification.request_id)
+                seen.add(identification.identification_id)
                 yield identification
                 count += 1
                 if max_items is not None and count >= max_items:
@@ -507,18 +507,18 @@ class AsyncIdentifications:
 
     async def get(
         self,
-        request_id: Union[str, UUID],
+        identification_id: Union[str, UUID],
         wait: bool = True,
         timeout: float = 10.0,
         poll_interval: float = 0.25,
     ) -> Optional[Identification]:
         """Async ``ShieldLabs.identifications.get``: same waiting rules, errors and result."""
-        rid = validate_uuid(request_id, "request_id")
+        rid = validate_uuid(identification_id, "identification_id")
         total_timeout = validate_seconds(timeout, "timeout", allow_zero=True)
         initial_wait = validate_seconds(poll_interval, "poll_interval", allow_zero=False)
         client = self._client
         if not wait:
-            page = await client._search("request_id", rid, 1, 0)
+            page = await client._search("identification_id", rid, 1, 0)
             return page.data[0] if page.data else None
 
         transport = client._transport
@@ -527,7 +527,7 @@ class AsyncIdentifications:
             error: Optional[ShieldLabsError] = None
             try:
                 page = await client._search(
-                    "request_id", rid, 1, 0, timeout=plan.attempt_timeout(), max_retries=0
+                    "identification_id", rid, 1, 0, timeout=plan.attempt_timeout(), max_retries=0
                 )
             except _TRANSIENT_ERRORS as exc:
                 error = exc
