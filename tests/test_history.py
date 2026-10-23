@@ -50,11 +50,11 @@ def test_search_sends_expected_request(client: ShieldLabs, mock: Any) -> None:
     route = mock.get(host=HISTORY_HOST, path=REQUEST_PATH).respond(
         200, json=load_json("history-page.json")
     )
-    page = client.history.search("request_id", REQUEST_ID, limit=5, offset=10)
+    page = client.history.search("identification_id", REQUEST_ID, limit=5, offset=10)
 
     assert isinstance(page, HistoryPage)
     assert page.total == 37
-    assert [item.request_id for item in page.data][:2] == [
+    assert [item.identification_id for item in page.data][:2] == [
         REQUEST_ID,
         "7c1e2f4a-3b6d-4e8f-9a0b-1c2d3e4f5a6b",
     ]
@@ -182,8 +182,8 @@ def test_ip_lookup(client: ShieldLabs, mock: Any) -> None:
         ("email", "user@example.com", "type must be one of"),
         ("auto", "anonymous", "type must be one of"),
         ("REQUEST_ID", REQUEST_ID, "type must be one of"),
-        ("request_id", "not-a-uuid", "must be a UUID"),
-        ("request_id", REQUEST_ID + " ", "must be a UUID"),
+        ("identification_id", "not-a-uuid", "must be a UUID"),
+        ("identification_id", REQUEST_ID + " ", "must be a UUID"),
         ("device_id", "ac7c303d971b41d18e25cd5b46b46aed", "must be a UUID"),
         ("session_id", "{bde78778-efd2-4c49-952f-1f11b9c05f35}", "must be a UUID"),
         ("cookie_id", "", "must be a UUID"),
@@ -194,7 +194,7 @@ def test_ip_lookup(client: ShieldLabs, mock: Any) -> None:
         ("ip", "203.0.113.7\n", "dotted IPv4"),
         ("user_hid", "", "non-empty"),
         ("user_hid", 12345, "must be a string"),
-        ("request_id", None, "must be a string"),
+        ("identification_id", None, "must be a string"),
     ],
 )
 def test_validation_errors_send_nothing(
@@ -222,26 +222,28 @@ def test_limit_and_offset_validation(
 ) -> None:
     route = mock.get(host=HISTORY_HOST).respond(200, json=history_body())
     with pytest.raises(ValidationError, match=message):
-        client.history.search("request_id", REQUEST_ID, **kwargs)
+        client.history.search("identification_id", REQUEST_ID, **kwargs)
     assert route.call_count == 0
 
 
 def test_limit_boundaries_are_accepted(client: ShieldLabs, mock: Any) -> None:
     route = mock.get(host=HISTORY_HOST).respond(200, json=history_body())
-    client.history.search("request_id", REQUEST_ID, limit=1)
-    client.history.search("request_id", REQUEST_ID, limit=100, offset=5000)
+    client.history.search("identification_id", REQUEST_ID, limit=1)
+    client.history.search("identification_id", REQUEST_ID, limit=100, offset=5000)
     assert [c.request.url.params["limit"] for c in route.calls] == ["1", "100"]
 
 
 def test_validation_error_is_also_value_error(client: ShieldLabs) -> None:
     with pytest.raises(ValueError):
-        client.history.search("request_id", "nope")
+        client.history.search("identification_id", "nope")
 
 
 # --- iteration ---------------------------------------------------------------------------
 
 
-def test_iter_dedupes_on_request_id_and_stops_at_total(client: ShieldLabs, mock: Any) -> None:
+def test_iter_dedupes_on_identification_id_and_stops_at_total(
+    client: ShieldLabs, mock: Any
+) -> None:
     route = mock.get(host=HISTORY_HOST).mock(
         side_effect=[
             httpx.Response(200, json=history_body(row(uuid_for(1)), row(uuid_for(2)), total=5)),
@@ -250,7 +252,7 @@ def test_iter_dedupes_on_request_id_and_stops_at_total(client: ShieldLabs, mock:
         ]
     )
     items = list(client.history.iter("user_hid", "acct-1", page_size=2))
-    assert [item.request_id for item in items] == [uuid_for(i) for i in (1, 2, 3, 4)]
+    assert [item.identification_id for item in items] == [uuid_for(i) for i in (1, 2, 3, 4)]
     offsets = [call.request.url.params["offset"] for call in route.calls]
     limits = {call.request.url.params["limit"] for call in route.calls}
     assert offsets == ["0", "2", "4"]
@@ -279,7 +281,7 @@ def test_iter_respects_max_items(client: ShieldLabs, mock: Any) -> None:
         ]
     )
     items = list(client.history.iter("ip", "203.0.113.24", page_size=3, max_items=4))
-    assert [item.request_id for item in items] == [uuid_for(i) for i in range(4)]
+    assert [item.identification_id for item in items] == [uuid_for(i) for i in range(4)]
     assert route.call_count == 2
 
 
@@ -333,14 +335,14 @@ def test_api_suffix_is_stripped(mock: Any, base_url: str) -> None:
     route = mock.get(host=HISTORY_HOST).respond(200, json=history_body())
     client = ShieldLabs(api_key=API_KEY, base_url=base_url)
     assert client.base_url == "https://account.shieldlabs.ai"
-    client.history.search("request_id", REQUEST_ID)
+    client.history.search("identification_id", REQUEST_ID)
     assert route.calls.last.request.url.path == REQUEST_PATH
 
 
 def test_custom_base_url_with_prefix_and_dev_host(mock: Any) -> None:
     route = mock.get(host="dev.account.shieldlabs.ai").respond(200, json=history_body())
     client = ShieldLabs(api_key=API_KEY, base_url="https://dev.account.shieldlabs.ai")
-    client.history.search("request_id", REQUEST_ID)
+    client.history.search("identification_id", REQUEST_ID)
     assert route.call_count == 1
     proxied = ShieldLabs(api_key=API_KEY, base_url="http://localhost:8080/shield/api")
     assert proxied.base_url == "http://localhost:8080/shield"
@@ -399,7 +401,7 @@ def test_env_fallbacks(monkeypatch: pytest.MonkeyPatch, mock: Any) -> None:
     route = mock.get(host="dev.account.shieldlabs.ai").respond(200, json=history_body())
     client = ShieldLabs()
     assert client.base_url == "https://dev.account.shieldlabs.ai"
-    client.history.search("request_id", REQUEST_ID)
+    client.history.search("identification_id", REQUEST_ID)
     assert route.calls.last.request.headers["authorization"] == f"Bearer {API_KEY}"
 
 
@@ -452,7 +454,7 @@ def test_injected_http_client_is_used_and_left_open(mock: Any) -> None:
     route = mock.get(host=HISTORY_HOST).respond(200, json=history_body())
     http_client = httpx.Client(headers={"X-Trace": "1"})
     with ShieldLabs(api_key=API_KEY, http_client=http_client) as client:
-        client.history.search("request_id", REQUEST_ID)
+        client.history.search("identification_id", REQUEST_ID)
     assert not http_client.is_closed
     assert route.calls.last.request.headers["x-trace"] == "1"
     assert route.calls.last.request.headers["authorization"] == f"Bearer {API_KEY}"
@@ -467,10 +469,10 @@ def test_malformed_success_bodies_raise_api_error(client: ShieldLabs, mock: Any)
         ]
     )
     with pytest.raises(ApiError, match="not valid JSON") as first:
-        client.history.search("request_id", REQUEST_ID)
+        client.history.search("identification_id", REQUEST_ID)
     assert first.value.status == 200
     with pytest.raises(ApiError, match="not a JSON object"):
-        client.history.search("request_id", REQUEST_ID)
+        client.history.search("identification_id", REQUEST_ID)
 
 
 def test_errors_survive_deepcopy(client: ShieldLabs, mock: Any) -> None:
@@ -478,7 +480,7 @@ def test_errors_survive_deepcopy(client: ShieldLabs, mock: Any) -> None:
         401, text='{"error":"invalid api key"}\n', headers={"content-type": "text/plain"}
     )
     with pytest.raises(ApiError) as caught:
-        client.history.search("request_id", REQUEST_ID)
+        client.history.search("identification_id", REQUEST_ID)
     restored = copy.deepcopy(caught.value)
     assert type(restored) is type(caught.value)
     assert restored.status == 401

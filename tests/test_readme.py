@@ -67,9 +67,9 @@ def test_quick_start_runs_as_pasted(
     with respx.mock(assert_all_called=False) as router:
         route = router.get(host=HISTORY_HOST).respond(200, json={"data": [row], "total": 1})
         quick_start = _import_file(script)
-        assert quick_start.allow_signup(row["request_id"]) is True
+        assert quick_start.allow_signup(row["identification_id"]) is True
         # One identification authorizes one action: the same request ID is refused next time.
-        assert quick_start.allow_signup(row["request_id"]) is False
+        assert quick_start.allow_signup(row["identification_id"]) is False
         quick_start.client.close()
     assert route.call_count == 2
 

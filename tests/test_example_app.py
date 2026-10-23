@@ -35,7 +35,7 @@ def _now_history_time() -> str:
 
 def _row(**changes: Any) -> dict[str, Any]:
     row = dict(load_json("history-page.json")["data"][1])  # trusted, anonymous
-    row.update(request_id=REQUEST_ID, created_at=_now_history_time())
+    row.update(identification_id=REQUEST_ID, created_at=_now_history_time())
     row.update(changes)
     return row
 
@@ -60,8 +60,10 @@ def app_client(monkeypatch: pytest.MonkeyPatch) -> Iterator[tuple[TestClient, An
         yield client, router
 
 
-def _signup(client: TestClient, request_id: str = REQUEST_ID) -> httpx.Response:
-    return client.post("/signup", json={"email": "user@example.com", "requestId": request_id})
+def _signup(client: TestClient, identification_id: str = REQUEST_ID) -> httpx.Response:
+    return client.post(
+        "/signup", json={"email": "user@example.com", "identificationId": identification_id}
+    )
 
 
 def test_trusted_signup_is_created_once(app_client: tuple[TestClient, Any]) -> None:
@@ -101,7 +103,7 @@ def test_missing_identification_is_refused(app_client: tuple[TestClient, Any]) -
     assert response.json()["reason"] == "missing"
 
 
-def test_invalid_request_id_and_unavailable_api(app_client: tuple[TestClient, Any]) -> None:
+def test_invalid_identification_id_and_unavailable_api(app_client: tuple[TestClient, Any]) -> None:
     client, router = app_client
     assert _signup(client, "not-a-uuid").status_code == 400
     router.get(host=HISTORY_HOST).respond(401, text='{"error":"invalid api key"}\n')

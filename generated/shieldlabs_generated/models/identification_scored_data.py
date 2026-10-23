@@ -35,7 +35,7 @@ class IdentificationScoredData(BaseModel):
     """
     The scored identification. Every key is always present (no key is ever omitted); only `user_hid` can be `null`.
     """ # noqa: E501
-    request_id: UUID = Field(description="Identifies one identification. The browser creates it as a UUID v4 and hands it to your page; it is the join key between the browser, the webhook and the History API. The nil UUID appears only on rate-limit marker rows that arrived with a malformed request ID.")
+    identification_id: UUID = Field(description="Identifies one identification. The browser creates it as a UUID v4 and hands it to your page; it is the join key between the browser, the webhook and the History API. The nil UUID appears only on rate-limit marker rows that arrived with a malformed request ID.")
     visitor_id: UUID = Field(description="Server-side visitor identifier (UUID v5). It is sticky to the device: a new cookie on a known device keeps the existing visitor ID, so clearing cookies usually does not change it. The nil UUID appears on identifications without usable device data, such as rate-limit marker rows.")
     device_id: UUID = Field(description="Server-side device identifier (UUID v5). It survives cleared cookies and private windows. The nil UUID `00000000-0000-0000-0000-000000000000` means that no usable device signals were collected (for example on rate-limit marker rows): never group identifications by it.")
     session_id: UUID = Field(description="One visit on one origin (UUID v4 created in the browser), shared by the open tabs of that origin. The next visit after the last tab closes gets a new session ID. The nil UUID appears on rate-limit marker rows.")
@@ -53,7 +53,7 @@ class IdentificationScoredData(BaseModel):
     signals: List[Signal] = Field(description="Weighted risk signals behind `risk_score`, in scoring order. Can be empty. The rate-limit marker carries exactly one entry, `{\"name\":\"rate_limited\",\"weight\":999}`.")
     detection_flags: DetectionFlags
     observed_at: datetime = Field(description="When scoring finished and the event was built (not the page view time); identical to the envelope `created_at`. RFC 3339 in UTC with up to 9 fractional digits.")
-    __properties: ClassVar[List[str]] = ["request_id", "visitor_id", "device_id", "session_id", "cookie_id", "user_hid", "domain", "public_ip", "local_ip", "connection_type", "os", "browser", "device_type", "traffic_source", "risk_score", "signals", "detection_flags", "observed_at"]
+    __properties: ClassVar[List[str]] = ["identification_id", "visitor_id", "device_id", "session_id", "cookie_id", "user_hid", "domain", "public_ip", "local_ip", "connection_type", "os", "browser", "device_type", "traffic_source", "risk_score", "signals", "detection_flags", "observed_at"]
 
     @field_validator('observed_at')
     def observed_at_validate_regular_expression(cls, value):
@@ -140,7 +140,7 @@ class IdentificationScoredData(BaseModel):
             return cls.model_validate(obj)
 
         _obj = cls.model_validate({
-            "request_id": obj.get("request_id"),
+            "identification_id": obj.get("identification_id"),
             "visitor_id": obj.get("visitor_id"),
             "device_id": obj.get("device_id"),
             "session_id": obj.get("session_id"),

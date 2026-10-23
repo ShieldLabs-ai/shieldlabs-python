@@ -59,7 +59,7 @@ async def test_search(client: AsyncShieldLabs, mock: Any) -> None:
     route = mock.get(host=HISTORY_HOST, path=REQUEST_PATH).respond(
         200, json=load_json("history-page.json")
     )
-    page = await client.history.search("request_id", REQUEST_ID, limit=3)
+    page = await client.history.search("identification_id", REQUEST_ID, limit=3)
     assert isinstance(page, HistoryPage)
     assert len(page.data) == 5
     assert route.calls.last.request.url.params["limit"] == "3"
@@ -71,7 +71,7 @@ async def test_search_validation_sends_nothing(client: AsyncShieldLabs, mock: An
     with pytest.raises(ValidationError):
         await client.history.search("user_hid", "")
     with pytest.raises(ValidationError):
-        await client.history.search("request_id", REQUEST_ID, limit=101)
+        await client.history.search("identification_id", REQUEST_ID, limit=101)
     with pytest.raises(ValidationError):
         client.history.iter("ip", "2001:db8::1")
     with pytest.raises(ValidationError):
@@ -87,7 +87,7 @@ async def test_iter_dedupes_and_stops(client: AsyncShieldLabs, mock: Any) -> Non
         ]
     )
     items = [item async for item in client.history.iter("user_hid", "acct-1", page_size=2)]
-    assert [item.request_id for item in items] == [uuid_for(1), uuid_for(2), uuid_for(3)]
+    assert [item.identification_id for item in items] == [uuid_for(1), uuid_for(2), uuid_for(3)]
     assert route.call_count == 2
 
 
@@ -130,20 +130,20 @@ async def test_user_hid_escaping_and_unsearchable_values(
 async def test_retries_and_errors(client: AsyncShieldLabs, mock: Any, fake_time: FakeTime) -> None:
     route = mock.get(host=HISTORY_HOST)
     route.side_effect = [httpx.Response(500), httpx.Response(200, json=history_body())]
-    assert (await client.history.search("request_id", REQUEST_ID)).total == 0
+    assert (await client.history.search("identification_id", REQUEST_ID)).total == 0
     assert fake_time.sleeps == [0.5]
 
     route.side_effect = httpx.ConnectError("refused")
     with pytest.raises(APIConnectionError):
-        await client.history.search("request_id", REQUEST_ID)
+        await client.history.search("identification_id", REQUEST_ID)
 
     route.side_effect = httpx.ConnectTimeout("slow")
     with pytest.raises(APITimeoutError):
-        await client.history.search("request_id", REQUEST_ID)
+        await client.history.search("identification_id", REQUEST_ID)
 
     route.side_effect = lambda request: httpx.Response(502, text="<html></html>")
     with pytest.raises(ServerError):
-        await client.history.search("request_id", REQUEST_ID)
+        await client.history.search("identification_id", REQUEST_ID)
 
 
 async def test_context_manager_and_injected_client(mock: Any) -> None:
@@ -155,7 +155,7 @@ async def test_context_manager_and_injected_client(mock: Any) -> None:
     route = mock.get(host=HISTORY_HOST).respond(200, json=history_body())
     http_client = httpx.AsyncClient()
     async with AsyncShieldLabs(api_key=API_KEY, http_client=http_client) as injected:
-        await injected.history.search("request_id", REQUEST_ID)
+        await injected.history.search("identification_id", REQUEST_ID)
     assert not http_client.is_closed
     assert route.call_count == 1
     await http_client.aclose()

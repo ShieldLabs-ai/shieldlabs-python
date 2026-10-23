@@ -3,7 +3,7 @@
   "schema_version": "2026-10-13",
   "created_at": "2026-09-30T12:34:57.482913041Z",
   "data": {
-    "request_id": "02f1d973-84db-4156-a7f7-e799e6bf389b",
+    "identification_id": "02f1d973-84db-4156-a7f7-e799e6bf389b",
     "visitor_id": "bde0e249-20d8-4544-838c-ed9a0b6d7a36",
     "device_id": "ac7c303d-971b-41d1-8e25-cd5b46b46aed",
     "session_id": "bde78778-efd2-4c49-952f-1f11b9c05f35",
