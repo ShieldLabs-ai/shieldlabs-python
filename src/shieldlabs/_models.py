@@ -192,7 +192,12 @@ class DetectionFlags:
             "latency_test": "ws_tcp_latency",
             "banned_ip": "rate_limited",
         }
-        return cls(**{key: bool(data.get(key, False) or data.get(legacy.get(key, ""), False)) for key in FLAG_KEYS})
+        return cls(
+            **{
+                key: bool(data.get(key, False) or data.get(legacy.get(key, ""), False))
+                for key in FLAG_KEYS
+            }
+        )
 
     def to_dict(self) -> dict[str, bool]:
         return {key: getattr(self, key) for key in FLAG_KEYS}
