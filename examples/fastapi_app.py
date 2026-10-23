@@ -46,8 +46,8 @@ logger = logging.getLogger("shieldlabs.example")
 # one request ID authorizes one protected action, and the webhook handler stays idempotent on
 # the request ID (one delivery per identification today; a future release retries deliveries
 # with identical bytes).
-used_request_ids: set[str] = set()
-processed_request_ids: set[str] = set()
+used_identification_ids: set[str] = set()
+processed_identification_ids: set[str] = set()
 
 
 def _webhook_secrets() -> list[str]:
@@ -71,7 +71,7 @@ app = FastAPI(title="ShieldLabs signup example", lifespan=lifespan)
 
 class SignupForm(BaseModel):
     email: str
-    request_id: str = Field(alias="requestId")
+    identification_id: str = Field(alias="identificationId")
 
 
 @app.post("/signup")
@@ -81,9 +81,9 @@ async def signup(form: SignupForm, request: Request) -> JSONResponse:
         # Waits for the verdict (up to 10 s): the History row appears about 1-3 s after the
         # browser call, so the page starts the identification when the user starts filling in
         # the form rather than on submit.
-        identification = await client.identifications.get(form.request_id)
+        identification = await client.identifications.get(form.identification_id)
     except ValidationError:
-        return JSONResponse({"error": "invalid_request_id"}, status_code=400)
+        return JSONResponse({"error": "invalid_identification_id"}, status_code=400)
     except ShieldLabsError:
         # Unverified is never clean: refuse and let the user retry.
         logger.exception("ShieldLabs lookup failed")
@@ -94,10 +94,10 @@ async def signup(form: SignupForm, request: Request) -> JSONResponse:
     # and the dangerous band. Tune it for your product.
     verdict = evaluate_identification(
         identification,
-        is_replay=lambda request_id: request_id in used_request_ids,
+        is_replay=lambda identification_id: identification_id in used_identification_ids,
     )
     if identification is not None:
-        used_request_ids.add(identification.request_id)
+        used_identification_ids.add(identification.identification_id)
     if not verdict.ok:
         logger.info(
             "signup refused: reason=%s band=%s flag=%s", verdict.reason, verdict.band, verdict.flag
@@ -122,14 +122,14 @@ async def shieldlabs_webhook(request: Request) -> Response:
 
     if isinstance(event, IdentificationScoredEvent):
         data = event.data
-        if data.request_id in processed_request_ids:
+        if data.identification_id in processed_identification_ids:
             return Response(status_code=200)  # already handled: acknowledge and stop
-        processed_request_ids.add(data.request_id)
+        processed_identification_ids.add(data.identification_id)
         # Answer fast (under 1 s): a slow or failed delivery is not sent again, so queue slow
         # work instead of doing it here, and read the History API when you must not miss one.
         logger.info(
-            "identification.scored request_id=%s risk_score=%s band=%s flags=%s",
-            data.request_id,
+            "identification.scored identification_id=%s risk_score=%s band=%s flags=%s",
+            data.identification_id,
             data.risk_score,
             data.risk_band,
             ",".join(data.detection_flags.active()) or "none",

@@ -168,7 +168,7 @@ async def test_first_poll_is_immediate_and_found(
     server = serve(mock, fake_time, _found)
     identification = await get(client, REQUEST_ID)
     assert isinstance(identification, Identification)
-    assert identification.request_id == REQUEST_ID
+    assert identification.identification_id == REQUEST_ID
     assert server.times == [0.0]
     assert fake_time.sleeps == []
 
@@ -413,7 +413,7 @@ async def test_transient_error_then_row_returns_the_row(
     server = serve(mock, fake_time, answer, answer, _found)
     identification = await get(client, REQUEST_ID)
     assert identification is not None
-    assert identification.request_id == REQUEST_ID
+    assert identification.identification_id == REQUEST_ID
     assert server.times == [0.0, 0.25, 0.75]
 
 

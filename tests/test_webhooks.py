@@ -148,7 +148,7 @@ def test_unknown_event_type_is_not_an_error() -> None:
         "event_type": "identification.refined",
         "schema_version": "2026-06-01",
         "created_at": "2026-09-30T12:00:00Z",
-        "data": {"request_id": "02f1d973-84db-4156-a7f7-e799e6bf389b"},
+        "data": {"identification_id": "02f1d973-84db-4156-a7f7-e799e6bf389b"},
         "extra": True,
     }
     body = json.dumps(envelope).encode()

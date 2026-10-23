@@ -1,7 +1,7 @@
 {
   "data": [
     {
-      "request_id": "02f1d973-84db-4156-a7f7-e799e6bf389b",
+      "identification_id": "02f1d973-84db-4156-a7f7-e799e6bf389b",
       "session_id": "bde78778-efd2-4c49-952f-1f11b9c05f35",
       "cookie_id": "4449bb58-590c-444c-ae1f-d1ddc768dbdd",
       "domain": "shop.example.com",
@@ -61,7 +61,7 @@
       "is_suspicious_paid_click": true
     },
     {
-      "request_id": "7c1e2f4a-3b6d-4e8f-9a0b-1c2d3e4f5a6b",
+      "identification_id": "7c1e2f4a-3b6d-4e8f-9a0b-1c2d3e4f5a6b",
       "session_id": "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",
       "cookie_id": "f0e1d2c3-b4a5-4968-8776-655443322110",
       "domain": "example.com",
@@ -112,7 +112,7 @@
       "stun_flow_status": "ok"
     },
     {
-      "request_id": "9e8d7c6b-5a49-4382-9716-05f4e3d2c1b0",
+      "identification_id": "9e8d7c6b-5a49-4382-9716-05f4e3d2c1b0",
       "session_id": "b0c1d2e3-f4a5-4b6c-9d7e-8f9a0b1c2d3e",
       "cookie_id": "c3d4e5f6-a7b8-4c9d-8e0f-a1b2c3d4e5f6",
       "domain": "example.com",
@@ -168,7 +168,7 @@
       "traffic_reason": "external_referrer"
     },
     {
-      "request_id": "1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d",
+      "identification_id": "1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d",
       "session_id": "00000000-0000-0000-0000-000000000000",
       "cookie_id": "00000000-0000-0000-0000-000000000000",
       "domain": "example.com",
@@ -219,7 +219,7 @@
       "stun_flow_status": ""
     },
     {
-      "request_id": "4f5e6d7c-8b9a-4c1d-9e2f-3a4b5c6d7e8f",
+      "identification_id": "4f5e6d7c-8b9a-4c1d-9e2f-3a4b5c6d7e8f",
       "session_id": "5a6b7c8d-9e0f-4a1b-8c2d-3e4f5a6b7c8d",
       "cookie_id": "6b7c8d9e-0f1a-4b2c-9d3e-4f5a6b7c8d9e",
       "domain": "example.com",

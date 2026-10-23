@@ -20,7 +20,7 @@ DOMAIN = "example.com"
 HISTORY_HOST = "account.shieldlabs.ai"
 MANAGEMENT_HOST = "api.shieldlabs.ai"
 REQUEST_ID = "02f1d973-84db-4156-a7f7-e799e6bf389b"
-REQUEST_PATH = f"/api/v1/history/request_id/{REQUEST_ID}"
+REQUEST_PATH = f"/api/v1/history/identification_id/{REQUEST_ID}"
 
 
 def load_json(name: str) -> Any:
@@ -39,10 +39,10 @@ def history_body(*rows: dict[str, Any], total: Union[int, None] = None) -> dict[
     return {"data": list(rows), "total": len(rows) if total is None else total}
 
 
-def row(request_id: str, **extra: Any) -> dict[str, Any]:
+def row(identification_id: str, **extra: Any) -> dict[str, Any]:
     """A minimal History row for paging tests."""
     base: dict[str, Any] = {
-        "request_id": request_id,
+        "identification_id": identification_id,
         "device_id": "ac7c303d-971b-41d1-8e25-cd5b46b46aed",
         "score": 10,
         "created_at": "2026-09-30 12:00:00.000",

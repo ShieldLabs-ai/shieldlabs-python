@@ -32,7 +32,7 @@ class LegacySnapshot(BaseModel):
     """
     One identification as returned by the deprecated Management API history endpoint (PascalCase keys). Also carries diagnostic network fields that are not part of the stable contract. Use the History API row instead.
     """ # noqa: E501
-    request_id: UUID = Field(description="Identifies one identification. The browser creates it as a UUID v4 and hands it to your page; it is the join key between the browser, the webhook and the History API. The nil UUID appears only on rate-limit marker rows that arrived with a malformed request ID.", alias="RequestID")
+    identification_id: UUID = Field(description="Identifies one identification. The browser creates it as a UUID v4 and hands it to your page; it is the join key between the browser, the webhook and the History API. The nil UUID appears only on rate-limit marker rows that arrived with a malformed request ID.", alias="IdentificationID")
     session_id: UUID = Field(description="One visit on one origin (UUID v4 created in the browser), shared by the open tabs of that origin. The next visit after the last tab closes gets a new session ID. The nil UUID appears on rate-limit marker rows.", alias="SessionID")
     cookie_id: UUID = Field(description="First-party browser identifier kept by the ShieldLabs agent (UUID v4). A missing or malformed value is stored as the nil UUID.", alias="CookieID")
     device_id: UUID = Field(description="Server-side device identifier (UUID v5). It survives cleared cookies and private windows. The nil UUID `00000000-0000-0000-0000-000000000000` means that no usable device signals were collected (for example on rate-limit marker rows): never group identifications by it.", alias="DeviceID")
@@ -51,7 +51,7 @@ class LegacySnapshot(BaseModel):
     details: List[ScoreDetail] = Field(description="Every entry behind `Score`, informational entries with `Value` 0 included (unlike the History API, this is a parsed array, not a string).", alias="Details")
     last_request_time: datetime = Field(description="Time of the identification, RFC 3339 with fractional seconds.", alias="LastRequestTime")
     additional_properties: Dict[str, Any] = {}
-    __properties: ClassVar[List[str]] = ["RequestID", "SessionID", "CookieID", "DeviceID", "VisitorID", "IP", "ConnectionType", "WebRtcHIP", "WebRtcCountry", "WebRtcConnectionType", "OS", "Browser", "DeviceType", "Country", "UserHID", "Score", "Details", "LastRequestTime"]
+    __properties: ClassVar[List[str]] = ["IdentificationID", "SessionID", "CookieID", "DeviceID", "VisitorID", "IP", "ConnectionType", "WebRtcHIP", "WebRtcCountry", "WebRtcConnectionType", "OS", "Browser", "DeviceType", "Country", "UserHID", "Score", "Details", "LastRequestTime"]
 
     model_config = ConfigDict(
         validate_by_name=True,
@@ -118,7 +118,7 @@ class LegacySnapshot(BaseModel):
             return cls.model_validate(obj)
 
         _obj = cls.model_validate({
-            "RequestID": obj.get("RequestID"),
+            "IdentificationID": obj.get("IdentificationID"),
             "SessionID": obj.get("SessionID"),
             "CookieID": obj.get("CookieID"),
             "DeviceID": obj.get("DeviceID"),

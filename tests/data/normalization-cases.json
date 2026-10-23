@@ -5,7 +5,7 @@
       "name": "history_02f1d973",
       "source": "history",
       "input": {
-        "request_id": "02f1d973-84db-4156-a7f7-e799e6bf389b",
+        "identification_id": "02f1d973-84db-4156-a7f7-e799e6bf389b",
         "session_id": "bde78778-efd2-4c49-952f-1f11b9c05f35",
         "cookie_id": "4449bb58-590c-444c-ae1f-d1ddc768dbdd",
         "domain": "shop.example.com",
@@ -65,7 +65,7 @@
         "is_suspicious_paid_click": true
       },
       "expected": {
-        "request_id": "02f1d973-84db-4156-a7f7-e799e6bf389b",
+        "identification_id": "02f1d973-84db-4156-a7f7-e799e6bf389b",
         "visitor_id": "bde0e249-20d8-4544-838c-ed9a0b6d7a36",
         "device_id": "ac7c303d-971b-41d1-8e25-cd5b46b46aed",
         "session_id": "bde78778-efd2-4c49-952f-1f11b9c05f35",
@@ -143,7 +143,7 @@
       "name": "history_7c1e2f4a",
       "source": "history",
       "input": {
-        "request_id": "7c1e2f4a-3b6d-4e8f-9a0b-1c2d3e4f5a6b",
+        "identification_id": "7c1e2f4a-3b6d-4e8f-9a0b-1c2d3e4f5a6b",
         "session_id": "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",
         "cookie_id": "f0e1d2c3-b4a5-4968-8776-655443322110",
         "domain": "example.com",
@@ -194,7 +194,7 @@
         "stun_flow_status": "ok"
       },
       "expected": {
-        "request_id": "7c1e2f4a-3b6d-4e8f-9a0b-1c2d3e4f5a6b",
+        "identification_id": "7c1e2f4a-3b6d-4e8f-9a0b-1c2d3e4f5a6b",
         "visitor_id": "3c4d5e6f-7a8b-5c9d-8e0f-1a2b3c4d5e6f",
         "device_id": "5d9a1f3e-7b2c-5e4d-8f6a-9b0c1d2e3f4a",
         "session_id": "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",
@@ -262,7 +262,7 @@
       "name": "history_9e8d7c6b",
       "source": "history",
       "input": {
-        "request_id": "9e8d7c6b-5a49-4382-9716-05f4e3d2c1b0",
+        "identification_id": "9e8d7c6b-5a49-4382-9716-05f4e3d2c1b0",
         "session_id": "b0c1d2e3-f4a5-4b6c-9d7e-8f9a0b1c2d3e",
         "cookie_id": "c3d4e5f6-a7b8-4c9d-8e0f-a1b2c3d4e5f6",
         "domain": "example.com",
@@ -318,7 +318,7 @@
         "traffic_reason": "external_referrer"
       },
       "expected": {
-        "request_id": "9e8d7c6b-5a49-4382-9716-05f4e3d2c1b0",
+        "identification_id": "9e8d7c6b-5a49-4382-9716-05f4e3d2c1b0",
         "visitor_id": "d2e3f4a5-b6c7-5d8e-9f0a-1b2c3d4e5f6a",
         "device_id": "e1f2a3b4-c5d6-5e7f-8a9b-0c1d2e3f4a5b",
         "session_id": "b0c1d2e3-f4a5-4b6c-9d7e-8f9a0b1c2d3e",
@@ -401,7 +401,7 @@
       "name": "history_1a2b3c4d",
       "source": "history",
       "input": {
-        "request_id": "1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d",
+        "identification_id": "1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d",
         "session_id": "00000000-0000-0000-0000-000000000000",
         "cookie_id": "00000000-0000-0000-0000-000000000000",
         "domain": "example.com",
@@ -452,7 +452,7 @@
         "stun_flow_status": ""
       },
       "expected": {
-        "request_id": "1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d",
+        "identification_id": "1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d",
         "visitor_id": "00000000-0000-0000-0000-000000000000",
         "device_id": "00000000-0000-0000-0000-000000000000",
         "session_id": "00000000-0000-0000-0000-000000000000",
@@ -520,7 +520,7 @@
       "name": "history_4f5e6d7c",
       "source": "history",
       "input": {
-        "request_id": "4f5e6d7c-8b9a-4c1d-9e2f-3a4b5c6d7e8f",
+        "identification_id": "4f5e6d7c-8b9a-4c1d-9e2f-3a4b5c6d7e8f",
         "session_id": "5a6b7c8d-9e0f-4a1b-8c2d-3e4f5a6b7c8d",
         "cookie_id": "6b7c8d9e-0f1a-4b2c-9d3e-4f5a6b7c8d9e",
         "domain": "example.com",
@@ -575,7 +575,7 @@
         "traffic_reason": "ip_crawler_detected"
       },
       "expected": {
-        "request_id": "4f5e6d7c-8b9a-4c1d-9e2f-3a4b5c6d7e8f",
+        "identification_id": "4f5e6d7c-8b9a-4c1d-9e2f-3a4b5c6d7e8f",
         "visitor_id": "8d9e0f1a-2b3c-5d4e-9f5a-6b7c8d9e0f1a",
         "device_id": "7c8d9e0f-1a2b-5c3d-8e4f-5a6b7c8d9e0f",
         "session_id": "5a6b7c8d-9e0f-4a1b-8c2d-3e4f5a6b7c8d",
@@ -637,7 +637,7 @@
       "name": "webhook_scored",
       "source": "webhook",
       "input": {
-        "request_id": "02f1d973-84db-4156-a7f7-e799e6bf389b",
+        "identification_id": "02f1d973-84db-4156-a7f7-e799e6bf389b",
         "visitor_id": "bde0e249-20d8-4544-838c-ed9a0b6d7a36",
         "device_id": "ac7c303d-971b-41d1-8e25-cd5b46b46aed",
         "session_id": "bde78778-efd2-4c49-952f-1f11b9c05f35",
@@ -707,7 +707,7 @@
         "observed_at": "2026-09-30T12:34:57.482913041Z"
       },
       "expected": {
-        "request_id": "02f1d973-84db-4156-a7f7-e799e6bf389b",
+        "identification_id": "02f1d973-84db-4156-a7f7-e799e6bf389b",
         "visitor_id": "bde0e249-20d8-4544-838c-ed9a0b6d7a36",
         "device_id": "ac7c303d-971b-41d1-8e25-cd5b46b46aed",
         "session_id": "bde78778-efd2-4c49-952f-1f11b9c05f35",
@@ -785,7 +785,7 @@
       "name": "webhook_rate_limited",
       "source": "webhook",
       "input": {
-        "request_id": "1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d",
+        "identification_id": "1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d",
         "visitor_id": "00000000-0000-0000-0000-000000000000",
         "device_id": "00000000-0000-0000-0000-000000000000",
         "session_id": "00000000-0000-0000-0000-000000000000",
@@ -847,7 +847,7 @@
         "observed_at": "2026-09-30T13:10:00.5Z"
       },
       "expected": {
-        "request_id": "1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d",
+        "identification_id": "1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d",
         "visitor_id": "00000000-0000-0000-0000-000000000000",
         "device_id": "00000000-0000-0000-0000-000000000000",
         "session_id": "00000000-0000-0000-0000-000000000000",
@@ -953,7 +953,7 @@
           "country": "BY",
           "ip": "203.0.113.10"
         },
-        "request_id": "13f84f05-7c2a-4e9b-9f1d-2a6b8c0e4d11",
+        "identification_id": "13f84f05-7c2a-4e9b-9f1d-2a6b8c0e4d11",
         "risk_score": 30,
         "session_id": "3a2b1c0d-9e8f-4a7b-8c6d-5e4f3a2b1c0d",
         "signals": [
@@ -985,7 +985,7 @@
         "visitor_id": "7a6b5c4d-3e2f-5a1b-9c8d-7e6f5a4b3c2d"
       },
       "expected": {
-        "request_id": "13f84f05-7c2a-4e9b-9f1d-2a6b8c0e4d11",
+        "identification_id": "13f84f05-7c2a-4e9b-9f1d-2a6b8c0e4d11",
         "visitor_id": "7a6b5c4d-3e2f-5a1b-9c8d-7e6f5a4b3c2d",
         "device_id": "6f1e2d3c-4b5a-5968-8776-655443322110",
         "session_id": "3a2b1c0d-9e8f-4a7b-8c6d-5e4f3a2b1c0d",

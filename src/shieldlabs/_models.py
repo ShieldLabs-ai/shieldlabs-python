@@ -52,6 +52,12 @@ def _optional_user_hid(value: object) -> Optional[str]:
     return value if isinstance(value, str) and value != "" else None
 
 
+def _identification_id(data: Mapping[str, Any]) -> str:
+    """Prefer identification_id. Fall back to the legacy request_id key."""
+    value = as_str(data.get("identification_id"))
+    return value or as_str(data.get("request_id"))
+
+
 class SignalName:
     """Known risk signal names (``Signal.name``).
 
@@ -198,7 +204,7 @@ class Identification:
     webhook contract.
     """
 
-    request_id: str
+    identification_id: str
     visitor_id: str
     device_id: str
     session_id: str
@@ -249,7 +255,7 @@ class Identification:
             if isinstance(item, Mapping)
         )
         return cls(
-            request_id=as_str(data.get("request_id")),
+            identification_id=_identification_id(data),
             visitor_id=as_str(data.get("visitor_id")),
             device_id=as_str(data.get("device_id")),
             session_id=as_str(data.get("session_id")),
@@ -329,7 +335,7 @@ class Identification:
                 flags[key] = bool(row.get(HISTORY_FLAG_MAP[key], False))
 
         return cls(
-            request_id=as_str(row.get("request_id")),
+            identification_id=_identification_id(row),
             visitor_id=as_str(row.get("visitor_id")),
             device_id=as_str(row.get("device_id")),
             session_id=as_str(row.get("session_id")),
@@ -372,7 +378,7 @@ class Identification:
         observed_at = data.get("observed_at")
         source = data.get("source")
         return cls(
-            request_id=as_str(data.get("request_id")),
+            identification_id=_identification_id(data),
             visitor_id=as_str(data.get("visitor_id")),
             device_id=as_str(data.get("device_id")),
             session_id=as_str(data.get("session_id")),
@@ -403,7 +409,7 @@ class Identification:
     def to_dict(self) -> dict[str, Any]:
         """Plain JSON-ready dict (``observed_at`` as RFC 3339 UTC with milliseconds; no ``raw``)."""
         return {
-            "request_id": self.request_id,
+            "identification_id": self.identification_id,
             "visitor_id": self.visitor_id,
             "device_id": self.device_id,
             "session_id": self.session_id,

@@ -8,7 +8,7 @@ Quick start::
     from shieldlabs import ShieldLabs, evaluate_identification
 
     client = ShieldLabs(api_key="sec_your_private_key")
-    identification = client.identifications.get(request_id)
+    identification = client.identifications.get(identification_id)
     verdict = evaluate_identification(identification)
 """
 

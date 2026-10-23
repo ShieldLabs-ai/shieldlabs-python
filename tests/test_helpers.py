@@ -41,11 +41,11 @@ def test_clean_identification_is_ok() -> None:
     assert verdict == Evaluation(ok=True, reason=None, band="trusted", flag=None)
 
 
-def test_replay_callback_receives_request_id() -> None:
+def test_replay_callback_receives_identification_id() -> None:
     seen: list[str] = []
 
-    def is_replay(request_id: str) -> bool:
-        seen.append(request_id)
+    def is_replay(identification_id: str) -> bool:
+        seen.append(identification_id)
         return True
 
     verdict = evaluate_identification(_identification(), now=NOW, is_replay=is_replay)
