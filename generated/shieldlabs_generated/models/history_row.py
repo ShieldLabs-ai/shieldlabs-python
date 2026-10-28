@@ -73,7 +73,6 @@ class HistoryRow(BaseModel):
     is_browser_automation: StrictBool = Field(description="Same meaning as `detection_flags.browser_automation`.")
     is_incognito: StrictBool = Field(description="Same meaning as `detection_flags.incognito`. Always `false` for search-engine crawlers.")
     is_search_bot: StrictBool = Field(description="Same meaning as `detection_flags.search_bot`.")
-    is_suspicious_paid_click: Optional[StrictBool] = Field(default=None, description="Same meaning as `detection_flags.suspicious_paid_click`. Omitted when `false`.")
     entry_url: Optional[StrictStr] = Field(default=None, description="Landing page URL without the `#fragment` (webhook `traffic_source.landing_url`). Omitted when empty. It keeps the query string, which can contain personal data.")
     utm_source: Optional[StrictStr] = Field(default=None, description="`utm_source`, lowercased. Omitted when empty.")
     utm_medium: Optional[StrictStr] = Field(default=None, description="`utm_medium`, lowercased. Omitted when empty.")
@@ -86,7 +85,7 @@ class HistoryRow(BaseModel):
     referrer_domain: Optional[StrictStr] = Field(default=None, description="Registrable domain of the referrer without `www.`; the crawler name (for example `GoogleBot`) for search-engine crawlers. Omitted when empty.")
     click_id_type: Optional[StrictStr] = Field(default=None, description="Ad click identifier type found in the landing URL. Omitted when empty.")
     additional_properties: Dict[str, Any] = {}
-    __properties: ClassVar[List[str]] = ["client_identity", "identification_id", "session_id", "cookie_id", "domain", "site_domain", "user_hid", "device_id", "visitor_id", "ip", "os", "browser", "device_type", "country", "connection_type", "score", "score_details", "created_at", "ver", "web_rtc_ip", "web_rtc_country", "web_rtc_connection_type", "webrtc_leak_ip", "webrtc_leak_country", "webrtc_leak_connection_type", "webrtc_leak_source", "is_vpn", "is_tor", "is_proxy", "is_datacenter", "is_abuser", "is_privacy_relay", "is_stun_not_checked", "check_incomplete", "is_antidetect", "is_os_mismatch", "is_os_not_detected", "is_timezone_mismatch", "is_js_disabled", "is_browser_automation", "is_incognito", "is_search_bot", "is_suspicious_paid_click", "entry_url", "utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term", "traffic_channel", "traffic_channel_group", "traffic_reason", "referrer_domain", "click_id_type"]
+    __properties: ClassVar[List[str]] = ["client_identity", "identification_id", "session_id", "cookie_id", "domain", "site_domain", "user_hid", "device_id", "visitor_id", "ip", "os", "browser", "device_type", "country", "connection_type", "score", "score_details", "created_at", "ver", "web_rtc_ip", "web_rtc_country", "web_rtc_connection_type", "webrtc_leak_ip", "webrtc_leak_country", "webrtc_leak_connection_type", "webrtc_leak_source", "is_vpn", "is_tor", "is_proxy", "is_datacenter", "is_abuser", "is_privacy_relay", "is_stun_not_checked", "check_incomplete", "is_antidetect", "is_os_mismatch", "is_os_not_detected", "is_timezone_mismatch", "is_js_disabled", "is_browser_automation", "is_incognito", "is_search_bot", "entry_url", "utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term", "traffic_channel", "traffic_channel_group", "traffic_reason", "referrer_domain", "click_id_type"]
 
     @field_validator('created_at')
     def created_at_validate_regular_expression(cls, value):
@@ -201,7 +200,6 @@ class HistoryRow(BaseModel):
             "is_browser_automation": obj.get("is_browser_automation"),
             "is_incognito": obj.get("is_incognito"),
             "is_search_bot": obj.get("is_search_bot"),
-            "is_suspicious_paid_click": obj.get("is_suspicious_paid_click"),
             "entry_url": obj.get("entry_url"),
             "utm_source": obj.get("utm_source"),
             "utm_medium": obj.get("utm_medium"),

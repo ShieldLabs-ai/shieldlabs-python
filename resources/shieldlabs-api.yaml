@@ -1604,9 +1604,6 @@ components:
         is_search_bot:
           type: boolean
           description: Same meaning as `detection_flags.search_bot`.
-        is_suspicious_paid_click:
-          type: boolean
-          description: Same meaning as `detection_flags.suspicious_paid_click`. Omitted when `false`.
         entry_url:
           type: string
           description: Landing page URL without the `#fragment` (webhook `traffic_source.landing_url`). Omitted when empty. It keeps the query string, which can contain personal data.
@@ -2121,10 +2118,6 @@ components:
         search_bot:
           type: boolean
           description: A search-engine crawler. Its Risk Score is always 0.
-        suspicious_paid_click:
-          type: boolean
-          deprecated: true
-          description: The visit came from a paid ad click (Google Ads, Meta, TikTok, Microsoft Ads, LinkedIn, Pinterest or X) and the Risk Score is 60 or more (the 999 marker included).
         javascript_disabled:
           type: boolean
           description: JavaScript, or the browser APIs the checks need, were unavailable.
@@ -2870,8 +2863,6 @@ components:
               type: boolean
             abuser:
               type: boolean
-            suspicious_paid_click:
-              type: boolean
         observed_at:
           $ref: '#/components/schemas/Rfc3339Timestamp'
           description: Original snapshot scan clock, distinct from envelope created_at. RFC 3339 in UTC with up to 9 fractional digits.
@@ -3088,12 +3079,6 @@ components:
                             - abuser
                           properties:
                             abuser: {}
-                          additionalProperties: true
-                        - type: object
-                          required:
-                            - suspicious_paid_click
-                          properties:
-                            suspicious_paid_click: {}
                           additionalProperties: true
                     additionalProperties: true
                 additionalProperties: true
@@ -3319,7 +3304,6 @@ components:
             traffic_channel_group: Paid Search
             traffic_reason: gclid_present
             click_id_type: gclid
-            is_suspicious_paid_click: true
           - identification_id: 7c1e2f4a-3b6d-4e8f-9a0b-1c2d3e4f5a6b
             session_id: a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d
             cookie_id: f0e1d2c3-b4a5-4968-8776-655443322110
@@ -3829,7 +3813,6 @@ components:
             ip_mismatch: true
             incognito: false
             search_bot: false
-            suspicious_paid_click: true
             javascript_disabled: false
             stun_not_checked: false
             check_incomplete: false
@@ -3889,7 +3872,6 @@ components:
             ip_mismatch: false
             incognito: false
             search_bot: false
-            suspicious_paid_click: false
             javascript_disabled: false
             stun_not_checked: false
             check_incomplete: false
@@ -3917,7 +3899,6 @@ components:
             privacy_relay: false
             proxy: true
             stun_not_checked: false
-            suspicious_paid_click: false
             timezone_mismatch: false
             tor: false
             vpn: false
