@@ -83,7 +83,7 @@ class SignalName:
     DATACENTER_IP = "datacenter_ip"
     ABUSER = "abuser"
     TIMEZONE_MISMATCH = "timezone_mismatch"
-    RATE_LIMITED = "banned_ip"
+    RATE_LIMITED = "rate_limited"
 
 
 @dataclass(frozen=True)
@@ -174,7 +174,7 @@ class DetectionFlags:
     latency_test: bool = False
     anti_detect_browser: bool = False
     device_spoofing: bool = False
-    banned_ip: bool = False
+    rate_limited: bool = False
     incognito: bool = False
     search_bot: bool = False
     ai_bot: bool = False
@@ -190,7 +190,7 @@ class DetectionFlags:
             "private_relay": "privacy_relay",
             "network_check_incomplete": "stun_not_checked",
             "latency_test": "ws_tcp_latency",
-            "banned_ip": "rate_limited",
+            "rate_limited": "banned_ip",
         }
         return cls(
             **{
