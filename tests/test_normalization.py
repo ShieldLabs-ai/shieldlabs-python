@@ -272,7 +272,7 @@ def test_history_page_rows_match_normalization_cases() -> None:
 def test_known_signal_names_are_plain_strings() -> None:
     assert SignalName.ANTIDETECT_BROWSER == "antidetect_browser"
     assert SignalName.STUN_LATE_CORRECTION == "stun_late_correction"
-    assert SignalName.RATE_LIMITED == "banned_ip"
+    assert SignalName.RATE_LIMITED == "rate_limited"
 
 
 def test_models_are_frozen() -> None:
