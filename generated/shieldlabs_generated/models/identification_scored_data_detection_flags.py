@@ -144,7 +144,7 @@ class IdentificationScoredDataDetectionFlags(BaseModel):
             "browser_automation": obj.get("browser_automation"),
             "browser_vpn_proxy": obj.get("browser_vpn_proxy"),
             "datacenter_ip": obj.get("datacenter_ip"),
-            "abuser": obj.get("abuser"),
+            "abuser": obj.get("abuser")
         })
         # store additional fields in additional_properties
         for _key in obj.keys():
