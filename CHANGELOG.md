@@ -4,7 +4,7 @@ All notable changes to this project are documented in this file. The format foll
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.2.0] - 2026-10-29
 
 ### Changed
 
@@ -13,6 +13,7 @@ All notable changes to this project are documented in this file. The format foll
 
 ### Added
 
+- Domain-scoped entity History on `client.entities`: `list` for `identifications` and `user`, and `get` for identifications, user, visitor, device and ip. Paths are `/api/v1/domains/{uuid}/history/...`. Lists do not send `include_total` and do not expose a page total. The legacy `history.search` client is unchanged.
 - `sync.sh` downloads the OpenAPI description and `generate.sh` rebuilds `generated/` from it. The supported client is unchanged.
 
 ## [1.0.0] - 2026-09-30
@@ -69,6 +70,6 @@ First stable release. It replaces the 0.1.0 preview package completely.
 
 Preview package with `verify_webhook` and a minimal History API client.
 
-[Unreleased]: https://github.com/ShieldLabs-ai/shieldlabs-python/compare/v1.0.0...HEAD
+[1.2.0]: https://github.com/ShieldLabs-ai/shieldlabs-python/compare/v1.0.0...v1.2.0
 [1.0.0]: https://github.com/ShieldLabs-ai/shieldlabs-python/releases/tag/v1.0.0
 [0.1.0]: https://github.com/ShieldLabs-ai/shieldlabs-python/commits/main

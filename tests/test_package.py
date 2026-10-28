@@ -81,7 +81,7 @@ def test_error_hierarchy() -> None:
 
 
 def test_version_and_typing_marker() -> None:
-    assert shieldlabs.__version__ == "1.0.0"
+    assert shieldlabs.__version__ == "1.2.0"
     assert (Path(shieldlabs.__file__).parent / "py.typed").exists()
 
 
