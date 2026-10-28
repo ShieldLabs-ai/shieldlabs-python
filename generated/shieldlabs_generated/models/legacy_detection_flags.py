@@ -43,7 +43,6 @@ class LegacyDetectionFlags(BaseModel):
     ip_mismatch: StrictBool = Field(description="A qualifying mismatch between the public IP and the browser's network evidence was detected. Read the returned Risk Score and signal contributions.")
     incognito: StrictBool = Field(description="The browser runs in a private window.")
     search_bot: StrictBool = Field(description="A search-engine crawler. Its Risk Score is always 0.")
-    suspicious_paid_click: Optional[StrictBool] = Field(default=None, description="The visit came from a paid ad click (Google Ads, Meta, TikTok, Microsoft Ads, LinkedIn, Pinterest or X) and the Risk Score is 60 or more (the 999 marker included).")
     javascript_disabled: StrictBool = Field(description="JavaScript, or the browser APIs the checks need, were unavailable.")
     stun_not_checked: StrictBool = Field(description="The browser network (STUN) check did not complete. Cleared again when a late network result arrives.")
     check_incomplete: StrictBool = Field(description="Part of the browser checks timed out, so the verdict rests on partial data. Informational.")
@@ -55,7 +54,7 @@ class LegacyDetectionFlags(BaseModel):
     ai_bot: Optional[StrictBool] = Field(default=None, description="An accepted bot is classified as AI training or user-requested fetch. ChatGPT-User, Claude-User and Perplexity-User are AI bots, not AI browsers. Weight 0. The flag is optional on older payloads; its absence is not an evaluated negative result. Provider claims alone do not grant zero risk.")
     ai_browser: Optional[StrictBool] = Field(default=None, description="A browser is identified by separate verified browser infrastructure. A generic browser User-Agent or a verified provider alone is insufficient. Weight 0. Optional on older payloads; absence is not an evaluated negative.")
     os_mismatch2: Optional[StrictBool] = Field(default=None, description="Legacy 2026-10-06 only; current payloads combine this check into os_mismatch.")
-    __properties: ClassVar[List[str]] = ["vpn", "privacy_relay", "browser_vpn_proxy", "tor", "proxy", "datacenter_ip", "abuser", "os_mismatch", "os_not_detected", "timezone_mismatch", "anti_detect_browser", "browser_automation", "ip_mismatch", "incognito", "search_bot", "suspicious_paid_click", "javascript_disabled", "stun_not_checked", "check_incomplete", "device_spoofing", "latency_test", "ws_tcp_latency", "banned_ip", "rate_limited", "ai_bot", "ai_browser", "os_mismatch2"]
+    __properties: ClassVar[List[str]] = ["vpn", "privacy_relay", "browser_vpn_proxy", "tor", "proxy", "datacenter_ip", "abuser", "os_mismatch", "os_not_detected", "timezone_mismatch", "anti_detect_browser", "browser_automation", "ip_mismatch", "incognito", "search_bot", "javascript_disabled", "stun_not_checked", "check_incomplete", "device_spoofing", "latency_test", "ws_tcp_latency", "banned_ip", "rate_limited", "ai_bot", "ai_browser", "os_mismatch2"]
 
     model_config = ConfigDict(
         validate_by_name=True,
@@ -123,7 +122,6 @@ class LegacyDetectionFlags(BaseModel):
             "ip_mismatch": obj.get("ip_mismatch"),
             "incognito": obj.get("incognito"),
             "search_bot": obj.get("search_bot"),
-            "suspicious_paid_click": obj.get("suspicious_paid_click"),
             "javascript_disabled": obj.get("javascript_disabled"),
             "stun_not_checked": obj.get("stun_not_checked"),
             "check_incomplete": obj.get("check_incomplete"),

@@ -56,9 +56,8 @@ class IdentificationScoredDataDetectionFlags(BaseModel):
     browser_vpn_proxy: Optional[StrictBool] = None
     datacenter_ip: Optional[StrictBool] = None
     abuser: Optional[StrictBool] = None
-    suspicious_paid_click: Optional[StrictBool] = None
     additional_properties: Dict[str, Any] = {}
-    __properties: ClassVar[List[str]] = ["vpn", "proxy", "tor", "private_relay", "privacy_relay", "network_check_incomplete", "stun_not_checked", "latency_test", "ws_tcp_latency", "banned_ip", "rate_limited", "check_incomplete", "os_not_detected", "timezone_mismatch", "javascript_disabled", "os_mismatch", "os_mismatch2", "ip_mismatch", "anti_detect_browser", "device_spoofing", "incognito", "search_bot", "ai_bot", "ai_browser", "browser_automation", "browser_vpn_proxy", "datacenter_ip", "abuser", "suspicious_paid_click"]
+    __properties: ClassVar[List[str]] = ["vpn", "proxy", "tor", "private_relay", "privacy_relay", "network_check_incomplete", "stun_not_checked", "latency_test", "ws_tcp_latency", "banned_ip", "rate_limited", "check_incomplete", "os_not_detected", "timezone_mismatch", "javascript_disabled", "os_mismatch", "os_mismatch2", "ip_mismatch", "anti_detect_browser", "device_spoofing", "incognito", "search_bot", "ai_bot", "ai_browser", "browser_automation", "browser_vpn_proxy", "datacenter_ip", "abuser"]
 
     model_config = ConfigDict(
         validate_by_name=True,
@@ -145,8 +144,7 @@ class IdentificationScoredDataDetectionFlags(BaseModel):
             "browser_automation": obj.get("browser_automation"),
             "browser_vpn_proxy": obj.get("browser_vpn_proxy"),
             "datacenter_ip": obj.get("datacenter_ip"),
-            "abuser": obj.get("abuser"),
-            "suspicious_paid_click": obj.get("suspicious_paid_click")
+            "abuser": obj.get("abuser")
         })
         # store additional fields in additional_properties
         for _key in obj.keys():
