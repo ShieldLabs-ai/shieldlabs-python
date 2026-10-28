@@ -10,6 +10,7 @@ from uuid import UUID
 
 import httpx
 
+from ._entities import AsyncEntityHistory, EntityHistory
 from ._errors import (
     APIConnectionError,
     APITimeoutError,
@@ -194,6 +195,7 @@ class ShieldLabs(_HistoryConfig):
         )
         self.history = History(self)
         self.identifications = Identifications(self)
+        self.entities = EntityHistory(self)
 
     def _search(
         self,
@@ -405,6 +407,7 @@ class AsyncShieldLabs(_HistoryConfig):
         )
         self.history = AsyncHistory(self)
         self.identifications = AsyncIdentifications(self)
+        self.entities = AsyncEntityHistory(self)
 
     async def _search(
         self,
