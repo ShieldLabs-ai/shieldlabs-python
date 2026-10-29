@@ -58,8 +58,8 @@ def _webhook_secrets() -> list[str]:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-    # One client for the whole process; it reads SHIELDLABS_API_KEY and is safe to share.
-    app.state.shieldlabs = AsyncShieldLabs()
+    # One client for the whole process. It reads SHIELDLABS_API_KEY and the public domain UUID.
+    app.state.shieldlabs = AsyncShieldLabs(domain_id=os.environ["SHIELDLABS_DOMAIN_ID"])
     try:
         yield
     finally:

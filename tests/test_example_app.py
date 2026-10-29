@@ -19,7 +19,7 @@ import httpx
 import pytest
 import respx
 
-from _support import API_KEY, HISTORY_HOST, FakeTime, load_json, sign
+from _support import API_KEY, DOMAIN_ID, HISTORY_HOST, FakeTime, load_json, sign
 
 pytest.importorskip("fastapi")
 from fastapi.testclient import TestClient
@@ -52,6 +52,7 @@ def _load_example() -> ModuleType:
 @pytest.fixture
 def app_client(monkeypatch: pytest.MonkeyPatch) -> Iterator[tuple[TestClient, Any]]:
     monkeypatch.setenv("SHIELDLABS_API_KEY", API_KEY)
+    monkeypatch.setenv("SHIELDLABS_DOMAIN_ID", DOMAIN_ID)
     # Two secrets while one is rotated; the space after the comma must not break verification.
     monkeypatch.setenv("SHIELDLABS_WEBHOOK_SECRET", f"whsec_previous, {SECRET} ,")
     module = _load_example()
