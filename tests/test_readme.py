@@ -58,6 +58,7 @@ def test_quick_start_runs_as_pasted(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
     monkeypatch.setenv("SHIELDLABS_API_KEY", API_KEY)
+    monkeypatch.setenv("SHIELDLABS_DOMAIN_ID", "11111111-1111-4111-8111-111111111111")
     monkeypatch.setenv("SHIELDLABS_WEBHOOK_SECRET", SECRET)
     script = tmp_path / "readme_quick_start.py"
     script.write_text(_quick_start(), encoding="utf-8")

@@ -20,7 +20,8 @@ DOMAIN = "example.com"
 HISTORY_HOST = "account.shieldlabs.ai"
 MANAGEMENT_HOST = "api.shieldlabs.ai"
 REQUEST_ID = "02f1d973-84db-4156-a7f7-e799e6bf389b"
-REQUEST_PATH = f"/api/v1/history/identification_id/{REQUEST_ID}"
+DOMAIN_ID = "11111111-1111-4111-8111-111111111111"
+REQUEST_PATH = f"/api/v1/domains/{DOMAIN_ID}/history/identifications/{REQUEST_ID}"
 
 
 def load_json(name: str) -> Any:

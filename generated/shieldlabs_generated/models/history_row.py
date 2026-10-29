@@ -23,16 +23,17 @@ from typing import Any, ClassVar, Dict, List, Optional
 from typing_extensions import Annotated
 from uuid import UUID
 from shieldlabs_generated.models.client_identity import ClientIdentity
+from shieldlabs_generated.models.detection_flags import DetectionFlags
 from typing import Optional, Set
 from typing_extensions import Self
 from pydantic_core import to_jsonable_python
 
 class HistoryRow(BaseModel):
     """
-    One identification as stored, in its latest version. It describes the same identification as a webhook `data` object, with different field names:  | Webhook `data` | History row | |---|---| | `risk_score` | `score` | | `signals` | `score_details` (JSON-encoded string, zero weights included) | | `detection_flags` | the `is_*` columns and `check_incomplete` (each column names its flag) | | `detection_flags.browser_vpn_proxy` | derive it: `connection_type == \"browser_vpn_proxy\"` | | `domain` | `site_domain` when present, otherwise `domain` | | `public_ip` | `ip` (`0.0.0.0` instead of `\"\"`) and `country` | | `local_ip` | `webrtc_leak_ip` and `webrtc_leak_country` when `webrtc_leak_source` is set and not `none`, otherwise `web_rtc_ip` and `web_rtc_country` | | `traffic_source` | `traffic_channel`, `referrer_domain`, `entry_url`, `click_id_type`, `utm_*` (omitted when empty) | | `observed_at` (when scoring finished) | `created_at` (when the identification was made) |  The `ip_mismatch` flag has no column. Rows also carry diagnostic network fields (TCP, MTU and STUN measurements) that are not part of the stable contract: ignore fields you do not know.
+    One identification as stored, in its latest version. It describes the same identification as a webhook `data` object, with different field names:  | Webhook `data` | History row | |---|---| | `risk_score` | `score` | | `signals` | not included in the current public History response | | `detection_flags` | `detection_flags`, the same 20 keys and meanings as the scored webhook. The flat fields below repeat those values under History names | | `domain` | `site_domain` when present, otherwise `domain` | | `public_ip` | `ip` (`0.0.0.0` instead of `\"\"`) and `country` | | `local_ip` | not included in the current public History response | | `traffic_source` | `traffic_channel`, `referrer_domain`, `entry_url`, `click_id_type`, `utm_*` (omitted when empty) | | `observed_at` (when scoring finished) | `created_at` (when the identification was made) |  Current responses omit score details and low-level network diagnostics. The optional diagnostic properties below describe historical responses; they are not required. Ignore fields you do not know.
     """ # noqa: E501
     client_identity: Optional[ClientIdentity] = None
-    identification_id: UUID = Field(description="Identifies one identification. The browser creates it as a UUID v4 and hands it to your page; it is the join key between the browser, the webhook and the History API. The nil UUID appears only on rate-limit marker rows that arrived with a malformed request ID.")
+    identification_id: UUID = Field(description="Identifies one identification. The browser creates it as a UUID v4 and hands it to your page; it is the join key between the browser, the webhook and the History API. The nil UUID appears only on rate-limit marker rows that arrived with a malformed Identification ID.")
     session_id: UUID = Field(description="One visit on one origin (UUID v4 created in the browser), shared by the open tabs of that origin. The next visit after the last tab closes gets a new session ID. The nil UUID appears on rate-limit marker rows.")
     cookie_id: UUID = Field(description="First-party browser identifier kept by the ShieldLabs agent (UUID v4). A missing or malformed value is stored as the nil UUID.")
     domain: StrictStr = Field(description="Host the identification came from. Can be a subdomain of your registered domain.")
@@ -45,34 +46,33 @@ class HistoryRow(BaseModel):
     browser: StrictStr = Field(description="Browser name, for example `Chrome`, `Safari`, `Firefox`, `Microsoft Edge`, `Opera`, `Samsung Internet`, `Brave`, `Chrome (iOS)`, `Safari (iOS)` or `Unknown`. Open set: display it, do not branch on it.")
     device_type: StrictStr = Field(description="Device class from the browser. Known values: `desktop`, `mobile`, `tablet` and `unknown` (the class could not be determined). The set is open: keep values added in later versions and treat them as `unknown`.")
     country: StrictStr = Field(description="Country of `ip` as an English country name, or an empty string.")
-    connection_type: StrictStr = Field(description="How the visitor connected. Known values: - `direct`: a regular connection; - `mobile`: a mobile carrier network; - `vpn`: a VPN; - `proxy`: a proxy, datacenter or hosting network (search-engine crawlers are reported here too); - `tor`: the Tor network; - `privacy_relay`: a privacy relay such as iCloud Private Relay; - `browser_vpn_proxy`: a VPN or proxy built into the browser or one of its extensions; - `unknown`: not enough data.  The value can say `vpn` while `detection_flags.vpn` is `false` (IP intelligence classified the network, but the scored VPN check did not fire). Branch on `detection_flags` for decisions. The set is open: keep values added in later versions and treat them as `unknown`.")
-    score: Annotated[int, Field(strict=True, ge=0)] = Field(description="Risk Score from 0 (no risk found) to 100. Search-engine crawlers always score 0.  Risk bands are computed on your side from the score; no band field exists on the wire: - trusted: 0-29 - suspicious: 30-59 - dangerous: 60-100  A value above 100 is not a score. `999` is the rate-limit marker: the visitor's IP went over the ingest rate limit, and the identification carries exactly one signal, `{\"name\":\"banned_ip\",\"weight\":999}`, usually with nil identifiers. Treat every value above 100 as rate limited. One marker is written when the IP goes over the limit; request IDs issued while it stays blocked get no row and no webhook, so they stay unverified.  The score usually equals the sum of the signal weights capped at 100, but carried-forward verdicts and corrections make that unreliable: never recompute or validate it yourself.")
-    score_details: StrictStr = Field(description="The entries behind `score` as a JSON-encoded **string** holding an array of `{\"Value\": <integer>, \"Description\": <string>}`. Parse it before use. Scored entries come first, followed by informational entries with `Value` 0, which can be long. Empty string when no details were stored.  The webhook `signals` are the entries with a non-zero `Value`, in the same order, with each description turned into a signal name (for example `Is proxy` becomes `proxy`). Descriptions are free text for display: never branch on them.")
+    connection_type: StrictStr = Field(description="How the visitor connected. Known values: - `direct`: a regular connection; - `mobile`: a mobile carrier network; - `vpn`: a VPN; - `proxy`: a proxy, datacenter or hosting network (search-engine crawlers are reported here too); - `tor`: the Tor network; - `private_relay`: a privacy relay such as iCloud Private Relay. Older visits may say `privacy_relay`; - `browser_vpn_proxy`: a VPN or proxy built into the browser or one of its extensions; - `unknown`: not enough data.  The value can say `vpn` while `detection_flags.vpn` is `false` (IP intelligence classified the network, but the scored VPN check did not fire). Branch on `detection_flags` for decisions. The set is open: keep values added in later versions and treat them as `unknown`.")
+    score: Annotated[int, Field(strict=True, ge=0)] = Field(description="Risk Score from 0 (no risk found) to 100. Search-engine crawlers always score 0.  Risk bands are computed on your side from the score; no band field exists on the wire: - trusted: 0-29 - suspicious: 30-59 - dangerous: 60-100  A value above 100 is not a score. `999` is the rate-limit marker: the visitor's IP went over the ingest rate limit, and the identification carries exactly one signal, `{\"name\":\"rate_limited\",\"weight\":999}`, usually with nil identifiers. Treat every value above 100 as rate limited. One marker is written when the IP goes over the limit; Identification IDs issued while it stays blocked get no row and no webhook, so they stay unverified.  The score usually equals the sum of the signal weights capped at 100, but carried-forward verdicts and corrections make that unreliable: never recompute or validate it yourself.")
+    score_details: Optional[StrictStr] = Field(default=None, description="The entries behind `score` as a JSON-encoded **string** holding an array of `{\"Value\": <integer>, \"Description\": <string>}`. Parse it before use. Scored entries come first, followed by informational entries with `Value` 0, which can be long. Empty string when no details were stored.  The webhook `signals` are the entries with a non-zero `Value`, in the same order, with each description turned into a signal name (for example `Is proxy` becomes `proxy`). Descriptions are free text for display: never branch on them.")
     created_at: Annotated[str, Field(strict=True)] = Field(description="Time of the identification as `YYYY-MM-DD HH:MM:SS.mmm` in UTC, without a zone designator (not RFC 3339). Older rows can lack the milliseconds.")
     ver: StrictInt = Field(description="Version of the row in Unix milliseconds. It increases every time the row is refined, for example when late network data re-scores it after the webhook was sent.")
-    web_rtc_ip: StrictStr = Field(description="Local IP address observed by the ShieldLabs network check; `0.0.0.0` when none.")
-    web_rtc_country: StrictStr = Field(description="Country of `web_rtc_ip`, or an empty string.")
-    web_rtc_connection_type: StrictStr = Field(description="Connection class of `web_rtc_ip`, or an empty string.")
-    webrtc_leak_ip: StrictStr = Field(description="Local network address leaked by the browser; `0.0.0.0` when none.")
-    webrtc_leak_country: StrictStr = Field(description="Country of `webrtc_leak_ip`, or an empty string.")
-    webrtc_leak_connection_type: StrictStr = Field(description="Connection class of `webrtc_leak_ip`, or an empty string.")
-    webrtc_leak_source: StrictStr = Field(description="Which check found the local network leak. Known values: `scanner`, `shield`, `none` and the empty string. `none` or an empty string when there is no leak; the webhook `local_ip` then uses `web_rtc_ip`. The set is open: keep values added in later versions.")
+    web_rtc_ip: Optional[StrictStr] = Field(default=None, description="Local IP address observed by the ShieldLabs network check; `0.0.0.0` when none.")
+    web_rtc_country: Optional[StrictStr] = Field(default=None, description="Country of `web_rtc_ip`, or an empty string.")
+    web_rtc_connection_type: Optional[StrictStr] = Field(default=None, description="Connection class of `web_rtc_ip`, or an empty string.")
+    webrtc_leak_ip: Optional[StrictStr] = Field(default=None, description="Local network address leaked by the browser; `0.0.0.0` when none.")
+    webrtc_leak_country: Optional[StrictStr] = Field(default=None, description="Country of `webrtc_leak_ip`, or an empty string.")
+    webrtc_leak_connection_type: Optional[StrictStr] = Field(default=None, description="Connection class of `webrtc_leak_ip`, or an empty string.")
+    webrtc_leak_source: Optional[StrictStr] = Field(default=None, description="Which check found the local network leak. Known values: `scanner`, `shield`, `none` and the empty string. `none` or an empty string when there is no leak; the webhook `local_ip` then uses `web_rtc_ip`. The set is open: keep values added in later versions.")
     is_vpn: StrictBool = Field(description="Same meaning as `detection_flags.vpn`.")
     is_tor: StrictBool = Field(description="Same meaning as `detection_flags.tor`.")
     is_proxy: StrictBool = Field(description="Same meaning as `detection_flags.proxy`.")
-    is_datacenter: StrictBool = Field(description="Same meaning as `detection_flags.datacenter_ip`.")
-    is_abuser: StrictBool = Field(description="Same meaning as `detection_flags.abuser`.")
-    is_privacy_relay: StrictBool = Field(description="Same meaning as `detection_flags.privacy_relay`.")
-    is_stun_not_checked: StrictBool = Field(description="Same meaning as `detection_flags.stun_not_checked`.")
-    check_incomplete: StrictBool = Field(description="Same meaning as `detection_flags.check_incomplete`. Always `false` for search-engine crawlers.")
+    is_privacy_relay: StrictBool = Field(description="Same meaning as `detection_flags.private_relay`.")
+    network_check_incomplete: StrictBool = Field(description="Same meaning as `detection_flags.network_check_incomplete`.")
+    check_incomplete: StrictBool = Field(description="Same meaning as `detection_flags.check_incomplete`. Always `false` for a search-engine crawler, an AI bot, or an AI browser.")
     is_antidetect: StrictBool = Field(description="Same meaning as `detection_flags.anti_detect_browser`.")
     is_os_mismatch: StrictBool = Field(description="Same meaning as `detection_flags.os_mismatch`.")
     is_os_not_detected: StrictBool = Field(description="Same meaning as `detection_flags.os_not_detected`.")
     is_timezone_mismatch: StrictBool = Field(description="Same meaning as `detection_flags.timezone_mismatch`.")
-    is_js_disabled: StrictBool = Field(description="Same meaning as `detection_flags.javascript_disabled`. Always `false` for search-engine crawlers.")
+    is_js_disabled: StrictBool = Field(description="Same meaning as `detection_flags.javascript_disabled`. Always `false` for a search-engine crawler, an AI bot, or an AI browser.")
     is_browser_automation: StrictBool = Field(description="Same meaning as `detection_flags.browser_automation`.")
-    is_incognito: StrictBool = Field(description="Same meaning as `detection_flags.incognito`. Always `false` for search-engine crawlers.")
+    is_incognito: StrictBool = Field(description="Same meaning as `detection_flags.incognito`. Always `false` for a search-engine crawler, an AI bot, or an AI browser.")
     is_search_bot: StrictBool = Field(description="Same meaning as `detection_flags.search_bot`.")
+    detection_flags: DetectionFlags
     entry_url: Optional[StrictStr] = Field(default=None, description="Landing page URL without the `#fragment` (webhook `traffic_source.landing_url`). Omitted when empty. It keeps the query string, which can contain personal data.")
     utm_source: Optional[StrictStr] = Field(default=None, description="`utm_source`, lowercased. Omitted when empty.")
     utm_medium: Optional[StrictStr] = Field(default=None, description="`utm_medium`, lowercased. Omitted when empty.")
@@ -84,8 +84,14 @@ class HistoryRow(BaseModel):
     traffic_reason: Optional[StrictStr] = Field(default=None, description="Why the channel was chosen. Omitted when empty.")
     referrer_domain: Optional[StrictStr] = Field(default=None, description="Registrable domain of the referrer without `www.`; the crawler name (for example `GoogleBot`) for search-engine crawlers. Omitted when empty.")
     click_id_type: Optional[StrictStr] = Field(default=None, description="Ad click identifier type found in the landing URL. Omitted when empty.")
+    ip_mismatch: StrictBool = Field(description="Same meaning as `detection_flags.ip_mismatch`.")
+    latency_test: StrictBool = Field(description="Same meaning as `detection_flags.latency_test`.")
+    device_spoofing: StrictBool = Field(description="Same meaning as `detection_flags.device_spoofing`.")
+    rate_limited: StrictBool = Field(description="Same meaning as `detection_flags.rate_limited`. Older payloads used banned_ip.")
+    ai_bot: StrictBool = Field(description="Same meaning as `detection_flags.ai_bot`.")
+    ai_browser: StrictBool = Field(description="Same meaning as `detection_flags.ai_browser`.")
     additional_properties: Dict[str, Any] = {}
-    __properties: ClassVar[List[str]] = ["client_identity", "identification_id", "session_id", "cookie_id", "domain", "site_domain", "user_hid", "device_id", "visitor_id", "ip", "os", "browser", "device_type", "country", "connection_type", "score", "score_details", "created_at", "ver", "web_rtc_ip", "web_rtc_country", "web_rtc_connection_type", "webrtc_leak_ip", "webrtc_leak_country", "webrtc_leak_connection_type", "webrtc_leak_source", "is_vpn", "is_tor", "is_proxy", "is_datacenter", "is_abuser", "is_privacy_relay", "is_stun_not_checked", "check_incomplete", "is_antidetect", "is_os_mismatch", "is_os_not_detected", "is_timezone_mismatch", "is_js_disabled", "is_browser_automation", "is_incognito", "is_search_bot", "entry_url", "utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term", "traffic_channel", "traffic_channel_group", "traffic_reason", "referrer_domain", "click_id_type"]
+    __properties: ClassVar[List[str]] = ["client_identity", "identification_id", "session_id", "cookie_id", "domain", "site_domain", "user_hid", "device_id", "visitor_id", "ip", "os", "browser", "device_type", "country", "connection_type", "score", "score_details", "created_at", "ver", "web_rtc_ip", "web_rtc_country", "web_rtc_connection_type", "webrtc_leak_ip", "webrtc_leak_country", "webrtc_leak_connection_type", "webrtc_leak_source", "is_vpn", "is_tor", "is_proxy", "is_privacy_relay", "network_check_incomplete", "check_incomplete", "is_antidetect", "is_os_mismatch", "is_os_not_detected", "is_timezone_mismatch", "is_js_disabled", "is_browser_automation", "is_incognito", "is_search_bot", "detection_flags", "entry_url", "utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term", "traffic_channel", "traffic_channel_group", "traffic_reason", "referrer_domain", "click_id_type", "ip_mismatch", "latency_test", "device_spoofing", "rate_limited", "ai_bot", "ai_browser"]
 
     @field_validator('created_at')
     def created_at_validate_regular_expression(cls, value):
@@ -141,6 +147,9 @@ class HistoryRow(BaseModel):
         # override the default output from pydantic by calling `to_dict()` of client_identity
         if self.client_identity:
             _dict['client_identity'] = self.client_identity.to_dict()
+        # override the default output from pydantic by calling `to_dict()` of detection_flags
+        if self.detection_flags:
+            _dict['detection_flags'] = self.detection_flags.to_dict()
         # puts key-value pairs in additional_properties in the top level
         if self.additional_properties is not None:
             for _key, _value in self.additional_properties.items():
@@ -187,10 +196,8 @@ class HistoryRow(BaseModel):
             "is_vpn": obj.get("is_vpn"),
             "is_tor": obj.get("is_tor"),
             "is_proxy": obj.get("is_proxy"),
-            "is_datacenter": obj.get("is_datacenter"),
-            "is_abuser": obj.get("is_abuser"),
             "is_privacy_relay": obj.get("is_privacy_relay"),
-            "is_stun_not_checked": obj.get("is_stun_not_checked"),
+            "network_check_incomplete": obj.get("network_check_incomplete"),
             "check_incomplete": obj.get("check_incomplete"),
             "is_antidetect": obj.get("is_antidetect"),
             "is_os_mismatch": obj.get("is_os_mismatch"),
@@ -200,6 +207,7 @@ class HistoryRow(BaseModel):
             "is_browser_automation": obj.get("is_browser_automation"),
             "is_incognito": obj.get("is_incognito"),
             "is_search_bot": obj.get("is_search_bot"),
+            "detection_flags": DetectionFlags.from_dict(obj["detection_flags"]) if obj.get("detection_flags") is not None else None,
             "entry_url": obj.get("entry_url"),
             "utm_source": obj.get("utm_source"),
             "utm_medium": obj.get("utm_medium"),
@@ -210,7 +218,13 @@ class HistoryRow(BaseModel):
             "traffic_channel_group": obj.get("traffic_channel_group"),
             "traffic_reason": obj.get("traffic_reason"),
             "referrer_domain": obj.get("referrer_domain"),
-            "click_id_type": obj.get("click_id_type")
+            "click_id_type": obj.get("click_id_type"),
+            "ip_mismatch": obj.get("ip_mismatch"),
+            "latency_test": obj.get("latency_test"),
+            "device_spoofing": obj.get("device_spoofing"),
+            "rate_limited": obj.get("rate_limited"),
+            "ai_bot": obj.get("ai_bot"),
+            "ai_browser": obj.get("ai_browser")
         })
         # store additional fields in additional_properties
         for _key in obj.keys():

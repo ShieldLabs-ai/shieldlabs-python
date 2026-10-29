@@ -45,7 +45,10 @@ from typing import Optional
 
 from shieldlabs import ShieldLabs, evaluate_identification, webhooks
 
-client = ShieldLabs(api_key=os.environ["SHIELDLABS_API_KEY"])  # Private API Key, sec_...
+client = ShieldLabs(
+    api_key=os.environ["SHIELDLABS_API_KEY"],  # Private API Key, sec_...
+    domain_id=os.environ["SHIELDLABS_DOMAIN_ID"],  # public domain UUID from GET /api/v1/domains
+)
 used_identification_ids: set[str] = set()  # use your database or cache in production
 
 
@@ -377,9 +380,11 @@ its keys with the default hosts.
 
 | Call | Returns |
 |---|---|
-| `ShieldLabs(api_key=None, base_url=None, timeout=10.0, max_retries=2, http_client=None)` | History API client |
+| `ShieldLabs(api_key=None, base_url=None, timeout=10.0, max_retries=2, http_client=None, domain_id=None)` | History API client. `domain_id` is the public domain UUID |
+| `client.domains()` | `[{"id", "domain"}]` for this key |
 | `client.identifications.get(identification_id, wait=True, timeout=10.0, poll_interval=0.25)` | `Identification` or `None`; `timeout` is the total wait in seconds; `poll_interval` p sets the waits p, 2p, 4p, 6p, 8p, then 8p again, each at most 2 seconds, or p when p is longer |
-| `client.history.search(type, value, limit=20, offset=0)` | `HistoryPage(data, total)` |
+| `client.history.search(type, value, limit=20, **filters)` | one identification card as `HistoryPage`. `offset` is refused |
+| `client.history.list(resource, *, limit=20, **filters)` | page of `identifications` or `user`. Filters are flat query parameters |
 | `client.history.iter(type, value, page_size=100, max_items=None)` | iterator of `Identification`; `max_items=0` yields nothing |
 | `AsyncShieldLabs(...)` | same methods as coroutines; `history.iter` is an async iterator |
 | `ShieldLabsManagement(secret_key=None, domain=None, base_url=None, timeout=10.0, max_retries=2, http_client=None)` | Management API client |

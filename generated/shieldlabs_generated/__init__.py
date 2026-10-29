@@ -40,6 +40,10 @@ __all__ = [
     "DetectionFlags20261012",
     "DomainProfile",
     "ErrorBody",
+    "GetHistoryEntity200Response",
+    "GetHistoryEntity200ResponseData",
+    "GetHistoryEntity200ResponseDataRisk",
+    "GetHistoryEntity200ResponseDataSignals",
     "HRE",
     "HREResult",
     "HealthStatus",
@@ -51,6 +55,13 @@ __all__ = [
     "IpInfo",
     "LegacyDetectionFlags",
     "LegacySnapshot",
+    "ListDomains200Response",
+    "ListDomains200ResponseDomainsInner",
+    "ListHistoryEntities200Response",
+    "ListHistoryEntities200ResponseOneOf",
+    "ListHistoryEntities200ResponseOneOfDataInner",
+    "ListHistoryEntities200ResponseOneOfDataInnerRisk",
+    "ListHistoryEntities200ResponseOneOfDataInnerSignals",
     "MultiaccountChangedData",
     "MultiaccountChangedDataEvidenceSummary",
     "MultiaccountChangedDataSource",
@@ -93,6 +104,10 @@ from shieldlabs_generated.models.detection_flags import DetectionFlags as Detect
 from shieldlabs_generated.models.detection_flags20261012 import DetectionFlags20261012 as DetectionFlags20261012
 from shieldlabs_generated.models.domain_profile import DomainProfile as DomainProfile
 from shieldlabs_generated.models.error_body import ErrorBody as ErrorBody
+from shieldlabs_generated.models.get_history_entity200_response import GetHistoryEntity200Response as GetHistoryEntity200Response
+from shieldlabs_generated.models.get_history_entity200_response_data import GetHistoryEntity200ResponseData as GetHistoryEntity200ResponseData
+from shieldlabs_generated.models.get_history_entity200_response_data_risk import GetHistoryEntity200ResponseDataRisk as GetHistoryEntity200ResponseDataRisk
+from shieldlabs_generated.models.get_history_entity200_response_data_signals import GetHistoryEntity200ResponseDataSignals as GetHistoryEntity200ResponseDataSignals
 from shieldlabs_generated.models.hre import HRE as HRE
 from shieldlabs_generated.models.hre_result import HREResult as HREResult
 from shieldlabs_generated.models.health_status import HealthStatus as HealthStatus
@@ -104,6 +119,13 @@ from shieldlabs_generated.models.identification_scored_event import Identificati
 from shieldlabs_generated.models.ip_info import IpInfo as IpInfo
 from shieldlabs_generated.models.legacy_detection_flags import LegacyDetectionFlags as LegacyDetectionFlags
 from shieldlabs_generated.models.legacy_snapshot import LegacySnapshot as LegacySnapshot
+from shieldlabs_generated.models.list_domains200_response import ListDomains200Response as ListDomains200Response
+from shieldlabs_generated.models.list_domains200_response_domains_inner import ListDomains200ResponseDomainsInner as ListDomains200ResponseDomainsInner
+from shieldlabs_generated.models.list_history_entities200_response import ListHistoryEntities200Response as ListHistoryEntities200Response
+from shieldlabs_generated.models.list_history_entities200_response_one_of import ListHistoryEntities200ResponseOneOf as ListHistoryEntities200ResponseOneOf
+from shieldlabs_generated.models.list_history_entities200_response_one_of_data_inner import ListHistoryEntities200ResponseOneOfDataInner as ListHistoryEntities200ResponseOneOfDataInner
+from shieldlabs_generated.models.list_history_entities200_response_one_of_data_inner_risk import ListHistoryEntities200ResponseOneOfDataInnerRisk as ListHistoryEntities200ResponseOneOfDataInnerRisk
+from shieldlabs_generated.models.list_history_entities200_response_one_of_data_inner_signals import ListHistoryEntities200ResponseOneOfDataInnerSignals as ListHistoryEntities200ResponseOneOfDataInnerSignals
 from shieldlabs_generated.models.multiaccount_changed_data import MultiaccountChangedData as MultiaccountChangedData
 from shieldlabs_generated.models.multiaccount_changed_data_evidence_summary import MultiaccountChangedDataEvidenceSummary as MultiaccountChangedDataEvidenceSummary
 from shieldlabs_generated.models.multiaccount_changed_data_source import MultiaccountChangedDataSource as MultiaccountChangedDataSource
