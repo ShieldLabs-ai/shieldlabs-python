@@ -1163,7 +1163,7 @@ webhooks:
                     detection_flags:
                       device_spoofing: false
                       latency_test: false
-                      rate_limited: false
+                      banned_ip: false
                       vpn: false
                       private_relay: false
                       tor: false
@@ -1243,7 +1243,7 @@ webhooks:
                     detection_flags:
                       device_spoofing: false
                       latency_test: false
-                      rate_limited: false
+                      banned_ip: false
                       vpn: false
                       private_relay: false
                       tor: false
@@ -1323,7 +1323,7 @@ webhooks:
                     detection_flags:
                       device_spoofing: false
                       latency_test: false
-                      rate_limited: false
+                      banned_ip: false
                       vpn: false
                       private_relay: false
                       tor: false
@@ -1670,7 +1670,7 @@ components:
 
         A value above 100 is not a score. `999` is the rate-limit marker: the visitor's IP went over the
         ingest rate limit, and the identification carries exactly one signal,
-        `{"name":"rate_limited","weight":999}`, usually with nil identifiers. Treat every value above
+        `{"name":"banned_ip","weight":999}`, usually with nil identifiers. Treat every value above
         100 as rate limited. One marker is written when the IP goes over the limit; Identification IDs issued
         while it stays blocked get no row and no webhook, so they stay unverified.
 
@@ -1735,7 +1735,7 @@ components:
         - latency_test
         - anti_detect_browser
         - device_spoofing
-        - rate_limited
+        - banned_ip
         - incognito
         - search_bot
         - ai_bot
@@ -1781,9 +1781,9 @@ components:
           description: An anti-detect browser was detected.
         device_spoofing:
           type: boolean
-        rate_limited:
+        banned_ip:
           type: boolean
-          description: The visitor exceeded the identification rate limit. Older payloads used banned_ip.
+          description: The visitor exceeded the identification rate limit.
         incognito:
           type: boolean
           description: The browser runs in a private window. False for a search-engine crawler, an AI bot, or an AI browser. Weight 0, and present in signals when true.
@@ -1928,7 +1928,7 @@ components:
         - ip_mismatch
         - latency_test
         - device_spoofing
-        - rate_limited
+        - banned_ip
         - ai_bot
         - ai_browser
       properties:
@@ -2131,9 +2131,9 @@ components:
         device_spoofing:
           type: boolean
           description: Same meaning as `detection_flags.device_spoofing`.
-        rate_limited:
+        banned_ip:
           type: boolean
-          description: Same meaning as `detection_flags.rate_limited`. Older payloads used banned_ip.
+          description: Same meaning as `detection_flags.banned_ip`.
         ai_bot:
           type: boolean
           description: Same meaning as `detection_flags.ai_bot`.
@@ -2601,10 +2601,7 @@ components:
           description: Previous public name of the latency detector. Current 2026-10-13 payloads use latency_test.
         banned_ip:
           type: boolean
-          description: Current public name of the banned-IP flag. Payloads from schema 2026-10-13 before the slug rename used rate_limited.
-        rate_limited:
-          type: boolean
-          description: Previous public name of the banned-IP flag. Current 2026-10-13 payloads use banned_ip.
+          description: The visitor exceeded the identification rate limit.
         ai_bot:
           type: boolean
           description: An accepted bot is classified as AI training or user-requested fetch. ChatGPT-User, Claude-User and Perplexity-User are AI bots, not AI browsers. Weight 0. The flag is optional on older payloads; its absence is not an evaluated negative result. Provider claims alone do not grant zero risk.
@@ -3025,7 +3022,7 @@ components:
             - `network_check_incomplete`: the network (STUN) check did not complete;
             - `stun_late_correction`: a late network result arrived; negative weight that cancels
               `network_check_incomplete`;
-            - `rate_limited`: the rate-limit marker. Older payloads used `banned_ip`.
+            - `banned_ip`: the rate-limit marker. Older payloads used `banned_ip`.
 
             A verdict carried forward from an earlier identification of the same device and IP (for
             example `antidetect_browser`) keeps a name derived from the original signal and can carry a
@@ -3035,7 +3032,7 @@ components:
             - antidetect_browser
         weight:
           type: integer
-          description: Points the signal contributed. Can be negative (`stun_late_correction` is -30) and is 999 for `rate_limited`. Older payloads used `banned_ip`. Weights can change between releases; never add them up yourself.
+          description: Points the signal contributed. Can be negative (`stun_late_correction` is -30) and is 999 for `banned_ip`. Older payloads used `banned_ip`. Weights can change between releases; never add them up yourself.
           examples:
             - 10
             - -30
@@ -3178,7 +3175,7 @@ components:
           $ref: '#/components/schemas/RiskScore'
         signals:
           type: array
-          description: Weighted risk signals behind `risk_score`, in scoring order. Can be empty. The rate-limit marker carries exactly one entry, `{"name":"rate_limited","weight":999}`.
+          description: Weighted risk signals behind `risk_score`, in scoring order. Can be empty. The rate-limit marker carries exactly one entry, `{"name":"banned_ip","weight":999}`.
           items:
             $ref: '#/components/schemas/Signal'
         detection_flags:
@@ -3205,8 +3202,6 @@ components:
             ws_tcp_latency:
               type: boolean
             banned_ip:
-              type: boolean
-            rate_limited:
               type: boolean
             check_incomplete:
               type: boolean
@@ -3717,7 +3712,7 @@ components:
             ip_mismatch: false
             latency_test: false
             device_spoofing: false
-            rate_limited: false
+            banned_ip: false
             ai_bot: false
             ai_browser: false
             detection_flags:
@@ -3734,7 +3729,7 @@ components:
               latency_test: false
               anti_detect_browser: true
               device_spoofing: false
-              rate_limited: false
+              banned_ip: false
               incognito: false
               search_bot: false
               ai_bot: false
@@ -3791,7 +3786,7 @@ components:
             ip_mismatch: false
             latency_test: false
             device_spoofing: false
-            rate_limited: false
+            banned_ip: false
             ai_bot: false
             ai_browser: false
             detection_flags:
@@ -3808,7 +3803,7 @@ components:
               latency_test: false
               anti_detect_browser: false
               device_spoofing: false
-              rate_limited: false
+              banned_ip: false
               incognito: true
               search_bot: false
               ai_bot: false
@@ -3870,7 +3865,7 @@ components:
             ip_mismatch: false
             latency_test: false
             device_spoofing: false
-            rate_limited: false
+            banned_ip: false
             ai_bot: false
             ai_browser: false
             detection_flags:
@@ -3887,7 +3882,7 @@ components:
               latency_test: false
               anti_detect_browser: false
               device_spoofing: false
-              rate_limited: false
+              banned_ip: false
               incognito: false
               search_bot: false
               ai_bot: false
@@ -3944,7 +3939,7 @@ components:
             ip_mismatch: false
             latency_test: false
             device_spoofing: false
-            rate_limited: true
+            banned_ip: true
             ai_bot: false
             ai_browser: false
             detection_flags:
@@ -3961,7 +3956,7 @@ components:
               latency_test: false
               anti_detect_browser: false
               device_spoofing: false
-              rate_limited: true
+              banned_ip: true
               incognito: false
               search_bot: false
               ai_bot: false
@@ -4022,7 +4017,7 @@ components:
             ip_mismatch: false
             latency_test: false
             device_spoofing: false
-            rate_limited: false
+            banned_ip: false
             ai_bot: false
             ai_browser: false
             detection_flags:
@@ -4039,7 +4034,7 @@ components:
               latency_test: false
               anti_detect_browser: false
               device_spoofing: false
-              rate_limited: false
+              banned_ip: false
               incognito: false
               search_bot: true
               ai_bot: false
@@ -4323,7 +4318,7 @@ components:
           observed_at: '2026-09-30T12:34:57.482913041Z'
     IdentificationScoredRateLimited:
       summary: Rate-limit marker (999)
-      description: 'The 999 rate-limit marker: one `rate_limited` signal, nil identifiers and no attribution. It is not a Risk Score.'
+      description: 'The 999 rate-limit marker: one `banned_ip` signal, nil identifiers and no attribution. It is not a Risk Score.'
       value:
         event_type: identification.scored
         schema_version: '2026-06-01'
@@ -4358,7 +4353,7 @@ components:
             utm_term: ''
           risk_score: 999
           signals:
-            - name: rate_limited
+            - name: banned_ip
               weight: 999
           detection_flags:
             vpn: false
@@ -4774,10 +4769,10 @@ components:
         match:
           value: 'true'
     HistoryFlagRateLimited:
-      name: rate_limited
+      name: banned_ip
       in: query
       required: false
-      description: When set, keep only rows whose `rate_limited` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+      description: When set, keep only rows whose `banned_ip` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
       schema:
         type: string
         enum:

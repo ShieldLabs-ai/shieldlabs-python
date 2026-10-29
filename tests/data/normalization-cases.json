@@ -127,7 +127,7 @@
           "latency_test": false,
           "anti_detect_browser": true,
           "device_spoofing": false,
-          "rate_limited": false,
+          "banned_ip": false,
           "incognito": false,
           "search_bot": false,
           "ai_bot": false,
@@ -246,7 +246,7 @@
           "latency_test": false,
           "anti_detect_browser": false,
           "device_spoofing": false,
-          "rate_limited": false,
+          "banned_ip": false,
           "incognito": true,
           "search_bot": false,
           "ai_bot": false,
@@ -385,7 +385,7 @@
           "latency_test": false,
           "anti_detect_browser": false,
           "device_spoofing": false,
-          "rate_limited": false,
+          "banned_ip": false,
           "incognito": false,
           "search_bot": false,
           "ai_bot": false,
@@ -485,7 +485,7 @@
         "risk_score": 999,
         "signals": [
           {
-            "name": "rate_limited",
+            "name": "banned_ip",
             "weight": 999,
             "description": "User has been banned 1H, to many requests"
           }
@@ -504,7 +504,7 @@
           "latency_test": false,
           "anti_detect_browser": false,
           "device_spoofing": false,
-          "rate_limited": false,
+          "banned_ip": false,
           "incognito": false,
           "search_bot": false,
           "ai_bot": false,
@@ -621,7 +621,7 @@
           "latency_test": false,
           "anti_detect_browser": false,
           "device_spoofing": false,
-          "rate_limited": false,
+          "banned_ip": false,
           "incognito": false,
           "search_bot": true,
           "ai_bot": false,
@@ -696,7 +696,7 @@
           "ws_tcp_latency": false,
           "anti_detect_browser": true,
           "device_spoofing": false,
-          "rate_limited": false,
+          "banned_ip": false,
           "incognito": false,
           "search_bot": false,
           "ai_bot": false,
@@ -769,7 +769,7 @@
           "latency_test": false,
           "anti_detect_browser": true,
           "device_spoofing": false,
-          "rate_limited": false,
+          "banned_ip": false,
           "incognito": false,
           "search_bot": false,
           "ai_bot": false,
@@ -818,7 +818,7 @@
         "risk_score": 999,
         "signals": [
           {
-            "name": "rate_limited",
+            "name": "banned_ip",
             "weight": 999
           }
         ],
@@ -836,7 +836,7 @@
           "ws_tcp_latency": false,
           "anti_detect_browser": false,
           "device_spoofing": false,
-          "rate_limited": false,
+          "banned_ip": false,
           "incognito": false,
           "search_bot": false,
           "ai_bot": false,
@@ -880,7 +880,7 @@
         "risk_score": 999,
         "signals": [
           {
-            "name": "rate_limited",
+            "name": "banned_ip",
             "weight": 999,
             "description": null
           }
@@ -899,7 +899,7 @@
           "latency_test": false,
           "anti_detect_browser": false,
           "device_spoofing": false,
-          "rate_limited": false,
+          "banned_ip": false,
           "incognito": false,
           "search_bot": false,
           "ai_bot": false,
@@ -932,7 +932,7 @@
           "ws_tcp_latency": false,
           "anti_detect_browser": false,
           "device_spoofing": false,
-          "rate_limited": false,
+          "banned_ip": false,
           "incognito": false,
           "search_bot": false,
           "ai_bot": false,
@@ -1047,7 +1047,7 @@
           "latency_test": false,
           "anti_detect_browser": false,
           "device_spoofing": false,
-          "rate_limited": false,
+          "banned_ip": false,
           "incognito": false,
           "search_bot": false,
           "ai_bot": false,

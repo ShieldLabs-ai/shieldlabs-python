@@ -18,7 +18,7 @@
       "ws_tcp_latency": false,
       "anti_detect_browser": false,
       "device_spoofing": false,
-      "rate_limited": false,
+      "banned_ip": false,
       "incognito": false,
       "search_bot": false,
       "ai_bot": false,

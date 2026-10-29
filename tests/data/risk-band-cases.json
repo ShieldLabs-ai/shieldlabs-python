@@ -38,7 +38,7 @@
     },
     {
       "score": 999,
-      "band": "rate_limited"
+      "band": "banned_ip"
     }
   ]
 }

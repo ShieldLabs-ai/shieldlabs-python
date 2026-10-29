@@ -20,7 +20,7 @@ EvaluationReason = Literal[
     "missing",
     "replayed",
     "stale",
-    "rate_limited",
+    "banned_ip",
     "no_device_signals",
     "blocked_flag",
     "blocked_band",
@@ -87,7 +87,7 @@ def evaluate_identification(
        used request IDs in your own store.
     3. ``stale``: ``observed_at`` is older than ``max_age`` (a finite number of seconds, 0 or
        greater, or a timedelta).
-    4. ``rate_limited``: the Risk Score is the rate-limit marker (above 100).
+    4. ``banned_ip``: the Risk Score is the rate-limit marker (above 100).
     5. ``no_device_signals``: the device ID is the all-zero UUID.
     6. ``blocked_flag``: a flag in ``block_flags`` is set (reported in ``flag``).
     7. ``blocked_band``: the risk band is in ``block_bands``.
@@ -118,7 +118,7 @@ def evaluate_identification(
         return Evaluation(ok=False, reason="stale", band=band)
 
     if is_rate_limited(identification.risk_score):
-        return Evaluation(ok=False, reason="rate_limited", band=band)
+        return Evaluation(ok=False, reason="banned_ip", band=band)
     if not identification.has_device_signals:
         return Evaluation(ok=False, reason="no_device_signals", band=band)
     for name in flags:

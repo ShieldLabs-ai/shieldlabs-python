@@ -97,14 +97,14 @@ def test_signal_slug_cases(case: dict[str, str]) -> None:
 @pytest.mark.parametrize("case", BANDS, ids=[str(c["score"]) for c in BANDS])
 def test_risk_band_cases(case: dict[str, Any]) -> None:
     assert risk_band(case["score"]) == case["band"]
-    assert is_rate_limited(case["score"]) is (case["band"] == "rate_limited")
+    assert is_rate_limited(case["score"]) is (case["band"] == "banned_ip")
 
 
 def test_identification_band_properties() -> None:
     marker = next(c for c in NORMALIZATION if c["name"] == "webhook_rate_limited")
     identification = _normalize(marker)
     assert identification.risk_score == 999
-    assert identification.risk_band == "rate_limited"
+    assert identification.risk_band == "banned_ip"
     assert identification.is_rate_limited
     assert not identification.has_device_signals
     assert identification.device_id == NIL_UUID
@@ -272,7 +272,7 @@ def test_history_page_rows_match_normalization_cases() -> None:
 def test_known_signal_names_are_plain_strings() -> None:
     assert SignalName.ANTIDETECT_BROWSER == "antidetect_browser"
     assert SignalName.STUN_LATE_CORRECTION == "stun_late_correction"
-    assert SignalName.RATE_LIMITED == "rate_limited"
+    assert SignalName.RATE_LIMITED == "banned_ip"
 
 
 def test_models_are_frozen() -> None:

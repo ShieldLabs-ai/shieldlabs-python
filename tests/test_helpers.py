@@ -87,7 +87,7 @@ def test_rate_limit_marker() -> None:
     marker = Identification.from_webhook_data(CASES["webhook_rate_limited"]["input"])
     marker = replace(marker, observed_at=OBSERVED)
     verdict = evaluate_identification(marker, now=NOW)
-    assert verdict == Evaluation(ok=False, reason="rate_limited", band="rate_limited")
+    assert verdict == Evaluation(ok=False, reason="banned_ip", band="banned_ip")
 
 
 def test_nil_device_id() -> None:
@@ -137,7 +137,7 @@ def test_check_order_replay_before_stale_before_marker() -> None:
     late = NOW + timedelta(hours=1)
     assert evaluate_identification(marker, now=late, is_replay=lambda _: True).reason == "replayed"
     assert evaluate_identification(marker, now=late).reason == "stale"
-    assert evaluate_identification(marker, now=NOW).reason == "rate_limited"
+    assert evaluate_identification(marker, now=NOW).reason == "banned_ip"
 
 
 @pytest.mark.parametrize(

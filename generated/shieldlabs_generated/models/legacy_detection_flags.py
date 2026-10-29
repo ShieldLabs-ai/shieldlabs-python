@@ -49,12 +49,11 @@ class LegacyDetectionFlags(BaseModel):
     device_spoofing: Optional[StrictBool] = None
     latency_test: Optional[StrictBool] = Field(default=None, description="Current public name of the latency detector. Payloads from schema 2026-10-13 before the slug rename used ws_tcp_latency.")
     ws_tcp_latency: Optional[StrictBool] = Field(default=None, description="Previous public name of the latency detector. Current 2026-10-13 payloads use latency_test.")
-    banned_ip: Optional[StrictBool] = Field(default=None, description="Current public name of the banned-IP flag. Payloads from schema 2026-10-13 before the slug rename used rate_limited.")
-    rate_limited: Optional[StrictBool] = Field(default=None, description="Previous public name of the banned-IP flag. Current 2026-10-13 payloads use banned_ip.")
+    banned_ip: Optional[StrictBool] = Field(default=None, description="The visitor exceeded the identification rate limit.")
     ai_bot: Optional[StrictBool] = Field(default=None, description="An accepted bot is classified as AI training or user-requested fetch. ChatGPT-User, Claude-User and Perplexity-User are AI bots, not AI browsers. Weight 0. The flag is optional on older payloads; its absence is not an evaluated negative result. Provider claims alone do not grant zero risk.")
     ai_browser: Optional[StrictBool] = Field(default=None, description="A browser is identified by separate verified browser infrastructure. A generic browser User-Agent or a verified provider alone is insufficient. Weight 0. Optional on older payloads; absence is not an evaluated negative.")
     os_mismatch2: Optional[StrictBool] = Field(default=None, description="Legacy 2026-10-06 only; current payloads combine this check into os_mismatch.")
-    __properties: ClassVar[List[str]] = ["vpn", "privacy_relay", "browser_vpn_proxy", "tor", "proxy", "datacenter_ip", "abuser", "os_mismatch", "os_not_detected", "timezone_mismatch", "anti_detect_browser", "browser_automation", "ip_mismatch", "incognito", "search_bot", "javascript_disabled", "stun_not_checked", "check_incomplete", "device_spoofing", "latency_test", "ws_tcp_latency", "banned_ip", "rate_limited", "ai_bot", "ai_browser", "os_mismatch2"]
+    __properties: ClassVar[List[str]] = ["vpn", "privacy_relay", "browser_vpn_proxy", "tor", "proxy", "datacenter_ip", "abuser", "os_mismatch", "os_not_detected", "timezone_mismatch", "anti_detect_browser", "browser_automation", "ip_mismatch", "incognito", "search_bot", "javascript_disabled", "stun_not_checked", "check_incomplete", "device_spoofing", "latency_test", "ws_tcp_latency", "banned_ip", "ai_bot", "ai_browser", "os_mismatch2"]
 
     model_config = ConfigDict(
         validate_by_name=True,
@@ -129,7 +128,6 @@ class LegacyDetectionFlags(BaseModel):
             "latency_test": obj.get("latency_test"),
             "ws_tcp_latency": obj.get("ws_tcp_latency"),
             "banned_ip": obj.get("banned_ip"),
-            "rate_limited": obj.get("rate_limited"),
             "ai_bot": obj.get("ai_bot"),
             "ai_browser": obj.get("ai_browser"),
             "os_mismatch2": obj.get("os_mismatch2")

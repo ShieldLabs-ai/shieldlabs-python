@@ -38,7 +38,6 @@ class IdentificationScoredDataDetectionFlags(BaseModel):
     latency_test: Optional[StrictBool] = None
     ws_tcp_latency: Optional[StrictBool] = None
     banned_ip: Optional[StrictBool] = None
-    rate_limited: Optional[StrictBool] = None
     check_incomplete: Optional[StrictBool] = None
     os_not_detected: Optional[StrictBool] = None
     timezone_mismatch: Optional[StrictBool] = None
@@ -57,7 +56,7 @@ class IdentificationScoredDataDetectionFlags(BaseModel):
     datacenter_ip: Optional[StrictBool] = None
     abuser: Optional[StrictBool] = None
     additional_properties: Dict[str, Any] = {}
-    __properties: ClassVar[List[str]] = ["vpn", "proxy", "tor", "private_relay", "privacy_relay", "network_check_incomplete", "stun_not_checked", "latency_test", "ws_tcp_latency", "banned_ip", "rate_limited", "check_incomplete", "os_not_detected", "timezone_mismatch", "javascript_disabled", "os_mismatch", "os_mismatch2", "ip_mismatch", "anti_detect_browser", "device_spoofing", "incognito", "search_bot", "ai_bot", "ai_browser", "browser_automation", "browser_vpn_proxy", "datacenter_ip", "abuser"]
+    __properties: ClassVar[List[str]] = ["vpn", "proxy", "tor", "private_relay", "privacy_relay", "network_check_incomplete", "stun_not_checked", "latency_test", "ws_tcp_latency", "banned_ip", "check_incomplete", "os_not_detected", "timezone_mismatch", "javascript_disabled", "os_mismatch", "os_mismatch2", "ip_mismatch", "anti_detect_browser", "device_spoofing", "incognito", "search_bot", "ai_bot", "ai_browser", "browser_automation", "browser_vpn_proxy", "datacenter_ip", "abuser"]
 
     model_config = ConfigDict(
         validate_by_name=True,
@@ -127,7 +126,6 @@ class IdentificationScoredDataDetectionFlags(BaseModel):
             "latency_test": obj.get("latency_test"),
             "ws_tcp_latency": obj.get("ws_tcp_latency"),
             "banned_ip": obj.get("banned_ip"),
-            "rate_limited": obj.get("rate_limited"),
             "check_incomplete": obj.get("check_incomplete"),
             "os_not_detected": obj.get("os_not_detected"),
             "timezone_mismatch": obj.get("timezone_mismatch"),
