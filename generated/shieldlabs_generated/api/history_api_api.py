@@ -16,10 +16,14 @@ from pydantic import validate_call, Field, StrictFloat, StrictStr, StrictInt
 from typing import Any, Dict, List, Optional, Tuple, Union
 from typing_extensions import Annotated
 
+from datetime import datetime
 from pydantic import Field, StrictStr, field_validator
-from typing import Optional
+from typing import List, Optional
 from typing_extensions import Annotated
-from shieldlabs_generated.models.history_page import HistoryPage
+from uuid import UUID
+from shieldlabs_generated.models.get_history_entity200_response import GetHistoryEntity200Response
+from shieldlabs_generated.models.list_domains200_response import ListDomains200Response
+from shieldlabs_generated.models.list_history_entities200_response import ListHistoryEntities200Response
 
 from shieldlabs_generated.api_client import ApiClient, RequestSerialized
 from shieldlabs_generated.api_response import ApiResponse
@@ -40,12 +44,46 @@ class HistoryAPIApi:
 
 
     @validate_call
-    def search_history(
+    def get_history_entity(
         self,
-        search_type: Annotated[StrictStr, Field(description="Identifier to search by: - `identification_id`: one identification (read a verdict); - `device_id`: every identification of one device; - `user_hid`: every identification of one account; - `visitor_id`: every identification of one visitor; - `ip`: every identification from one public IPv4 address; - `session_id`: every identification of one visit; - `cookie_id`: every identification with one browser cookie.  `request_id` is a legacy alias of `identification_id` and is still accepted. The server does not reject other values: it ignores them and returns the latest identifications of the whole domain, so restrict the value on your side.")],
-        value: Annotated[str, Field(min_length=1, strict=True, description="Value of the identifier, validated on your side before sending: - `identification_id`, `device_id`, `visitor_id`, `session_id`, `cookie_id`: a UUID of any version,   the nil UUID included, matching   `^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`. Send it   lowercase. - `ip`: a dotted IPv4 address. IPv6 addresses cannot be searched. - `user_hid`: the exact, case-sensitive User HID as one path segment, encoded the way the   server reads it: send the characters `A-Z a-z 0-9 - . _ ~ $ & + , : ; = @` unescaped and   percent-encode every other byte of the UTF-8 value as uppercase `%XX`, including   `! ' ( ) *`, spaces and `%` itself. The server compares any other encoding literally, so   `%40` instead of `@`, or lowercase hex digits, return an empty page instead of the matching   rows. Many HTTP clients and generated clients escape `$ & + , : ; = @` in path values: build   this path yourself when yours does. A User HID that contains `/` cannot be searched, and most   HTTP clients cannot send `.` or `..` because they remove them as dot segments; the pattern   rejects these values. Hex-encoded hashes need no escaping at all.  The server does not validate the value: a malformed UUID or IPv4 address gets a `500`.")],
-        limit: Annotated[Optional[Annotated[int, Field(le=100, strict=True, ge=1)]], Field(description="Maximum number of identifications to return, from 1 to 100. The server replaces any other value (and a non-numeric one) with 20 instead of clamping it, so validate it on your side.")] = None,
-        offset: Annotated[Optional[Annotated[int, Field(strict=True, ge=0)]], Field(description="Number of identifications to skip, for paging. The server treats negative or non-numeric values as 0. Rows are ordered by `created_at` only, so paging while new identifications arrive can repeat or skip rows: deduplicate on `identification_id`.")] = None,
+        domain_id: Annotated[UUID, Field(description="Public domain UUID of the site whose History is being read.")],
+        resource: Annotated[StrictStr, Field(description="History resource. A card exists for identifications, user, visitor, device and ip.")],
+        resource_id: Annotated[str, Field(min_length=1, strict=True, description="Record id. UUID for identifications, visitor and device. User HID text for user. IPv4 for ip. Send a User HID as one path segment: the characters `A-Z a-z 0-9 - . _ ~ $ & + , : ; = @` unescaped and every other byte as uppercase `%XX`.")],
+        limit: Annotated[Optional[Annotated[int, Field(le=100, strict=True, ge=1)]], Field(description="Maximum records in the page, from 1 through 100.")] = None,
+        page_token: Annotated[Optional[StrictStr], Field(description="Opaque token from the previous page. Omit it on the first page.")] = None,
+        var_from: Annotated[Optional[datetime], Field(description="Inclusive RFC3339 start. Send `to` as well, or send neither.")] = None,
+        to: Annotated[Optional[datetime], Field(description="Exclusive RFC3339 end. Send `from` as well, or send neither.")] = None,
+        snapshot: Annotated[Optional[StrictStr], Field(description="Value of the History-Snapshot header. Continues that read.")] = None,
+        risk_bands: Annotated[Optional[List[StrictStr]], Field(description="Repeat for trusted, suspicious, or dangerous.")] = None,
+        hre_min_accounts: Annotated[Optional[Annotated[int, Field(le=99, strict=True, ge=3)]], Field(description="Minimum linked accounts for a high-risk event, from 3 to 99.")] = None,
+        hre_min_devices: Annotated[Optional[Annotated[int, Field(le=99, strict=True, ge=4)]], Field(description="Minimum linked devices for a high-risk event, from 4 to 99.")] = None,
+        is_vpn: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `is_vpn` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        is_tor: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `is_tor` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        is_proxy: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `is_proxy` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        is_privacy_relay: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `is_privacy_relay` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        network_check_incomplete: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `network_check_incomplete` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        check_incomplete: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `check_incomplete` equals this value. Always false for search-engine crawlers, matching the row. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        is_antidetect: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `is_antidetect` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        is_os_mismatch: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `is_os_mismatch` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        is_os_not_detected: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `is_os_not_detected` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        is_timezone_mismatch: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `is_timezone_mismatch` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        is_js_disabled: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `is_js_disabled` equals this value. Always false for search-engine crawlers, matching the row. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        is_browser_automation: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `is_browser_automation` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        is_incognito: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `is_incognito` equals this value. Always false for search-engine crawlers, matching the row. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        is_search_bot: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `is_search_bot` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        ip_mismatch: Annotated[Optional[StrictStr], Field(description="Keep only rows whose `ip_mismatch` equals this value. Omit to leave unconstrained.")] = None,
+        latency_test: Annotated[Optional[StrictStr], Field(description="Keep only rows whose `latency_test` equals this value. Omit to leave unconstrained.")] = None,
+        device_spoofing: Annotated[Optional[StrictStr], Field(description="Keep only rows whose `device_spoofing` equals this value. Omit to leave unconstrained.")] = None,
+        rate_limited: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `rate_limited` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        ai_bot: Annotated[Optional[StrictStr], Field(description="Keep only rows whose `ai_bot` equals this value. Omit to leave unconstrained.")] = None,
+        ai_browser: Annotated[Optional[StrictStr], Field(description="Keep only rows whose `ai_browser` equals this value. Omit to leave unconstrained.")] = None,
+        risk_signals: Annotated[Optional[List[StrictStr]], Field(description="Repeat a public signal code. Several codes combine with OR.")] = None,
+        source: Annotated[Optional[List[StrictStr]], Field(description="Traffic source. Together with campaign, at most 8 values, matched if any value matches. _empty means no referrer.")] = None,
+        campaign: Annotated[Optional[List[StrictStr]], Field(description="Campaign name. No campaign matches visits with no campaign.")] = None,
+        device_id_source: Annotated[Optional[StrictStr], Field(description="Device cards only. `legacy` or `fp21_record`.")] = None,
+        relation: Annotated[Optional[StrictStr], Field(description="Linked-id page for this card. Identification cards reject this parameter.")] = None,
+        relation_limit: Annotated[Optional[Annotated[int, Field(le=100, strict=True, ge=1)]], Field(description="Linked records in one page, from 1 through 100.")] = None,
+        relation_page_token: Annotated[Optional[StrictStr], Field(description="Opaque token from the previous linked-id page.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -58,19 +96,87 @@ class HistoryAPIApi:
         _content_type: Optional[StrictStr] = None,
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=1)] = 0,
-    ) -> HistoryPage:
-        """Search identifications
+    ) -> GetHistoryEntity200Response:
+        """Read one History entity
 
-        Returns the identifications of your domain that match one identifier, newest first, together with the total number of matches. The Private API Key selects the domain; identifications from its subdomains are included (`domain` holds the host, `site_domain` the registered domain).  **Read one verdict.** After a protected action, search by `identification_id` with `limit=1`. The row becomes available asynchronously, so start the identification when the user begins the action (for example when the signup form opens), not when the form is submitted. An empty `data` array means \"not scored yet\", never \"clean\". Poll with backoff (first try at once, then wait 250 ms, 500 ms, 1 s, then steps of about 1.5 s) and treat a `429` inside that loop as \"wait longer\". The official server SDKs do this for you.  **Account-level checks.** Search by `device_id`, `user_hid`, `visitor_id` or `ip` to see how many accounts share a device, how many devices one account uses, or what else came from one IP address. When you count accounts, skip rows whose `user_hid` is empty or one of the values that do not identify a user: `anonymous`, `fail`, `-1` and `unknown`.  **Validate before sending.** The server does not validate the path: an unknown `search_type` returns the latest identifications of the whole domain unfiltered, a malformed UUID or IPv4 value returns `500`, and a `limit` outside 1-100 silently becomes 20.  **Paging.** Page with `offset` while it is below `total`. Rows are ordered by `created_at` only, so paging while new identifications arrive can repeat or skip rows: deduplicate on `identification_id`.  **Latest state.** A row can be refined after the webhook was sent, for example when late network data re-scores it; its `ver` then increases. The History API always returns the latest version, which makes it the guaranteed read path.  Reads are free: they do not use your included identifications.
+        Reads one `identifications`, `user`, `visitor`, `device` or `ip` card. `{domain_id}` is the public domain UUID. `{resource_id}` is that record's id. The list query parameters also apply. A device card accepts `device_id_source`. An unknown id returns `404 not_found`.
 
-        :param search_type: Identifier to search by: - `identification_id`: one identification (read a verdict); - `device_id`: every identification of one device; - `user_hid`: every identification of one account; - `visitor_id`: every identification of one visitor; - `ip`: every identification from one public IPv4 address; - `session_id`: every identification of one visit; - `cookie_id`: every identification with one browser cookie.  `request_id` is a legacy alias of `identification_id` and is still accepted. The server does not reject other values: it ignores them and returns the latest identifications of the whole domain, so restrict the value on your side. (required)
-        :type search_type: str
-        :param value: Value of the identifier, validated on your side before sending: - `identification_id`, `device_id`, `visitor_id`, `session_id`, `cookie_id`: a UUID of any version,   the nil UUID included, matching   `^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`. Send it   lowercase. - `ip`: a dotted IPv4 address. IPv6 addresses cannot be searched. - `user_hid`: the exact, case-sensitive User HID as one path segment, encoded the way the   server reads it: send the characters `A-Z a-z 0-9 - . _ ~ $ & + , : ; = @` unescaped and   percent-encode every other byte of the UTF-8 value as uppercase `%XX`, including   `! ' ( ) *`, spaces and `%` itself. The server compares any other encoding literally, so   `%40` instead of `@`, or lowercase hex digits, return an empty page instead of the matching   rows. Many HTTP clients and generated clients escape `$ & + , : ; = @` in path values: build   this path yourself when yours does. A User HID that contains `/` cannot be searched, and most   HTTP clients cannot send `.` or `..` because they remove them as dot segments; the pattern   rejects these values. Hex-encoded hashes need no escaping at all.  The server does not validate the value: a malformed UUID or IPv4 address gets a `500`. (required)
-        :type value: str
-        :param limit: Maximum number of identifications to return, from 1 to 100. The server replaces any other value (and a non-numeric one) with 20 instead of clamping it, so validate it on your side.
+        :param domain_id: Public domain UUID of the site whose History is being read. (required)
+        :type domain_id: UUID
+        :param resource: History resource. A card exists for identifications, user, visitor, device and ip. (required)
+        :type resource: str
+        :param resource_id: Record id. UUID for identifications, visitor and device. User HID text for user. IPv4 for ip. Send a User HID as one path segment: the characters `A-Z a-z 0-9 - . _ ~ $ & + , : ; = @` unescaped and every other byte as uppercase `%XX`. (required)
+        :type resource_id: str
+        :param limit: Maximum records in the page, from 1 through 100.
         :type limit: int
-        :param offset: Number of identifications to skip, for paging. The server treats negative or non-numeric values as 0. Rows are ordered by `created_at` only, so paging while new identifications arrive can repeat or skip rows: deduplicate on `identification_id`.
-        :type offset: int
+        :param page_token: Opaque token from the previous page. Omit it on the first page.
+        :type page_token: str
+        :param var_from: Inclusive RFC3339 start. Send `to` as well, or send neither.
+        :type var_from: datetime
+        :param to: Exclusive RFC3339 end. Send `from` as well, or send neither.
+        :type to: datetime
+        :param snapshot: Value of the History-Snapshot header. Continues that read.
+        :type snapshot: str
+        :param risk_bands: Repeat for trusted, suspicious, or dangerous.
+        :type risk_bands: List[str]
+        :param hre_min_accounts: Minimum linked accounts for a high-risk event, from 3 to 99.
+        :type hre_min_accounts: int
+        :param hre_min_devices: Minimum linked devices for a high-risk event, from 4 to 99.
+        :type hre_min_devices: int
+        :param is_vpn: When set, keep only rows whose `is_vpn` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type is_vpn: str
+        :param is_tor: When set, keep only rows whose `is_tor` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type is_tor: str
+        :param is_proxy: When set, keep only rows whose `is_proxy` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type is_proxy: str
+        :param is_privacy_relay: When set, keep only rows whose `is_privacy_relay` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type is_privacy_relay: str
+        :param network_check_incomplete: When set, keep only rows whose `network_check_incomplete` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type network_check_incomplete: str
+        :param check_incomplete: When set, keep only rows whose `check_incomplete` equals this value. Always false for search-engine crawlers, matching the row. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type check_incomplete: str
+        :param is_antidetect: When set, keep only rows whose `is_antidetect` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type is_antidetect: str
+        :param is_os_mismatch: When set, keep only rows whose `is_os_mismatch` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type is_os_mismatch: str
+        :param is_os_not_detected: When set, keep only rows whose `is_os_not_detected` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type is_os_not_detected: str
+        :param is_timezone_mismatch: When set, keep only rows whose `is_timezone_mismatch` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type is_timezone_mismatch: str
+        :param is_js_disabled: When set, keep only rows whose `is_js_disabled` equals this value. Always false for search-engine crawlers, matching the row. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type is_js_disabled: str
+        :param is_browser_automation: When set, keep only rows whose `is_browser_automation` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type is_browser_automation: str
+        :param is_incognito: When set, keep only rows whose `is_incognito` equals this value. Always false for search-engine crawlers, matching the row. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type is_incognito: str
+        :param is_search_bot: When set, keep only rows whose `is_search_bot` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type is_search_bot: str
+        :param ip_mismatch: Keep only rows whose `ip_mismatch` equals this value. Omit to leave unconstrained.
+        :type ip_mismatch: str
+        :param latency_test: Keep only rows whose `latency_test` equals this value. Omit to leave unconstrained.
+        :type latency_test: str
+        :param device_spoofing: Keep only rows whose `device_spoofing` equals this value. Omit to leave unconstrained.
+        :type device_spoofing: str
+        :param rate_limited: When set, keep only rows whose `rate_limited` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type rate_limited: str
+        :param ai_bot: Keep only rows whose `ai_bot` equals this value. Omit to leave unconstrained.
+        :type ai_bot: str
+        :param ai_browser: Keep only rows whose `ai_browser` equals this value. Omit to leave unconstrained.
+        :type ai_browser: str
+        :param risk_signals: Repeat a public signal code. Several codes combine with OR.
+        :type risk_signals: List[str]
+        :param source: Traffic source. Together with campaign, at most 8 values, matched if any value matches. _empty means no referrer.
+        :type source: List[str]
+        :param campaign: Campaign name. No campaign matches visits with no campaign.
+        :type campaign: List[str]
+        :param device_id_source: Device cards only. `legacy` or `fp21_record`.
+        :type device_id_source: str
+        :param relation: Linked-id page for this card. Identification cards reject this parameter.
+        :type relation: str
+        :param relation_limit: Linked records in one page, from 1 through 100.
+        :type relation_limit: int
+        :param relation_page_token: Opaque token from the previous linked-id page.
+        :type relation_page_token: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -93,11 +199,45 @@ class HistoryAPIApi:
         :return: Returns the result object.
         """ # noqa: E501
 
-        _param = self._search_history_serialize(
-            search_type=search_type,
-            value=value,
+        _param = self._get_history_entity_serialize(
+            domain_id=domain_id,
+            resource=resource,
+            resource_id=resource_id,
             limit=limit,
-            offset=offset,
+            page_token=page_token,
+            var_from=var_from,
+            to=to,
+            snapshot=snapshot,
+            risk_bands=risk_bands,
+            hre_min_accounts=hre_min_accounts,
+            hre_min_devices=hre_min_devices,
+            is_vpn=is_vpn,
+            is_tor=is_tor,
+            is_proxy=is_proxy,
+            is_privacy_relay=is_privacy_relay,
+            network_check_incomplete=network_check_incomplete,
+            check_incomplete=check_incomplete,
+            is_antidetect=is_antidetect,
+            is_os_mismatch=is_os_mismatch,
+            is_os_not_detected=is_os_not_detected,
+            is_timezone_mismatch=is_timezone_mismatch,
+            is_js_disabled=is_js_disabled,
+            is_browser_automation=is_browser_automation,
+            is_incognito=is_incognito,
+            is_search_bot=is_search_bot,
+            ip_mismatch=ip_mismatch,
+            latency_test=latency_test,
+            device_spoofing=device_spoofing,
+            rate_limited=rate_limited,
+            ai_bot=ai_bot,
+            ai_browser=ai_browser,
+            risk_signals=risk_signals,
+            source=source,
+            campaign=campaign,
+            device_id_source=device_id_source,
+            relation=relation,
+            relation_limit=relation_limit,
+            relation_page_token=relation_page_token,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -105,9 +245,777 @@ class HistoryAPIApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            '200': "HistoryPage",
+            '200': "GetHistoryEntity200Response",
             '401': "str",
-            '404': "str",
+            '404': None,
+            '409': None,
+        }
+        response_data = self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        response_data.read()
+        return self.api_client.response_deserialize(
+            response_data=response_data,
+            response_types_map=_response_types_map,
+        ).data
+
+
+    @validate_call
+    def get_history_entity_with_http_info(
+        self,
+        domain_id: Annotated[UUID, Field(description="Public domain UUID of the site whose History is being read.")],
+        resource: Annotated[StrictStr, Field(description="History resource. A card exists for identifications, user, visitor, device and ip.")],
+        resource_id: Annotated[str, Field(min_length=1, strict=True, description="Record id. UUID for identifications, visitor and device. User HID text for user. IPv4 for ip. Send a User HID as one path segment: the characters `A-Z a-z 0-9 - . _ ~ $ & + , : ; = @` unescaped and every other byte as uppercase `%XX`.")],
+        limit: Annotated[Optional[Annotated[int, Field(le=100, strict=True, ge=1)]], Field(description="Maximum records in the page, from 1 through 100.")] = None,
+        page_token: Annotated[Optional[StrictStr], Field(description="Opaque token from the previous page. Omit it on the first page.")] = None,
+        var_from: Annotated[Optional[datetime], Field(description="Inclusive RFC3339 start. Send `to` as well, or send neither.")] = None,
+        to: Annotated[Optional[datetime], Field(description="Exclusive RFC3339 end. Send `from` as well, or send neither.")] = None,
+        snapshot: Annotated[Optional[StrictStr], Field(description="Value of the History-Snapshot header. Continues that read.")] = None,
+        risk_bands: Annotated[Optional[List[StrictStr]], Field(description="Repeat for trusted, suspicious, or dangerous.")] = None,
+        hre_min_accounts: Annotated[Optional[Annotated[int, Field(le=99, strict=True, ge=3)]], Field(description="Minimum linked accounts for a high-risk event, from 3 to 99.")] = None,
+        hre_min_devices: Annotated[Optional[Annotated[int, Field(le=99, strict=True, ge=4)]], Field(description="Minimum linked devices for a high-risk event, from 4 to 99.")] = None,
+        is_vpn: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `is_vpn` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        is_tor: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `is_tor` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        is_proxy: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `is_proxy` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        is_privacy_relay: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `is_privacy_relay` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        network_check_incomplete: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `network_check_incomplete` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        check_incomplete: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `check_incomplete` equals this value. Always false for search-engine crawlers, matching the row. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        is_antidetect: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `is_antidetect` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        is_os_mismatch: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `is_os_mismatch` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        is_os_not_detected: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `is_os_not_detected` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        is_timezone_mismatch: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `is_timezone_mismatch` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        is_js_disabled: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `is_js_disabled` equals this value. Always false for search-engine crawlers, matching the row. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        is_browser_automation: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `is_browser_automation` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        is_incognito: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `is_incognito` equals this value. Always false for search-engine crawlers, matching the row. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        is_search_bot: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `is_search_bot` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        ip_mismatch: Annotated[Optional[StrictStr], Field(description="Keep only rows whose `ip_mismatch` equals this value. Omit to leave unconstrained.")] = None,
+        latency_test: Annotated[Optional[StrictStr], Field(description="Keep only rows whose `latency_test` equals this value. Omit to leave unconstrained.")] = None,
+        device_spoofing: Annotated[Optional[StrictStr], Field(description="Keep only rows whose `device_spoofing` equals this value. Omit to leave unconstrained.")] = None,
+        rate_limited: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `rate_limited` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        ai_bot: Annotated[Optional[StrictStr], Field(description="Keep only rows whose `ai_bot` equals this value. Omit to leave unconstrained.")] = None,
+        ai_browser: Annotated[Optional[StrictStr], Field(description="Keep only rows whose `ai_browser` equals this value. Omit to leave unconstrained.")] = None,
+        risk_signals: Annotated[Optional[List[StrictStr]], Field(description="Repeat a public signal code. Several codes combine with OR.")] = None,
+        source: Annotated[Optional[List[StrictStr]], Field(description="Traffic source. Together with campaign, at most 8 values, matched if any value matches. _empty means no referrer.")] = None,
+        campaign: Annotated[Optional[List[StrictStr]], Field(description="Campaign name. No campaign matches visits with no campaign.")] = None,
+        device_id_source: Annotated[Optional[StrictStr], Field(description="Device cards only. `legacy` or `fp21_record`.")] = None,
+        relation: Annotated[Optional[StrictStr], Field(description="Linked-id page for this card. Identification cards reject this parameter.")] = None,
+        relation_limit: Annotated[Optional[Annotated[int, Field(le=100, strict=True, ge=1)]], Field(description="Linked records in one page, from 1 through 100.")] = None,
+        relation_page_token: Annotated[Optional[StrictStr], Field(description="Opaque token from the previous linked-id page.")] = None,
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=1)] = 0,
+    ) -> ApiResponse[GetHistoryEntity200Response]:
+        """Read one History entity
+
+        Reads one `identifications`, `user`, `visitor`, `device` or `ip` card. `{domain_id}` is the public domain UUID. `{resource_id}` is that record's id. The list query parameters also apply. A device card accepts `device_id_source`. An unknown id returns `404 not_found`.
+
+        :param domain_id: Public domain UUID of the site whose History is being read. (required)
+        :type domain_id: UUID
+        :param resource: History resource. A card exists for identifications, user, visitor, device and ip. (required)
+        :type resource: str
+        :param resource_id: Record id. UUID for identifications, visitor and device. User HID text for user. IPv4 for ip. Send a User HID as one path segment: the characters `A-Z a-z 0-9 - . _ ~ $ & + , : ; = @` unescaped and every other byte as uppercase `%XX`. (required)
+        :type resource_id: str
+        :param limit: Maximum records in the page, from 1 through 100.
+        :type limit: int
+        :param page_token: Opaque token from the previous page. Omit it on the first page.
+        :type page_token: str
+        :param var_from: Inclusive RFC3339 start. Send `to` as well, or send neither.
+        :type var_from: datetime
+        :param to: Exclusive RFC3339 end. Send `from` as well, or send neither.
+        :type to: datetime
+        :param snapshot: Value of the History-Snapshot header. Continues that read.
+        :type snapshot: str
+        :param risk_bands: Repeat for trusted, suspicious, or dangerous.
+        :type risk_bands: List[str]
+        :param hre_min_accounts: Minimum linked accounts for a high-risk event, from 3 to 99.
+        :type hre_min_accounts: int
+        :param hre_min_devices: Minimum linked devices for a high-risk event, from 4 to 99.
+        :type hre_min_devices: int
+        :param is_vpn: When set, keep only rows whose `is_vpn` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type is_vpn: str
+        :param is_tor: When set, keep only rows whose `is_tor` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type is_tor: str
+        :param is_proxy: When set, keep only rows whose `is_proxy` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type is_proxy: str
+        :param is_privacy_relay: When set, keep only rows whose `is_privacy_relay` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type is_privacy_relay: str
+        :param network_check_incomplete: When set, keep only rows whose `network_check_incomplete` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type network_check_incomplete: str
+        :param check_incomplete: When set, keep only rows whose `check_incomplete` equals this value. Always false for search-engine crawlers, matching the row. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type check_incomplete: str
+        :param is_antidetect: When set, keep only rows whose `is_antidetect` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type is_antidetect: str
+        :param is_os_mismatch: When set, keep only rows whose `is_os_mismatch` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type is_os_mismatch: str
+        :param is_os_not_detected: When set, keep only rows whose `is_os_not_detected` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type is_os_not_detected: str
+        :param is_timezone_mismatch: When set, keep only rows whose `is_timezone_mismatch` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type is_timezone_mismatch: str
+        :param is_js_disabled: When set, keep only rows whose `is_js_disabled` equals this value. Always false for search-engine crawlers, matching the row. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type is_js_disabled: str
+        :param is_browser_automation: When set, keep only rows whose `is_browser_automation` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type is_browser_automation: str
+        :param is_incognito: When set, keep only rows whose `is_incognito` equals this value. Always false for search-engine crawlers, matching the row. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type is_incognito: str
+        :param is_search_bot: When set, keep only rows whose `is_search_bot` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type is_search_bot: str
+        :param ip_mismatch: Keep only rows whose `ip_mismatch` equals this value. Omit to leave unconstrained.
+        :type ip_mismatch: str
+        :param latency_test: Keep only rows whose `latency_test` equals this value. Omit to leave unconstrained.
+        :type latency_test: str
+        :param device_spoofing: Keep only rows whose `device_spoofing` equals this value. Omit to leave unconstrained.
+        :type device_spoofing: str
+        :param rate_limited: When set, keep only rows whose `rate_limited` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type rate_limited: str
+        :param ai_bot: Keep only rows whose `ai_bot` equals this value. Omit to leave unconstrained.
+        :type ai_bot: str
+        :param ai_browser: Keep only rows whose `ai_browser` equals this value. Omit to leave unconstrained.
+        :type ai_browser: str
+        :param risk_signals: Repeat a public signal code. Several codes combine with OR.
+        :type risk_signals: List[str]
+        :param source: Traffic source. Together with campaign, at most 8 values, matched if any value matches. _empty means no referrer.
+        :type source: List[str]
+        :param campaign: Campaign name. No campaign matches visits with no campaign.
+        :type campaign: List[str]
+        :param device_id_source: Device cards only. `legacy` or `fp21_record`.
+        :type device_id_source: str
+        :param relation: Linked-id page for this card. Identification cards reject this parameter.
+        :type relation: str
+        :param relation_limit: Linked records in one page, from 1 through 100.
+        :type relation_limit: int
+        :param relation_page_token: Opaque token from the previous linked-id page.
+        :type relation_page_token: str
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._get_history_entity_serialize(
+            domain_id=domain_id,
+            resource=resource,
+            resource_id=resource_id,
+            limit=limit,
+            page_token=page_token,
+            var_from=var_from,
+            to=to,
+            snapshot=snapshot,
+            risk_bands=risk_bands,
+            hre_min_accounts=hre_min_accounts,
+            hre_min_devices=hre_min_devices,
+            is_vpn=is_vpn,
+            is_tor=is_tor,
+            is_proxy=is_proxy,
+            is_privacy_relay=is_privacy_relay,
+            network_check_incomplete=network_check_incomplete,
+            check_incomplete=check_incomplete,
+            is_antidetect=is_antidetect,
+            is_os_mismatch=is_os_mismatch,
+            is_os_not_detected=is_os_not_detected,
+            is_timezone_mismatch=is_timezone_mismatch,
+            is_js_disabled=is_js_disabled,
+            is_browser_automation=is_browser_automation,
+            is_incognito=is_incognito,
+            is_search_bot=is_search_bot,
+            ip_mismatch=ip_mismatch,
+            latency_test=latency_test,
+            device_spoofing=device_spoofing,
+            rate_limited=rate_limited,
+            ai_bot=ai_bot,
+            ai_browser=ai_browser,
+            risk_signals=risk_signals,
+            source=source,
+            campaign=campaign,
+            device_id_source=device_id_source,
+            relation=relation,
+            relation_limit=relation_limit,
+            relation_page_token=relation_page_token,
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '200': "GetHistoryEntity200Response",
+            '401': "str",
+            '404': None,
+            '409': None,
+        }
+        response_data = self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        response_data.read()
+        return self.api_client.response_deserialize(
+            response_data=response_data,
+            response_types_map=_response_types_map,
+        )
+
+
+    @validate_call
+    def get_history_entity_without_preload_content(
+        self,
+        domain_id: Annotated[UUID, Field(description="Public domain UUID of the site whose History is being read.")],
+        resource: Annotated[StrictStr, Field(description="History resource. A card exists for identifications, user, visitor, device and ip.")],
+        resource_id: Annotated[str, Field(min_length=1, strict=True, description="Record id. UUID for identifications, visitor and device. User HID text for user. IPv4 for ip. Send a User HID as one path segment: the characters `A-Z a-z 0-9 - . _ ~ $ & + , : ; = @` unescaped and every other byte as uppercase `%XX`.")],
+        limit: Annotated[Optional[Annotated[int, Field(le=100, strict=True, ge=1)]], Field(description="Maximum records in the page, from 1 through 100.")] = None,
+        page_token: Annotated[Optional[StrictStr], Field(description="Opaque token from the previous page. Omit it on the first page.")] = None,
+        var_from: Annotated[Optional[datetime], Field(description="Inclusive RFC3339 start. Send `to` as well, or send neither.")] = None,
+        to: Annotated[Optional[datetime], Field(description="Exclusive RFC3339 end. Send `from` as well, or send neither.")] = None,
+        snapshot: Annotated[Optional[StrictStr], Field(description="Value of the History-Snapshot header. Continues that read.")] = None,
+        risk_bands: Annotated[Optional[List[StrictStr]], Field(description="Repeat for trusted, suspicious, or dangerous.")] = None,
+        hre_min_accounts: Annotated[Optional[Annotated[int, Field(le=99, strict=True, ge=3)]], Field(description="Minimum linked accounts for a high-risk event, from 3 to 99.")] = None,
+        hre_min_devices: Annotated[Optional[Annotated[int, Field(le=99, strict=True, ge=4)]], Field(description="Minimum linked devices for a high-risk event, from 4 to 99.")] = None,
+        is_vpn: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `is_vpn` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        is_tor: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `is_tor` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        is_proxy: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `is_proxy` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        is_privacy_relay: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `is_privacy_relay` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        network_check_incomplete: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `network_check_incomplete` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        check_incomplete: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `check_incomplete` equals this value. Always false for search-engine crawlers, matching the row. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        is_antidetect: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `is_antidetect` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        is_os_mismatch: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `is_os_mismatch` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        is_os_not_detected: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `is_os_not_detected` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        is_timezone_mismatch: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `is_timezone_mismatch` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        is_js_disabled: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `is_js_disabled` equals this value. Always false for search-engine crawlers, matching the row. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        is_browser_automation: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `is_browser_automation` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        is_incognito: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `is_incognito` equals this value. Always false for search-engine crawlers, matching the row. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        is_search_bot: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `is_search_bot` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        ip_mismatch: Annotated[Optional[StrictStr], Field(description="Keep only rows whose `ip_mismatch` equals this value. Omit to leave unconstrained.")] = None,
+        latency_test: Annotated[Optional[StrictStr], Field(description="Keep only rows whose `latency_test` equals this value. Omit to leave unconstrained.")] = None,
+        device_spoofing: Annotated[Optional[StrictStr], Field(description="Keep only rows whose `device_spoofing` equals this value. Omit to leave unconstrained.")] = None,
+        rate_limited: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `rate_limited` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        ai_bot: Annotated[Optional[StrictStr], Field(description="Keep only rows whose `ai_bot` equals this value. Omit to leave unconstrained.")] = None,
+        ai_browser: Annotated[Optional[StrictStr], Field(description="Keep only rows whose `ai_browser` equals this value. Omit to leave unconstrained.")] = None,
+        risk_signals: Annotated[Optional[List[StrictStr]], Field(description="Repeat a public signal code. Several codes combine with OR.")] = None,
+        source: Annotated[Optional[List[StrictStr]], Field(description="Traffic source. Together with campaign, at most 8 values, matched if any value matches. _empty means no referrer.")] = None,
+        campaign: Annotated[Optional[List[StrictStr]], Field(description="Campaign name. No campaign matches visits with no campaign.")] = None,
+        device_id_source: Annotated[Optional[StrictStr], Field(description="Device cards only. `legacy` or `fp21_record`.")] = None,
+        relation: Annotated[Optional[StrictStr], Field(description="Linked-id page for this card. Identification cards reject this parameter.")] = None,
+        relation_limit: Annotated[Optional[Annotated[int, Field(le=100, strict=True, ge=1)]], Field(description="Linked records in one page, from 1 through 100.")] = None,
+        relation_page_token: Annotated[Optional[StrictStr], Field(description="Opaque token from the previous linked-id page.")] = None,
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=1)] = 0,
+    ) -> RESTResponseType:
+        """Read one History entity
+
+        Reads one `identifications`, `user`, `visitor`, `device` or `ip` card. `{domain_id}` is the public domain UUID. `{resource_id}` is that record's id. The list query parameters also apply. A device card accepts `device_id_source`. An unknown id returns `404 not_found`.
+
+        :param domain_id: Public domain UUID of the site whose History is being read. (required)
+        :type domain_id: UUID
+        :param resource: History resource. A card exists for identifications, user, visitor, device and ip. (required)
+        :type resource: str
+        :param resource_id: Record id. UUID for identifications, visitor and device. User HID text for user. IPv4 for ip. Send a User HID as one path segment: the characters `A-Z a-z 0-9 - . _ ~ $ & + , : ; = @` unescaped and every other byte as uppercase `%XX`. (required)
+        :type resource_id: str
+        :param limit: Maximum records in the page, from 1 through 100.
+        :type limit: int
+        :param page_token: Opaque token from the previous page. Omit it on the first page.
+        :type page_token: str
+        :param var_from: Inclusive RFC3339 start. Send `to` as well, or send neither.
+        :type var_from: datetime
+        :param to: Exclusive RFC3339 end. Send `from` as well, or send neither.
+        :type to: datetime
+        :param snapshot: Value of the History-Snapshot header. Continues that read.
+        :type snapshot: str
+        :param risk_bands: Repeat for trusted, suspicious, or dangerous.
+        :type risk_bands: List[str]
+        :param hre_min_accounts: Minimum linked accounts for a high-risk event, from 3 to 99.
+        :type hre_min_accounts: int
+        :param hre_min_devices: Minimum linked devices for a high-risk event, from 4 to 99.
+        :type hre_min_devices: int
+        :param is_vpn: When set, keep only rows whose `is_vpn` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type is_vpn: str
+        :param is_tor: When set, keep only rows whose `is_tor` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type is_tor: str
+        :param is_proxy: When set, keep only rows whose `is_proxy` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type is_proxy: str
+        :param is_privacy_relay: When set, keep only rows whose `is_privacy_relay` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type is_privacy_relay: str
+        :param network_check_incomplete: When set, keep only rows whose `network_check_incomplete` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type network_check_incomplete: str
+        :param check_incomplete: When set, keep only rows whose `check_incomplete` equals this value. Always false for search-engine crawlers, matching the row. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type check_incomplete: str
+        :param is_antidetect: When set, keep only rows whose `is_antidetect` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type is_antidetect: str
+        :param is_os_mismatch: When set, keep only rows whose `is_os_mismatch` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type is_os_mismatch: str
+        :param is_os_not_detected: When set, keep only rows whose `is_os_not_detected` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type is_os_not_detected: str
+        :param is_timezone_mismatch: When set, keep only rows whose `is_timezone_mismatch` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type is_timezone_mismatch: str
+        :param is_js_disabled: When set, keep only rows whose `is_js_disabled` equals this value. Always false for search-engine crawlers, matching the row. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type is_js_disabled: str
+        :param is_browser_automation: When set, keep only rows whose `is_browser_automation` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type is_browser_automation: str
+        :param is_incognito: When set, keep only rows whose `is_incognito` equals this value. Always false for search-engine crawlers, matching the row. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type is_incognito: str
+        :param is_search_bot: When set, keep only rows whose `is_search_bot` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type is_search_bot: str
+        :param ip_mismatch: Keep only rows whose `ip_mismatch` equals this value. Omit to leave unconstrained.
+        :type ip_mismatch: str
+        :param latency_test: Keep only rows whose `latency_test` equals this value. Omit to leave unconstrained.
+        :type latency_test: str
+        :param device_spoofing: Keep only rows whose `device_spoofing` equals this value. Omit to leave unconstrained.
+        :type device_spoofing: str
+        :param rate_limited: When set, keep only rows whose `rate_limited` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type rate_limited: str
+        :param ai_bot: Keep only rows whose `ai_bot` equals this value. Omit to leave unconstrained.
+        :type ai_bot: str
+        :param ai_browser: Keep only rows whose `ai_browser` equals this value. Omit to leave unconstrained.
+        :type ai_browser: str
+        :param risk_signals: Repeat a public signal code. Several codes combine with OR.
+        :type risk_signals: List[str]
+        :param source: Traffic source. Together with campaign, at most 8 values, matched if any value matches. _empty means no referrer.
+        :type source: List[str]
+        :param campaign: Campaign name. No campaign matches visits with no campaign.
+        :type campaign: List[str]
+        :param device_id_source: Device cards only. `legacy` or `fp21_record`.
+        :type device_id_source: str
+        :param relation: Linked-id page for this card. Identification cards reject this parameter.
+        :type relation: str
+        :param relation_limit: Linked records in one page, from 1 through 100.
+        :type relation_limit: int
+        :param relation_page_token: Opaque token from the previous linked-id page.
+        :type relation_page_token: str
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._get_history_entity_serialize(
+            domain_id=domain_id,
+            resource=resource,
+            resource_id=resource_id,
+            limit=limit,
+            page_token=page_token,
+            var_from=var_from,
+            to=to,
+            snapshot=snapshot,
+            risk_bands=risk_bands,
+            hre_min_accounts=hre_min_accounts,
+            hre_min_devices=hre_min_devices,
+            is_vpn=is_vpn,
+            is_tor=is_tor,
+            is_proxy=is_proxy,
+            is_privacy_relay=is_privacy_relay,
+            network_check_incomplete=network_check_incomplete,
+            check_incomplete=check_incomplete,
+            is_antidetect=is_antidetect,
+            is_os_mismatch=is_os_mismatch,
+            is_os_not_detected=is_os_not_detected,
+            is_timezone_mismatch=is_timezone_mismatch,
+            is_js_disabled=is_js_disabled,
+            is_browser_automation=is_browser_automation,
+            is_incognito=is_incognito,
+            is_search_bot=is_search_bot,
+            ip_mismatch=ip_mismatch,
+            latency_test=latency_test,
+            device_spoofing=device_spoofing,
+            rate_limited=rate_limited,
+            ai_bot=ai_bot,
+            ai_browser=ai_browser,
+            risk_signals=risk_signals,
+            source=source,
+            campaign=campaign,
+            device_id_source=device_id_source,
+            relation=relation,
+            relation_limit=relation_limit,
+            relation_page_token=relation_page_token,
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '200': "GetHistoryEntity200Response",
+            '401': "str",
+            '404': None,
+            '409': None,
+        }
+        response_data = self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        return response_data.response
+
+
+    def _get_history_entity_serialize(
+        self,
+        domain_id,
+        resource,
+        resource_id,
+        limit,
+        page_token,
+        var_from,
+        to,
+        snapshot,
+        risk_bands,
+        hre_min_accounts,
+        hre_min_devices,
+        is_vpn,
+        is_tor,
+        is_proxy,
+        is_privacy_relay,
+        network_check_incomplete,
+        check_incomplete,
+        is_antidetect,
+        is_os_mismatch,
+        is_os_not_detected,
+        is_timezone_mismatch,
+        is_js_disabled,
+        is_browser_automation,
+        is_incognito,
+        is_search_bot,
+        ip_mismatch,
+        latency_test,
+        device_spoofing,
+        rate_limited,
+        ai_bot,
+        ai_browser,
+        risk_signals,
+        source,
+        campaign,
+        device_id_source,
+        relation,
+        relation_limit,
+        relation_page_token,
+        _request_auth,
+        _content_type,
+        _headers,
+        _host_index,
+    ) -> RequestSerialized:
+
+        _hosts = [
+            'https://account.shieldlabs.ai'
+        ]
+        _host = _hosts[_host_index]
+
+        _collection_formats: Dict[str, str] = {
+            'risk_bands': 'multi',
+            'risk_signals': 'multi',
+            'source': 'multi',
+            'campaign': 'multi',
+        }
+
+        _path_params: Dict[str, str] = {}
+        _query_params: List[Tuple[str, str]] = []
+        _header_params: Dict[str, Optional[str]] = _headers or {}
+        _form_params: List[Tuple[str, str]] = []
+        _files: Dict[
+            str, Union[str, bytes, List[str], List[bytes], List[Tuple[str, bytes]]]
+        ] = {}
+        _body_params: Optional[bytes] = None
+
+        # process the path parameters
+        if domain_id is not None:
+            _path_params['domain_id'] = domain_id
+        if resource is not None:
+            _path_params['resource'] = resource
+        if resource_id is not None:
+            _path_params['resource_id'] = resource_id
+        # process the query parameters
+        if limit is not None:
+            
+            _query_params.append(('limit', limit))
+            
+        if page_token is not None:
+            
+            _query_params.append(('page_token', page_token))
+            
+        if var_from is not None:
+            if isinstance(var_from, datetime):
+                _query_params.append(
+                    (
+                        'from',
+                        var_from.strftime(
+                            self.api_client.configuration.datetime_format
+                        )
+                    )
+                )
+            else:
+                _query_params.append(('from', var_from))
+            
+        if to is not None:
+            if isinstance(to, datetime):
+                _query_params.append(
+                    (
+                        'to',
+                        to.strftime(
+                            self.api_client.configuration.datetime_format
+                        )
+                    )
+                )
+            else:
+                _query_params.append(('to', to))
+            
+        if snapshot is not None:
+            
+            _query_params.append(('snapshot', snapshot))
+            
+        if risk_bands is not None:
+            
+            _query_params.append(('risk_bands', risk_bands))
+            
+        if hre_min_accounts is not None:
+            
+            _query_params.append(('hre_min_accounts', hre_min_accounts))
+            
+        if hre_min_devices is not None:
+            
+            _query_params.append(('hre_min_devices', hre_min_devices))
+            
+        if is_vpn is not None:
+            
+            _query_params.append(('is_vpn', is_vpn))
+            
+        if is_tor is not None:
+            
+            _query_params.append(('is_tor', is_tor))
+            
+        if is_proxy is not None:
+            
+            _query_params.append(('is_proxy', is_proxy))
+            
+        if is_privacy_relay is not None:
+            
+            _query_params.append(('is_privacy_relay', is_privacy_relay))
+            
+        if network_check_incomplete is not None:
+            
+            _query_params.append(('network_check_incomplete', network_check_incomplete))
+            
+        if check_incomplete is not None:
+            
+            _query_params.append(('check_incomplete', check_incomplete))
+            
+        if is_antidetect is not None:
+            
+            _query_params.append(('is_antidetect', is_antidetect))
+            
+        if is_os_mismatch is not None:
+            
+            _query_params.append(('is_os_mismatch', is_os_mismatch))
+            
+        if is_os_not_detected is not None:
+            
+            _query_params.append(('is_os_not_detected', is_os_not_detected))
+            
+        if is_timezone_mismatch is not None:
+            
+            _query_params.append(('is_timezone_mismatch', is_timezone_mismatch))
+            
+        if is_js_disabled is not None:
+            
+            _query_params.append(('is_js_disabled', is_js_disabled))
+            
+        if is_browser_automation is not None:
+            
+            _query_params.append(('is_browser_automation', is_browser_automation))
+            
+        if is_incognito is not None:
+            
+            _query_params.append(('is_incognito', is_incognito))
+            
+        if is_search_bot is not None:
+            
+            _query_params.append(('is_search_bot', is_search_bot))
+            
+        if ip_mismatch is not None:
+            
+            _query_params.append(('ip_mismatch', ip_mismatch))
+            
+        if latency_test is not None:
+            
+            _query_params.append(('latency_test', latency_test))
+            
+        if device_spoofing is not None:
+            
+            _query_params.append(('device_spoofing', device_spoofing))
+            
+        if rate_limited is not None:
+            
+            _query_params.append(('rate_limited', rate_limited))
+            
+        if ai_bot is not None:
+            
+            _query_params.append(('ai_bot', ai_bot))
+            
+        if ai_browser is not None:
+            
+            _query_params.append(('ai_browser', ai_browser))
+            
+        if risk_signals is not None:
+            
+            _query_params.append(('risk_signals', risk_signals))
+            
+        if source is not None:
+            
+            _query_params.append(('source', source))
+            
+        if campaign is not None:
+            
+            _query_params.append(('campaign', campaign))
+            
+        if device_id_source is not None:
+            
+            _query_params.append(('device_id_source', device_id_source))
+            
+        if relation is not None:
+            
+            _query_params.append(('relation', relation))
+            
+        if relation_limit is not None:
+            
+            _query_params.append(('relation_limit', relation_limit))
+            
+        if relation_page_token is not None:
+            
+            _query_params.append(('relation_page_token', relation_page_token))
+            
+        # process the header parameters
+        # process the form parameters
+        # process the body parameter
+
+
+        # set the HTTP header `Accept`
+        if 'Accept' not in _header_params:
+            _header_params['Accept'] = self.api_client.select_header_accept(
+                [
+                    'application/json', 
+                    'text/plain'
+                ]
+            )
+
+
+        # authentication setting
+        _auth_settings: List[str] = [
+            'historyApiKey'
+        ]
+
+        return self.api_client.param_serialize(
+            method='GET',
+            resource_path='/api/v1/domains/{domain_id}/history/{resource}/{resource_id}',
+            path_params=_path_params,
+            query_params=_query_params,
+            header_params=_header_params,
+            body=_body_params,
+            post_params=_form_params,
+            files=_files,
+            auth_settings=_auth_settings,
+            collection_formats=_collection_formats,
+            _host=_host,
+            _request_auth=_request_auth
+        )
+
+
+
+
+    @validate_call
+    def list_domains(
+        self,
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=1)] = 0,
+    ) -> ListDomains200Response:
+        """List domains for this key
+
+        Returns the public domain id for the Private API Key. A site key returns one enabled domain. Use `id` as `{domain_id}` on History paths. `domain` is the hostname and is not a path value.
+
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._list_domains_serialize(
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '200': "ListDomains200Response",
+            '401': "str",
             '429': "ErrorBody",
             '500': "ErrorBody",
             '502': "str",
@@ -125,12 +1033,8 @@ class HistoryAPIApi:
 
 
     @validate_call
-    def search_history_with_http_info(
+    def list_domains_with_http_info(
         self,
-        search_type: Annotated[StrictStr, Field(description="Identifier to search by: - `identification_id`: one identification (read a verdict); - `device_id`: every identification of one device; - `user_hid`: every identification of one account; - `visitor_id`: every identification of one visitor; - `ip`: every identification from one public IPv4 address; - `session_id`: every identification of one visit; - `cookie_id`: every identification with one browser cookie.  `request_id` is a legacy alias of `identification_id` and is still accepted. The server does not reject other values: it ignores them and returns the latest identifications of the whole domain, so restrict the value on your side.")],
-        value: Annotated[str, Field(min_length=1, strict=True, description="Value of the identifier, validated on your side before sending: - `identification_id`, `device_id`, `visitor_id`, `session_id`, `cookie_id`: a UUID of any version,   the nil UUID included, matching   `^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`. Send it   lowercase. - `ip`: a dotted IPv4 address. IPv6 addresses cannot be searched. - `user_hid`: the exact, case-sensitive User HID as one path segment, encoded the way the   server reads it: send the characters `A-Z a-z 0-9 - . _ ~ $ & + , : ; = @` unescaped and   percent-encode every other byte of the UTF-8 value as uppercase `%XX`, including   `! ' ( ) *`, spaces and `%` itself. The server compares any other encoding literally, so   `%40` instead of `@`, or lowercase hex digits, return an empty page instead of the matching   rows. Many HTTP clients and generated clients escape `$ & + , : ; = @` in path values: build   this path yourself when yours does. A User HID that contains `/` cannot be searched, and most   HTTP clients cannot send `.` or `..` because they remove them as dot segments; the pattern   rejects these values. Hex-encoded hashes need no escaping at all.  The server does not validate the value: a malformed UUID or IPv4 address gets a `500`.")],
-        limit: Annotated[Optional[Annotated[int, Field(le=100, strict=True, ge=1)]], Field(description="Maximum number of identifications to return, from 1 to 100. The server replaces any other value (and a non-numeric one) with 20 instead of clamping it, so validate it on your side.")] = None,
-        offset: Annotated[Optional[Annotated[int, Field(strict=True, ge=0)]], Field(description="Number of identifications to skip, for paging. The server treats negative or non-numeric values as 0. Rows are ordered by `created_at` only, so paging while new identifications arrive can repeat or skip rows: deduplicate on `identification_id`.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -143,19 +1047,11 @@ class HistoryAPIApi:
         _content_type: Optional[StrictStr] = None,
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=1)] = 0,
-    ) -> ApiResponse[HistoryPage]:
-        """Search identifications
+    ) -> ApiResponse[ListDomains200Response]:
+        """List domains for this key
 
-        Returns the identifications of your domain that match one identifier, newest first, together with the total number of matches. The Private API Key selects the domain; identifications from its subdomains are included (`domain` holds the host, `site_domain` the registered domain).  **Read one verdict.** After a protected action, search by `identification_id` with `limit=1`. The row becomes available asynchronously, so start the identification when the user begins the action (for example when the signup form opens), not when the form is submitted. An empty `data` array means \"not scored yet\", never \"clean\". Poll with backoff (first try at once, then wait 250 ms, 500 ms, 1 s, then steps of about 1.5 s) and treat a `429` inside that loop as \"wait longer\". The official server SDKs do this for you.  **Account-level checks.** Search by `device_id`, `user_hid`, `visitor_id` or `ip` to see how many accounts share a device, how many devices one account uses, or what else came from one IP address. When you count accounts, skip rows whose `user_hid` is empty or one of the values that do not identify a user: `anonymous`, `fail`, `-1` and `unknown`.  **Validate before sending.** The server does not validate the path: an unknown `search_type` returns the latest identifications of the whole domain unfiltered, a malformed UUID or IPv4 value returns `500`, and a `limit` outside 1-100 silently becomes 20.  **Paging.** Page with `offset` while it is below `total`. Rows are ordered by `created_at` only, so paging while new identifications arrive can repeat or skip rows: deduplicate on `identification_id`.  **Latest state.** A row can be refined after the webhook was sent, for example when late network data re-scores it; its `ver` then increases. The History API always returns the latest version, which makes it the guaranteed read path.  Reads are free: they do not use your included identifications.
+        Returns the public domain id for the Private API Key. A site key returns one enabled domain. Use `id` as `{domain_id}` on History paths. `domain` is the hostname and is not a path value.
 
-        :param search_type: Identifier to search by: - `identification_id`: one identification (read a verdict); - `device_id`: every identification of one device; - `user_hid`: every identification of one account; - `visitor_id`: every identification of one visitor; - `ip`: every identification from one public IPv4 address; - `session_id`: every identification of one visit; - `cookie_id`: every identification with one browser cookie.  `request_id` is a legacy alias of `identification_id` and is still accepted. The server does not reject other values: it ignores them and returns the latest identifications of the whole domain, so restrict the value on your side. (required)
-        :type search_type: str
-        :param value: Value of the identifier, validated on your side before sending: - `identification_id`, `device_id`, `visitor_id`, `session_id`, `cookie_id`: a UUID of any version,   the nil UUID included, matching   `^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`. Send it   lowercase. - `ip`: a dotted IPv4 address. IPv6 addresses cannot be searched. - `user_hid`: the exact, case-sensitive User HID as one path segment, encoded the way the   server reads it: send the characters `A-Z a-z 0-9 - . _ ~ $ & + , : ; = @` unescaped and   percent-encode every other byte of the UTF-8 value as uppercase `%XX`, including   `! ' ( ) *`, spaces and `%` itself. The server compares any other encoding literally, so   `%40` instead of `@`, or lowercase hex digits, return an empty page instead of the matching   rows. Many HTTP clients and generated clients escape `$ & + , : ; = @` in path values: build   this path yourself when yours does. A User HID that contains `/` cannot be searched, and most   HTTP clients cannot send `.` or `..` because they remove them as dot segments; the pattern   rejects these values. Hex-encoded hashes need no escaping at all.  The server does not validate the value: a malformed UUID or IPv4 address gets a `500`. (required)
-        :type value: str
-        :param limit: Maximum number of identifications to return, from 1 to 100. The server replaces any other value (and a non-numeric one) with 20 instead of clamping it, so validate it on your side.
-        :type limit: int
-        :param offset: Number of identifications to skip, for paging. The server treats negative or non-numeric values as 0. Rows are ordered by `created_at` only, so paging while new identifications arrive can repeat or skip rows: deduplicate on `identification_id`.
-        :type offset: int
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -178,11 +1074,7 @@ class HistoryAPIApi:
         :return: Returns the result object.
         """ # noqa: E501
 
-        _param = self._search_history_serialize(
-            search_type=search_type,
-            value=value,
-            limit=limit,
-            offset=offset,
+        _param = self._list_domains_serialize(
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -190,9 +1082,8 @@ class HistoryAPIApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            '200': "HistoryPage",
+            '200': "ListDomains200Response",
             '401': "str",
-            '404': "str",
             '429': "ErrorBody",
             '500': "ErrorBody",
             '502': "str",
@@ -210,12 +1101,8 @@ class HistoryAPIApi:
 
 
     @validate_call
-    def search_history_without_preload_content(
+    def list_domains_without_preload_content(
         self,
-        search_type: Annotated[StrictStr, Field(description="Identifier to search by: - `identification_id`: one identification (read a verdict); - `device_id`: every identification of one device; - `user_hid`: every identification of one account; - `visitor_id`: every identification of one visitor; - `ip`: every identification from one public IPv4 address; - `session_id`: every identification of one visit; - `cookie_id`: every identification with one browser cookie.  `request_id` is a legacy alias of `identification_id` and is still accepted. The server does not reject other values: it ignores them and returns the latest identifications of the whole domain, so restrict the value on your side.")],
-        value: Annotated[str, Field(min_length=1, strict=True, description="Value of the identifier, validated on your side before sending: - `identification_id`, `device_id`, `visitor_id`, `session_id`, `cookie_id`: a UUID of any version,   the nil UUID included, matching   `^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`. Send it   lowercase. - `ip`: a dotted IPv4 address. IPv6 addresses cannot be searched. - `user_hid`: the exact, case-sensitive User HID as one path segment, encoded the way the   server reads it: send the characters `A-Z a-z 0-9 - . _ ~ $ & + , : ; = @` unescaped and   percent-encode every other byte of the UTF-8 value as uppercase `%XX`, including   `! ' ( ) *`, spaces and `%` itself. The server compares any other encoding literally, so   `%40` instead of `@`, or lowercase hex digits, return an empty page instead of the matching   rows. Many HTTP clients and generated clients escape `$ & + , : ; = @` in path values: build   this path yourself when yours does. A User HID that contains `/` cannot be searched, and most   HTTP clients cannot send `.` or `..` because they remove them as dot segments; the pattern   rejects these values. Hex-encoded hashes need no escaping at all.  The server does not validate the value: a malformed UUID or IPv4 address gets a `500`.")],
-        limit: Annotated[Optional[Annotated[int, Field(le=100, strict=True, ge=1)]], Field(description="Maximum number of identifications to return, from 1 to 100. The server replaces any other value (and a non-numeric one) with 20 instead of clamping it, so validate it on your side.")] = None,
-        offset: Annotated[Optional[Annotated[int, Field(strict=True, ge=0)]], Field(description="Number of identifications to skip, for paging. The server treats negative or non-numeric values as 0. Rows are ordered by `created_at` only, so paging while new identifications arrive can repeat or skip rows: deduplicate on `identification_id`.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -229,18 +1116,10 @@ class HistoryAPIApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=1)] = 0,
     ) -> RESTResponseType:
-        """Search identifications
+        """List domains for this key
 
-        Returns the identifications of your domain that match one identifier, newest first, together with the total number of matches. The Private API Key selects the domain; identifications from its subdomains are included (`domain` holds the host, `site_domain` the registered domain).  **Read one verdict.** After a protected action, search by `identification_id` with `limit=1`. The row becomes available asynchronously, so start the identification when the user begins the action (for example when the signup form opens), not when the form is submitted. An empty `data` array means \"not scored yet\", never \"clean\". Poll with backoff (first try at once, then wait 250 ms, 500 ms, 1 s, then steps of about 1.5 s) and treat a `429` inside that loop as \"wait longer\". The official server SDKs do this for you.  **Account-level checks.** Search by `device_id`, `user_hid`, `visitor_id` or `ip` to see how many accounts share a device, how many devices one account uses, or what else came from one IP address. When you count accounts, skip rows whose `user_hid` is empty or one of the values that do not identify a user: `anonymous`, `fail`, `-1` and `unknown`.  **Validate before sending.** The server does not validate the path: an unknown `search_type` returns the latest identifications of the whole domain unfiltered, a malformed UUID or IPv4 value returns `500`, and a `limit` outside 1-100 silently becomes 20.  **Paging.** Page with `offset` while it is below `total`. Rows are ordered by `created_at` only, so paging while new identifications arrive can repeat or skip rows: deduplicate on `identification_id`.  **Latest state.** A row can be refined after the webhook was sent, for example when late network data re-scores it; its `ver` then increases. The History API always returns the latest version, which makes it the guaranteed read path.  Reads are free: they do not use your included identifications.
+        Returns the public domain id for the Private API Key. A site key returns one enabled domain. Use `id` as `{domain_id}` on History paths. `domain` is the hostname and is not a path value.
 
-        :param search_type: Identifier to search by: - `identification_id`: one identification (read a verdict); - `device_id`: every identification of one device; - `user_hid`: every identification of one account; - `visitor_id`: every identification of one visitor; - `ip`: every identification from one public IPv4 address; - `session_id`: every identification of one visit; - `cookie_id`: every identification with one browser cookie.  `request_id` is a legacy alias of `identification_id` and is still accepted. The server does not reject other values: it ignores them and returns the latest identifications of the whole domain, so restrict the value on your side. (required)
-        :type search_type: str
-        :param value: Value of the identifier, validated on your side before sending: - `identification_id`, `device_id`, `visitor_id`, `session_id`, `cookie_id`: a UUID of any version,   the nil UUID included, matching   `^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`. Send it   lowercase. - `ip`: a dotted IPv4 address. IPv6 addresses cannot be searched. - `user_hid`: the exact, case-sensitive User HID as one path segment, encoded the way the   server reads it: send the characters `A-Z a-z 0-9 - . _ ~ $ & + , : ; = @` unescaped and   percent-encode every other byte of the UTF-8 value as uppercase `%XX`, including   `! ' ( ) *`, spaces and `%` itself. The server compares any other encoding literally, so   `%40` instead of `@`, or lowercase hex digits, return an empty page instead of the matching   rows. Many HTTP clients and generated clients escape `$ & + , : ; = @` in path values: build   this path yourself when yours does. A User HID that contains `/` cannot be searched, and most   HTTP clients cannot send `.` or `..` because they remove them as dot segments; the pattern   rejects these values. Hex-encoded hashes need no escaping at all.  The server does not validate the value: a malformed UUID or IPv4 address gets a `500`. (required)
-        :type value: str
-        :param limit: Maximum number of identifications to return, from 1 to 100. The server replaces any other value (and a non-numeric one) with 20 instead of clamping it, so validate it on your side.
-        :type limit: int
-        :param offset: Number of identifications to skip, for paging. The server treats negative or non-numeric values as 0. Rows are ordered by `created_at` only, so paging while new identifications arrive can repeat or skip rows: deduplicate on `identification_id`.
-        :type offset: int
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -263,11 +1142,7 @@ class HistoryAPIApi:
         :return: Returns the result object.
         """ # noqa: E501
 
-        _param = self._search_history_serialize(
-            search_type=search_type,
-            value=value,
-            limit=limit,
-            offset=offset,
+        _param = self._list_domains_serialize(
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -275,9 +1150,8 @@ class HistoryAPIApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            '200': "HistoryPage",
+            '200': "ListDomains200Response",
             '401': "str",
-            '404': "str",
             '429': "ErrorBody",
             '500': "ErrorBody",
             '502': "str",
@@ -290,12 +1164,8 @@ class HistoryAPIApi:
         return response_data.response
 
 
-    def _search_history_serialize(
+    def _list_domains_serialize(
         self,
-        search_type,
-        value,
-        limit,
-        offset,
         _request_auth,
         _content_type,
         _headers,
@@ -320,18 +1190,878 @@ class HistoryAPIApi:
         _body_params: Optional[bytes] = None
 
         # process the path parameters
-        if search_type is not None:
-            _path_params['search_type'] = search_type
-        if value is not None:
-            _path_params['value'] = value
+        # process the query parameters
+        # process the header parameters
+        # process the form parameters
+        # process the body parameter
+
+
+        # set the HTTP header `Accept`
+        if 'Accept' not in _header_params:
+            _header_params['Accept'] = self.api_client.select_header_accept(
+                [
+                    'application/json', 
+                    'text/plain', 
+                    'text/html'
+                ]
+            )
+
+
+        # authentication setting
+        _auth_settings: List[str] = [
+            'historyApiKey'
+        ]
+
+        return self.api_client.param_serialize(
+            method='GET',
+            resource_path='/api/v1/domains',
+            path_params=_path_params,
+            query_params=_query_params,
+            header_params=_header_params,
+            body=_body_params,
+            post_params=_form_params,
+            files=_files,
+            auth_settings=_auth_settings,
+            collection_formats=_collection_formats,
+            _host=_host,
+            _request_auth=_request_auth
+        )
+
+
+
+
+    @validate_call
+    def list_history_entities(
+        self,
+        domain_id: Annotated[UUID, Field(description="Public domain UUID of the site whose History is being read.")],
+        resource: Annotated[StrictStr, Field(description="History resource. Lists are enabled for identifications and user only.")],
+        limit: Annotated[Optional[Annotated[int, Field(le=100, strict=True, ge=1)]], Field(description="Maximum records in the page, from 1 through 100.")] = None,
+        page_token: Annotated[Optional[StrictStr], Field(description="Opaque token from the previous page. Omit it on the first page.")] = None,
+        var_from: Annotated[Optional[datetime], Field(description="Inclusive RFC3339 start. Send `to` as well, or send neither.")] = None,
+        to: Annotated[Optional[datetime], Field(description="Exclusive RFC3339 end. Send `from` as well, or send neither.")] = None,
+        snapshot: Annotated[Optional[StrictStr], Field(description="Value of the History-Snapshot header. Continues that read.")] = None,
+        risk_bands: Annotated[Optional[List[StrictStr]], Field(description="Repeat for trusted, suspicious, or dangerous.")] = None,
+        hre_min_accounts: Annotated[Optional[Annotated[int, Field(le=99, strict=True, ge=3)]], Field(description="Minimum linked accounts for a high-risk event, from 3 to 99.")] = None,
+        hre_min_devices: Annotated[Optional[Annotated[int, Field(le=99, strict=True, ge=4)]], Field(description="Minimum linked devices for a high-risk event, from 4 to 99.")] = None,
+        ids: Annotated[Optional[List[StrictStr]], Field(description="User ids. Repeat the key. User list only, at most 100.")] = None,
+        is_vpn: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `is_vpn` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        is_tor: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `is_tor` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        is_proxy: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `is_proxy` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        is_privacy_relay: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `is_privacy_relay` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        network_check_incomplete: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `network_check_incomplete` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        check_incomplete: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `check_incomplete` equals this value. Always false for search-engine crawlers, matching the row. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        is_antidetect: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `is_antidetect` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        is_os_mismatch: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `is_os_mismatch` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        is_os_not_detected: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `is_os_not_detected` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        is_timezone_mismatch: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `is_timezone_mismatch` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        is_js_disabled: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `is_js_disabled` equals this value. Always false for search-engine crawlers, matching the row. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        is_browser_automation: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `is_browser_automation` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        is_incognito: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `is_incognito` equals this value. Always false for search-engine crawlers, matching the row. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        is_search_bot: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `is_search_bot` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        ip_mismatch: Annotated[Optional[StrictStr], Field(description="Keep only rows whose `ip_mismatch` equals this value. Omit to leave unconstrained.")] = None,
+        latency_test: Annotated[Optional[StrictStr], Field(description="Keep only rows whose `latency_test` equals this value. Omit to leave unconstrained.")] = None,
+        device_spoofing: Annotated[Optional[StrictStr], Field(description="Keep only rows whose `device_spoofing` equals this value. Omit to leave unconstrained.")] = None,
+        rate_limited: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `rate_limited` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        ai_bot: Annotated[Optional[StrictStr], Field(description="Keep only rows whose `ai_bot` equals this value. Omit to leave unconstrained.")] = None,
+        ai_browser: Annotated[Optional[StrictStr], Field(description="Keep only rows whose `ai_browser` equals this value. Omit to leave unconstrained.")] = None,
+        risk_signals: Annotated[Optional[List[StrictStr]], Field(description="Repeat a public signal code. Several codes combine with OR.")] = None,
+        source: Annotated[Optional[List[StrictStr]], Field(description="Traffic source. Together with campaign, at most 8 values, matched if any value matches. _empty means no referrer.")] = None,
+        campaign: Annotated[Optional[List[StrictStr]], Field(description="Campaign name. No campaign matches visits with no campaign.")] = None,
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=1)] = 0,
+    ) -> ListHistoryEntities200Response:
+        """List History entities
+
+        Lists `identifications` or `user` for one domain. `{domain_id}` is the public domain UUID from `GET /api/v1/domains`. Literal `all` returns `403 domain_scope_not_supported`. A list of `visitor`, `device` or `ip` returns `403 entity_list_disabled`.  Repeat `risk_bands`, `risk_signals`, `source`, `campaign` and `ids`. Flags are `true` or `false` and combine with AND. Signal codes combine with OR. `source` and `campaign` are one OR group, at most 8 values together. `is_abuser`, `is_datacenter` and `is_stun_not_checked` return `400`. A nested `filter` or `chips` returns `400`.  The old `/api/v1/history/{search_type}/{value}` route returns `410 endpoint_retired`. Page with `page_token`, not `offset`. `from` and `to` are both required when either is set.
+
+        :param domain_id: Public domain UUID of the site whose History is being read. (required)
+        :type domain_id: UUID
+        :param resource: History resource. Lists are enabled for identifications and user only. (required)
+        :type resource: str
+        :param limit: Maximum records in the page, from 1 through 100.
+        :type limit: int
+        :param page_token: Opaque token from the previous page. Omit it on the first page.
+        :type page_token: str
+        :param var_from: Inclusive RFC3339 start. Send `to` as well, or send neither.
+        :type var_from: datetime
+        :param to: Exclusive RFC3339 end. Send `from` as well, or send neither.
+        :type to: datetime
+        :param snapshot: Value of the History-Snapshot header. Continues that read.
+        :type snapshot: str
+        :param risk_bands: Repeat for trusted, suspicious, or dangerous.
+        :type risk_bands: List[str]
+        :param hre_min_accounts: Minimum linked accounts for a high-risk event, from 3 to 99.
+        :type hre_min_accounts: int
+        :param hre_min_devices: Minimum linked devices for a high-risk event, from 4 to 99.
+        :type hre_min_devices: int
+        :param ids: User ids. Repeat the key. User list only, at most 100.
+        :type ids: List[str]
+        :param is_vpn: When set, keep only rows whose `is_vpn` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type is_vpn: str
+        :param is_tor: When set, keep only rows whose `is_tor` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type is_tor: str
+        :param is_proxy: When set, keep only rows whose `is_proxy` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type is_proxy: str
+        :param is_privacy_relay: When set, keep only rows whose `is_privacy_relay` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type is_privacy_relay: str
+        :param network_check_incomplete: When set, keep only rows whose `network_check_incomplete` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type network_check_incomplete: str
+        :param check_incomplete: When set, keep only rows whose `check_incomplete` equals this value. Always false for search-engine crawlers, matching the row. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type check_incomplete: str
+        :param is_antidetect: When set, keep only rows whose `is_antidetect` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type is_antidetect: str
+        :param is_os_mismatch: When set, keep only rows whose `is_os_mismatch` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type is_os_mismatch: str
+        :param is_os_not_detected: When set, keep only rows whose `is_os_not_detected` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type is_os_not_detected: str
+        :param is_timezone_mismatch: When set, keep only rows whose `is_timezone_mismatch` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type is_timezone_mismatch: str
+        :param is_js_disabled: When set, keep only rows whose `is_js_disabled` equals this value. Always false for search-engine crawlers, matching the row. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type is_js_disabled: str
+        :param is_browser_automation: When set, keep only rows whose `is_browser_automation` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type is_browser_automation: str
+        :param is_incognito: When set, keep only rows whose `is_incognito` equals this value. Always false for search-engine crawlers, matching the row. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type is_incognito: str
+        :param is_search_bot: When set, keep only rows whose `is_search_bot` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type is_search_bot: str
+        :param ip_mismatch: Keep only rows whose `ip_mismatch` equals this value. Omit to leave unconstrained.
+        :type ip_mismatch: str
+        :param latency_test: Keep only rows whose `latency_test` equals this value. Omit to leave unconstrained.
+        :type latency_test: str
+        :param device_spoofing: Keep only rows whose `device_spoofing` equals this value. Omit to leave unconstrained.
+        :type device_spoofing: str
+        :param rate_limited: When set, keep only rows whose `rate_limited` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type rate_limited: str
+        :param ai_bot: Keep only rows whose `ai_bot` equals this value. Omit to leave unconstrained.
+        :type ai_bot: str
+        :param ai_browser: Keep only rows whose `ai_browser` equals this value. Omit to leave unconstrained.
+        :type ai_browser: str
+        :param risk_signals: Repeat a public signal code. Several codes combine with OR.
+        :type risk_signals: List[str]
+        :param source: Traffic source. Together with campaign, at most 8 values, matched if any value matches. _empty means no referrer.
+        :type source: List[str]
+        :param campaign: Campaign name. No campaign matches visits with no campaign.
+        :type campaign: List[str]
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._list_history_entities_serialize(
+            domain_id=domain_id,
+            resource=resource,
+            limit=limit,
+            page_token=page_token,
+            var_from=var_from,
+            to=to,
+            snapshot=snapshot,
+            risk_bands=risk_bands,
+            hre_min_accounts=hre_min_accounts,
+            hre_min_devices=hre_min_devices,
+            ids=ids,
+            is_vpn=is_vpn,
+            is_tor=is_tor,
+            is_proxy=is_proxy,
+            is_privacy_relay=is_privacy_relay,
+            network_check_incomplete=network_check_incomplete,
+            check_incomplete=check_incomplete,
+            is_antidetect=is_antidetect,
+            is_os_mismatch=is_os_mismatch,
+            is_os_not_detected=is_os_not_detected,
+            is_timezone_mismatch=is_timezone_mismatch,
+            is_js_disabled=is_js_disabled,
+            is_browser_automation=is_browser_automation,
+            is_incognito=is_incognito,
+            is_search_bot=is_search_bot,
+            ip_mismatch=ip_mismatch,
+            latency_test=latency_test,
+            device_spoofing=device_spoofing,
+            rate_limited=rate_limited,
+            ai_bot=ai_bot,
+            ai_browser=ai_browser,
+            risk_signals=risk_signals,
+            source=source,
+            campaign=campaign,
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '200': "ListHistoryEntities200Response",
+            '400': None,
+            '401': "str",
+            '403': None,
+            '404': "str",
+            '429': "ErrorBody",
+            '500': "ErrorBody",
+            '502': "str",
+            '504': "str",
+        }
+        response_data = self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        response_data.read()
+        return self.api_client.response_deserialize(
+            response_data=response_data,
+            response_types_map=_response_types_map,
+        ).data
+
+
+    @validate_call
+    def list_history_entities_with_http_info(
+        self,
+        domain_id: Annotated[UUID, Field(description="Public domain UUID of the site whose History is being read.")],
+        resource: Annotated[StrictStr, Field(description="History resource. Lists are enabled for identifications and user only.")],
+        limit: Annotated[Optional[Annotated[int, Field(le=100, strict=True, ge=1)]], Field(description="Maximum records in the page, from 1 through 100.")] = None,
+        page_token: Annotated[Optional[StrictStr], Field(description="Opaque token from the previous page. Omit it on the first page.")] = None,
+        var_from: Annotated[Optional[datetime], Field(description="Inclusive RFC3339 start. Send `to` as well, or send neither.")] = None,
+        to: Annotated[Optional[datetime], Field(description="Exclusive RFC3339 end. Send `from` as well, or send neither.")] = None,
+        snapshot: Annotated[Optional[StrictStr], Field(description="Value of the History-Snapshot header. Continues that read.")] = None,
+        risk_bands: Annotated[Optional[List[StrictStr]], Field(description="Repeat for trusted, suspicious, or dangerous.")] = None,
+        hre_min_accounts: Annotated[Optional[Annotated[int, Field(le=99, strict=True, ge=3)]], Field(description="Minimum linked accounts for a high-risk event, from 3 to 99.")] = None,
+        hre_min_devices: Annotated[Optional[Annotated[int, Field(le=99, strict=True, ge=4)]], Field(description="Minimum linked devices for a high-risk event, from 4 to 99.")] = None,
+        ids: Annotated[Optional[List[StrictStr]], Field(description="User ids. Repeat the key. User list only, at most 100.")] = None,
+        is_vpn: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `is_vpn` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        is_tor: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `is_tor` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        is_proxy: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `is_proxy` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        is_privacy_relay: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `is_privacy_relay` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        network_check_incomplete: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `network_check_incomplete` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        check_incomplete: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `check_incomplete` equals this value. Always false for search-engine crawlers, matching the row. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        is_antidetect: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `is_antidetect` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        is_os_mismatch: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `is_os_mismatch` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        is_os_not_detected: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `is_os_not_detected` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        is_timezone_mismatch: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `is_timezone_mismatch` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        is_js_disabled: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `is_js_disabled` equals this value. Always false for search-engine crawlers, matching the row. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        is_browser_automation: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `is_browser_automation` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        is_incognito: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `is_incognito` equals this value. Always false for search-engine crawlers, matching the row. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        is_search_bot: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `is_search_bot` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        ip_mismatch: Annotated[Optional[StrictStr], Field(description="Keep only rows whose `ip_mismatch` equals this value. Omit to leave unconstrained.")] = None,
+        latency_test: Annotated[Optional[StrictStr], Field(description="Keep only rows whose `latency_test` equals this value. Omit to leave unconstrained.")] = None,
+        device_spoofing: Annotated[Optional[StrictStr], Field(description="Keep only rows whose `device_spoofing` equals this value. Omit to leave unconstrained.")] = None,
+        rate_limited: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `rate_limited` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        ai_bot: Annotated[Optional[StrictStr], Field(description="Keep only rows whose `ai_bot` equals this value. Omit to leave unconstrained.")] = None,
+        ai_browser: Annotated[Optional[StrictStr], Field(description="Keep only rows whose `ai_browser` equals this value. Omit to leave unconstrained.")] = None,
+        risk_signals: Annotated[Optional[List[StrictStr]], Field(description="Repeat a public signal code. Several codes combine with OR.")] = None,
+        source: Annotated[Optional[List[StrictStr]], Field(description="Traffic source. Together with campaign, at most 8 values, matched if any value matches. _empty means no referrer.")] = None,
+        campaign: Annotated[Optional[List[StrictStr]], Field(description="Campaign name. No campaign matches visits with no campaign.")] = None,
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=1)] = 0,
+    ) -> ApiResponse[ListHistoryEntities200Response]:
+        """List History entities
+
+        Lists `identifications` or `user` for one domain. `{domain_id}` is the public domain UUID from `GET /api/v1/domains`. Literal `all` returns `403 domain_scope_not_supported`. A list of `visitor`, `device` or `ip` returns `403 entity_list_disabled`.  Repeat `risk_bands`, `risk_signals`, `source`, `campaign` and `ids`. Flags are `true` or `false` and combine with AND. Signal codes combine with OR. `source` and `campaign` are one OR group, at most 8 values together. `is_abuser`, `is_datacenter` and `is_stun_not_checked` return `400`. A nested `filter` or `chips` returns `400`.  The old `/api/v1/history/{search_type}/{value}` route returns `410 endpoint_retired`. Page with `page_token`, not `offset`. `from` and `to` are both required when either is set.
+
+        :param domain_id: Public domain UUID of the site whose History is being read. (required)
+        :type domain_id: UUID
+        :param resource: History resource. Lists are enabled for identifications and user only. (required)
+        :type resource: str
+        :param limit: Maximum records in the page, from 1 through 100.
+        :type limit: int
+        :param page_token: Opaque token from the previous page. Omit it on the first page.
+        :type page_token: str
+        :param var_from: Inclusive RFC3339 start. Send `to` as well, or send neither.
+        :type var_from: datetime
+        :param to: Exclusive RFC3339 end. Send `from` as well, or send neither.
+        :type to: datetime
+        :param snapshot: Value of the History-Snapshot header. Continues that read.
+        :type snapshot: str
+        :param risk_bands: Repeat for trusted, suspicious, or dangerous.
+        :type risk_bands: List[str]
+        :param hre_min_accounts: Minimum linked accounts for a high-risk event, from 3 to 99.
+        :type hre_min_accounts: int
+        :param hre_min_devices: Minimum linked devices for a high-risk event, from 4 to 99.
+        :type hre_min_devices: int
+        :param ids: User ids. Repeat the key. User list only, at most 100.
+        :type ids: List[str]
+        :param is_vpn: When set, keep only rows whose `is_vpn` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type is_vpn: str
+        :param is_tor: When set, keep only rows whose `is_tor` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type is_tor: str
+        :param is_proxy: When set, keep only rows whose `is_proxy` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type is_proxy: str
+        :param is_privacy_relay: When set, keep only rows whose `is_privacy_relay` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type is_privacy_relay: str
+        :param network_check_incomplete: When set, keep only rows whose `network_check_incomplete` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type network_check_incomplete: str
+        :param check_incomplete: When set, keep only rows whose `check_incomplete` equals this value. Always false for search-engine crawlers, matching the row. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type check_incomplete: str
+        :param is_antidetect: When set, keep only rows whose `is_antidetect` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type is_antidetect: str
+        :param is_os_mismatch: When set, keep only rows whose `is_os_mismatch` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type is_os_mismatch: str
+        :param is_os_not_detected: When set, keep only rows whose `is_os_not_detected` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type is_os_not_detected: str
+        :param is_timezone_mismatch: When set, keep only rows whose `is_timezone_mismatch` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type is_timezone_mismatch: str
+        :param is_js_disabled: When set, keep only rows whose `is_js_disabled` equals this value. Always false for search-engine crawlers, matching the row. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type is_js_disabled: str
+        :param is_browser_automation: When set, keep only rows whose `is_browser_automation` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type is_browser_automation: str
+        :param is_incognito: When set, keep only rows whose `is_incognito` equals this value. Always false for search-engine crawlers, matching the row. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type is_incognito: str
+        :param is_search_bot: When set, keep only rows whose `is_search_bot` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type is_search_bot: str
+        :param ip_mismatch: Keep only rows whose `ip_mismatch` equals this value. Omit to leave unconstrained.
+        :type ip_mismatch: str
+        :param latency_test: Keep only rows whose `latency_test` equals this value. Omit to leave unconstrained.
+        :type latency_test: str
+        :param device_spoofing: Keep only rows whose `device_spoofing` equals this value. Omit to leave unconstrained.
+        :type device_spoofing: str
+        :param rate_limited: When set, keep only rows whose `rate_limited` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type rate_limited: str
+        :param ai_bot: Keep only rows whose `ai_bot` equals this value. Omit to leave unconstrained.
+        :type ai_bot: str
+        :param ai_browser: Keep only rows whose `ai_browser` equals this value. Omit to leave unconstrained.
+        :type ai_browser: str
+        :param risk_signals: Repeat a public signal code. Several codes combine with OR.
+        :type risk_signals: List[str]
+        :param source: Traffic source. Together with campaign, at most 8 values, matched if any value matches. _empty means no referrer.
+        :type source: List[str]
+        :param campaign: Campaign name. No campaign matches visits with no campaign.
+        :type campaign: List[str]
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._list_history_entities_serialize(
+            domain_id=domain_id,
+            resource=resource,
+            limit=limit,
+            page_token=page_token,
+            var_from=var_from,
+            to=to,
+            snapshot=snapshot,
+            risk_bands=risk_bands,
+            hre_min_accounts=hre_min_accounts,
+            hre_min_devices=hre_min_devices,
+            ids=ids,
+            is_vpn=is_vpn,
+            is_tor=is_tor,
+            is_proxy=is_proxy,
+            is_privacy_relay=is_privacy_relay,
+            network_check_incomplete=network_check_incomplete,
+            check_incomplete=check_incomplete,
+            is_antidetect=is_antidetect,
+            is_os_mismatch=is_os_mismatch,
+            is_os_not_detected=is_os_not_detected,
+            is_timezone_mismatch=is_timezone_mismatch,
+            is_js_disabled=is_js_disabled,
+            is_browser_automation=is_browser_automation,
+            is_incognito=is_incognito,
+            is_search_bot=is_search_bot,
+            ip_mismatch=ip_mismatch,
+            latency_test=latency_test,
+            device_spoofing=device_spoofing,
+            rate_limited=rate_limited,
+            ai_bot=ai_bot,
+            ai_browser=ai_browser,
+            risk_signals=risk_signals,
+            source=source,
+            campaign=campaign,
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '200': "ListHistoryEntities200Response",
+            '400': None,
+            '401': "str",
+            '403': None,
+            '404': "str",
+            '429': "ErrorBody",
+            '500': "ErrorBody",
+            '502': "str",
+            '504': "str",
+        }
+        response_data = self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        response_data.read()
+        return self.api_client.response_deserialize(
+            response_data=response_data,
+            response_types_map=_response_types_map,
+        )
+
+
+    @validate_call
+    def list_history_entities_without_preload_content(
+        self,
+        domain_id: Annotated[UUID, Field(description="Public domain UUID of the site whose History is being read.")],
+        resource: Annotated[StrictStr, Field(description="History resource. Lists are enabled for identifications and user only.")],
+        limit: Annotated[Optional[Annotated[int, Field(le=100, strict=True, ge=1)]], Field(description="Maximum records in the page, from 1 through 100.")] = None,
+        page_token: Annotated[Optional[StrictStr], Field(description="Opaque token from the previous page. Omit it on the first page.")] = None,
+        var_from: Annotated[Optional[datetime], Field(description="Inclusive RFC3339 start. Send `to` as well, or send neither.")] = None,
+        to: Annotated[Optional[datetime], Field(description="Exclusive RFC3339 end. Send `from` as well, or send neither.")] = None,
+        snapshot: Annotated[Optional[StrictStr], Field(description="Value of the History-Snapshot header. Continues that read.")] = None,
+        risk_bands: Annotated[Optional[List[StrictStr]], Field(description="Repeat for trusted, suspicious, or dangerous.")] = None,
+        hre_min_accounts: Annotated[Optional[Annotated[int, Field(le=99, strict=True, ge=3)]], Field(description="Minimum linked accounts for a high-risk event, from 3 to 99.")] = None,
+        hre_min_devices: Annotated[Optional[Annotated[int, Field(le=99, strict=True, ge=4)]], Field(description="Minimum linked devices for a high-risk event, from 4 to 99.")] = None,
+        ids: Annotated[Optional[List[StrictStr]], Field(description="User ids. Repeat the key. User list only, at most 100.")] = None,
+        is_vpn: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `is_vpn` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        is_tor: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `is_tor` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        is_proxy: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `is_proxy` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        is_privacy_relay: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `is_privacy_relay` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        network_check_incomplete: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `network_check_incomplete` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        check_incomplete: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `check_incomplete` equals this value. Always false for search-engine crawlers, matching the row. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        is_antidetect: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `is_antidetect` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        is_os_mismatch: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `is_os_mismatch` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        is_os_not_detected: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `is_os_not_detected` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        is_timezone_mismatch: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `is_timezone_mismatch` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        is_js_disabled: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `is_js_disabled` equals this value. Always false for search-engine crawlers, matching the row. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        is_browser_automation: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `is_browser_automation` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        is_incognito: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `is_incognito` equals this value. Always false for search-engine crawlers, matching the row. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        is_search_bot: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `is_search_bot` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        ip_mismatch: Annotated[Optional[StrictStr], Field(description="Keep only rows whose `ip_mismatch` equals this value. Omit to leave unconstrained.")] = None,
+        latency_test: Annotated[Optional[StrictStr], Field(description="Keep only rows whose `latency_test` equals this value. Omit to leave unconstrained.")] = None,
+        device_spoofing: Annotated[Optional[StrictStr], Field(description="Keep only rows whose `device_spoofing` equals this value. Omit to leave unconstrained.")] = None,
+        rate_limited: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `rate_limited` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        ai_bot: Annotated[Optional[StrictStr], Field(description="Keep only rows whose `ai_bot` equals this value. Omit to leave unconstrained.")] = None,
+        ai_browser: Annotated[Optional[StrictStr], Field(description="Keep only rows whose `ai_browser` equals this value. Omit to leave unconstrained.")] = None,
+        risk_signals: Annotated[Optional[List[StrictStr]], Field(description="Repeat a public signal code. Several codes combine with OR.")] = None,
+        source: Annotated[Optional[List[StrictStr]], Field(description="Traffic source. Together with campaign, at most 8 values, matched if any value matches. _empty means no referrer.")] = None,
+        campaign: Annotated[Optional[List[StrictStr]], Field(description="Campaign name. No campaign matches visits with no campaign.")] = None,
+        _request_timeout: Union[
+            None,
+            Annotated[StrictFloat, Field(gt=0)],
+            Tuple[
+                Annotated[StrictFloat, Field(gt=0)],
+                Annotated[StrictFloat, Field(gt=0)]
+            ]
+        ] = None,
+        _request_auth: Optional[Dict[StrictStr, Any]] = None,
+        _content_type: Optional[StrictStr] = None,
+        _headers: Optional[Dict[StrictStr, Any]] = None,
+        _host_index: Annotated[StrictInt, Field(ge=0, le=1)] = 0,
+    ) -> RESTResponseType:
+        """List History entities
+
+        Lists `identifications` or `user` for one domain. `{domain_id}` is the public domain UUID from `GET /api/v1/domains`. Literal `all` returns `403 domain_scope_not_supported`. A list of `visitor`, `device` or `ip` returns `403 entity_list_disabled`.  Repeat `risk_bands`, `risk_signals`, `source`, `campaign` and `ids`. Flags are `true` or `false` and combine with AND. Signal codes combine with OR. `source` and `campaign` are one OR group, at most 8 values together. `is_abuser`, `is_datacenter` and `is_stun_not_checked` return `400`. A nested `filter` or `chips` returns `400`.  The old `/api/v1/history/{search_type}/{value}` route returns `410 endpoint_retired`. Page with `page_token`, not `offset`. `from` and `to` are both required when either is set.
+
+        :param domain_id: Public domain UUID of the site whose History is being read. (required)
+        :type domain_id: UUID
+        :param resource: History resource. Lists are enabled for identifications and user only. (required)
+        :type resource: str
+        :param limit: Maximum records in the page, from 1 through 100.
+        :type limit: int
+        :param page_token: Opaque token from the previous page. Omit it on the first page.
+        :type page_token: str
+        :param var_from: Inclusive RFC3339 start. Send `to` as well, or send neither.
+        :type var_from: datetime
+        :param to: Exclusive RFC3339 end. Send `from` as well, or send neither.
+        :type to: datetime
+        :param snapshot: Value of the History-Snapshot header. Continues that read.
+        :type snapshot: str
+        :param risk_bands: Repeat for trusted, suspicious, or dangerous.
+        :type risk_bands: List[str]
+        :param hre_min_accounts: Minimum linked accounts for a high-risk event, from 3 to 99.
+        :type hre_min_accounts: int
+        :param hre_min_devices: Minimum linked devices for a high-risk event, from 4 to 99.
+        :type hre_min_devices: int
+        :param ids: User ids. Repeat the key. User list only, at most 100.
+        :type ids: List[str]
+        :param is_vpn: When set, keep only rows whose `is_vpn` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type is_vpn: str
+        :param is_tor: When set, keep only rows whose `is_tor` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type is_tor: str
+        :param is_proxy: When set, keep only rows whose `is_proxy` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type is_proxy: str
+        :param is_privacy_relay: When set, keep only rows whose `is_privacy_relay` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type is_privacy_relay: str
+        :param network_check_incomplete: When set, keep only rows whose `network_check_incomplete` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type network_check_incomplete: str
+        :param check_incomplete: When set, keep only rows whose `check_incomplete` equals this value. Always false for search-engine crawlers, matching the row. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type check_incomplete: str
+        :param is_antidetect: When set, keep only rows whose `is_antidetect` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type is_antidetect: str
+        :param is_os_mismatch: When set, keep only rows whose `is_os_mismatch` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type is_os_mismatch: str
+        :param is_os_not_detected: When set, keep only rows whose `is_os_not_detected` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type is_os_not_detected: str
+        :param is_timezone_mismatch: When set, keep only rows whose `is_timezone_mismatch` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type is_timezone_mismatch: str
+        :param is_js_disabled: When set, keep only rows whose `is_js_disabled` equals this value. Always false for search-engine crawlers, matching the row. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type is_js_disabled: str
+        :param is_browser_automation: When set, keep only rows whose `is_browser_automation` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type is_browser_automation: str
+        :param is_incognito: When set, keep only rows whose `is_incognito` equals this value. Always false for search-engine crawlers, matching the row. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type is_incognito: str
+        :param is_search_bot: When set, keep only rows whose `is_search_bot` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type is_search_bot: str
+        :param ip_mismatch: Keep only rows whose `ip_mismatch` equals this value. Omit to leave unconstrained.
+        :type ip_mismatch: str
+        :param latency_test: Keep only rows whose `latency_test` equals this value. Omit to leave unconstrained.
+        :type latency_test: str
+        :param device_spoofing: Keep only rows whose `device_spoofing` equals this value. Omit to leave unconstrained.
+        :type device_spoofing: str
+        :param rate_limited: When set, keep only rows whose `rate_limited` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type rate_limited: str
+        :param ai_bot: Keep only rows whose `ai_bot` equals this value. Omit to leave unconstrained.
+        :type ai_bot: str
+        :param ai_browser: Keep only rows whose `ai_browser` equals this value. Omit to leave unconstrained.
+        :type ai_browser: str
+        :param risk_signals: Repeat a public signal code. Several codes combine with OR.
+        :type risk_signals: List[str]
+        :param source: Traffic source. Together with campaign, at most 8 values, matched if any value matches. _empty means no referrer.
+        :type source: List[str]
+        :param campaign: Campaign name. No campaign matches visits with no campaign.
+        :type campaign: List[str]
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :type _request_timeout: int, tuple(int, int), optional
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the
+                              authentication in the spec for a single request.
+        :type _request_auth: dict, optional
+        :param _content_type: force content-type for the request.
+        :type _content_type: str, Optional
+        :param _headers: set to override the headers for a single
+                         request; this effectively ignores the headers
+                         in the spec for a single request.
+        :type _headers: dict, optional
+        :param _host_index: set to override the host_index for a single
+                            request; this effectively ignores the host_index
+                            in the spec for a single request.
+        :type _host_index: int, optional
+        :return: Returns the result object.
+        """ # noqa: E501
+
+        _param = self._list_history_entities_serialize(
+            domain_id=domain_id,
+            resource=resource,
+            limit=limit,
+            page_token=page_token,
+            var_from=var_from,
+            to=to,
+            snapshot=snapshot,
+            risk_bands=risk_bands,
+            hre_min_accounts=hre_min_accounts,
+            hre_min_devices=hre_min_devices,
+            ids=ids,
+            is_vpn=is_vpn,
+            is_tor=is_tor,
+            is_proxy=is_proxy,
+            is_privacy_relay=is_privacy_relay,
+            network_check_incomplete=network_check_incomplete,
+            check_incomplete=check_incomplete,
+            is_antidetect=is_antidetect,
+            is_os_mismatch=is_os_mismatch,
+            is_os_not_detected=is_os_not_detected,
+            is_timezone_mismatch=is_timezone_mismatch,
+            is_js_disabled=is_js_disabled,
+            is_browser_automation=is_browser_automation,
+            is_incognito=is_incognito,
+            is_search_bot=is_search_bot,
+            ip_mismatch=ip_mismatch,
+            latency_test=latency_test,
+            device_spoofing=device_spoofing,
+            rate_limited=rate_limited,
+            ai_bot=ai_bot,
+            ai_browser=ai_browser,
+            risk_signals=risk_signals,
+            source=source,
+            campaign=campaign,
+            _request_auth=_request_auth,
+            _content_type=_content_type,
+            _headers=_headers,
+            _host_index=_host_index
+        )
+
+        _response_types_map: Dict[str, Optional[str]] = {
+            '200': "ListHistoryEntities200Response",
+            '400': None,
+            '401': "str",
+            '403': None,
+            '404': "str",
+            '429': "ErrorBody",
+            '500': "ErrorBody",
+            '502': "str",
+            '504': "str",
+        }
+        response_data = self.api_client.call_api(
+            *_param,
+            _request_timeout=_request_timeout
+        )
+        return response_data.response
+
+
+    def _list_history_entities_serialize(
+        self,
+        domain_id,
+        resource,
+        limit,
+        page_token,
+        var_from,
+        to,
+        snapshot,
+        risk_bands,
+        hre_min_accounts,
+        hre_min_devices,
+        ids,
+        is_vpn,
+        is_tor,
+        is_proxy,
+        is_privacy_relay,
+        network_check_incomplete,
+        check_incomplete,
+        is_antidetect,
+        is_os_mismatch,
+        is_os_not_detected,
+        is_timezone_mismatch,
+        is_js_disabled,
+        is_browser_automation,
+        is_incognito,
+        is_search_bot,
+        ip_mismatch,
+        latency_test,
+        device_spoofing,
+        rate_limited,
+        ai_bot,
+        ai_browser,
+        risk_signals,
+        source,
+        campaign,
+        _request_auth,
+        _content_type,
+        _headers,
+        _host_index,
+    ) -> RequestSerialized:
+
+        _hosts = [
+            'https://account.shieldlabs.ai'
+        ]
+        _host = _hosts[_host_index]
+
+        _collection_formats: Dict[str, str] = {
+            'risk_bands': 'multi',
+            'ids': 'multi',
+            'risk_signals': 'multi',
+            'source': 'multi',
+            'campaign': 'multi',
+        }
+
+        _path_params: Dict[str, str] = {}
+        _query_params: List[Tuple[str, str]] = []
+        _header_params: Dict[str, Optional[str]] = _headers or {}
+        _form_params: List[Tuple[str, str]] = []
+        _files: Dict[
+            str, Union[str, bytes, List[str], List[bytes], List[Tuple[str, bytes]]]
+        ] = {}
+        _body_params: Optional[bytes] = None
+
+        # process the path parameters
+        if domain_id is not None:
+            _path_params['domain_id'] = domain_id
+        if resource is not None:
+            _path_params['resource'] = resource
         # process the query parameters
         if limit is not None:
             
             _query_params.append(('limit', limit))
             
-        if offset is not None:
+        if page_token is not None:
             
-            _query_params.append(('offset', offset))
+            _query_params.append(('page_token', page_token))
+            
+        if var_from is not None:
+            if isinstance(var_from, datetime):
+                _query_params.append(
+                    (
+                        'from',
+                        var_from.strftime(
+                            self.api_client.configuration.datetime_format
+                        )
+                    )
+                )
+            else:
+                _query_params.append(('from', var_from))
+            
+        if to is not None:
+            if isinstance(to, datetime):
+                _query_params.append(
+                    (
+                        'to',
+                        to.strftime(
+                            self.api_client.configuration.datetime_format
+                        )
+                    )
+                )
+            else:
+                _query_params.append(('to', to))
+            
+        if snapshot is not None:
+            
+            _query_params.append(('snapshot', snapshot))
+            
+        if risk_bands is not None:
+            
+            _query_params.append(('risk_bands', risk_bands))
+            
+        if hre_min_accounts is not None:
+            
+            _query_params.append(('hre_min_accounts', hre_min_accounts))
+            
+        if hre_min_devices is not None:
+            
+            _query_params.append(('hre_min_devices', hre_min_devices))
+            
+        if ids is not None:
+            
+            _query_params.append(('ids', ids))
+            
+        if is_vpn is not None:
+            
+            _query_params.append(('is_vpn', is_vpn))
+            
+        if is_tor is not None:
+            
+            _query_params.append(('is_tor', is_tor))
+            
+        if is_proxy is not None:
+            
+            _query_params.append(('is_proxy', is_proxy))
+            
+        if is_privacy_relay is not None:
+            
+            _query_params.append(('is_privacy_relay', is_privacy_relay))
+            
+        if network_check_incomplete is not None:
+            
+            _query_params.append(('network_check_incomplete', network_check_incomplete))
+            
+        if check_incomplete is not None:
+            
+            _query_params.append(('check_incomplete', check_incomplete))
+            
+        if is_antidetect is not None:
+            
+            _query_params.append(('is_antidetect', is_antidetect))
+            
+        if is_os_mismatch is not None:
+            
+            _query_params.append(('is_os_mismatch', is_os_mismatch))
+            
+        if is_os_not_detected is not None:
+            
+            _query_params.append(('is_os_not_detected', is_os_not_detected))
+            
+        if is_timezone_mismatch is not None:
+            
+            _query_params.append(('is_timezone_mismatch', is_timezone_mismatch))
+            
+        if is_js_disabled is not None:
+            
+            _query_params.append(('is_js_disabled', is_js_disabled))
+            
+        if is_browser_automation is not None:
+            
+            _query_params.append(('is_browser_automation', is_browser_automation))
+            
+        if is_incognito is not None:
+            
+            _query_params.append(('is_incognito', is_incognito))
+            
+        if is_search_bot is not None:
+            
+            _query_params.append(('is_search_bot', is_search_bot))
+            
+        if ip_mismatch is not None:
+            
+            _query_params.append(('ip_mismatch', ip_mismatch))
+            
+        if latency_test is not None:
+            
+            _query_params.append(('latency_test', latency_test))
+            
+        if device_spoofing is not None:
+            
+            _query_params.append(('device_spoofing', device_spoofing))
+            
+        if rate_limited is not None:
+            
+            _query_params.append(('rate_limited', rate_limited))
+            
+        if ai_bot is not None:
+            
+            _query_params.append(('ai_bot', ai_bot))
+            
+        if ai_browser is not None:
+            
+            _query_params.append(('ai_browser', ai_browser))
+            
+        if risk_signals is not None:
+            
+            _query_params.append(('risk_signals', risk_signals))
+            
+        if source is not None:
+            
+            _query_params.append(('source', source))
+            
+        if campaign is not None:
+            
+            _query_params.append(('campaign', campaign))
             
         # process the header parameters
         # process the form parameters
@@ -356,7 +2086,7 @@ class HistoryAPIApi:
 
         return self.api_client.param_serialize(
             method='GET',
-            resource_path='/api/v1/history/{search_type}/{value}',
+            resource_path='/api/v1/domains/{domain_id}/history/{resource}',
             path_params=_path_params,
             query_params=_query_params,
             header_params=_header_params,

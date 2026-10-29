@@ -24,6 +24,7 @@ import respx
 
 from _support import (
     API_KEY,
+    DOMAIN_ID,
     HISTORY_HOST,
     REQUEST_ID,
     REQUEST_PATH,
@@ -101,7 +102,7 @@ class Server:
 def make_client(request: pytest.FixtureRequest, fake_time: FakeTime) -> Callable[..., Client]:
     def make(**options: Any) -> Client:
         cls = ShieldLabs if request.param == "sync" else AsyncShieldLabs
-        instance: Client = cls(api_key=API_KEY, **options)
+        instance: Client = cls(api_key=API_KEY, domain_id=DOMAIN_ID, **options)
         fake_time.install(instance._transport)
         return instance
 
@@ -184,7 +185,7 @@ async def test_polls_on_the_ladder_until_the_row_appears(
     assert route.call_count == 4
     assert route.calls.last.request.url.path == REQUEST_PATH
     params = route.calls.last.request.url.params
-    assert (params["limit"], params["offset"]) == ("1", "0")
+    assert params["limit"] == "1"
 
 
 async def test_custom_poll_interval_sets_the_first_wait(

@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import itertools
-from collections.abc import AsyncIterator, Iterator
+import re
+from collections.abc import AsyncIterator, Iterator, Mapping
 from types import TracebackType
-from typing import Callable, Optional, Union
+from typing import Any, Callable, Optional, Union
 from uuid import UUID
 
 import httpx
@@ -16,6 +17,7 @@ from ._errors import (
     RateLimitError,
     ServerError,
     ShieldLabsError,
+    ValidationError,
 )
 from ._http import (
     RATE_LIMIT_MIN_DELAY,
@@ -25,7 +27,7 @@ from ._http import (
     SyncTransport,
     json_object,
 )
-from ._models import HistoryPage, Identification
+from ._models import EntityPage, HistoryPage, Identification
 from ._validation import (
     LookupType,
     history_origin,
@@ -61,7 +63,43 @@ POLL_STEPS = (1, 2, 4, 6, 8)
 # Errors that do not end a wait: the next poll can still succeed. Everything else (400, 401,
 # 403, 404 and any other API error) is raised at once.
 _TRANSIENT_ERRORS = (RateLimitError, ServerError, APIConnectionError, APITimeoutError)
-_HISTORY_PATH = "/api/v1/history"
+_HISTORY_RESOURCES = {
+    "identification_id": "identifications",
+    "request_id": "identifications",
+    "user_hid": "user",
+    "visitor_id": "visitor",
+    "device_id": "device",
+    "ip": "ip",
+}
+_DOMAIN_ID = re.compile(
+    r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+    re.IGNORECASE,
+)
+
+
+def _flat_params(limit: int, filters: Optional[Mapping[str, Any]] = None) -> dict[str, Any]:
+    """Query string for a History read: limit plus flat filters, booleans as true or false."""
+    params: dict[str, Any] = {"limit": validate_limit(limit)}
+    for key, value in (filters or {}).items():
+        if value is None:
+            continue
+        params[key] = "true" if isinstance(value, bool) else value
+    return params
+
+
+def _domain_rows(body: Mapping[str, Any]) -> list[dict[str, str]]:
+    rows = body.get("domains")
+    if not isinstance(rows, list):
+        raise ValidationError("domains response has no domains array.")
+    result: list[dict[str, str]] = []
+    for row in rows:
+        if not isinstance(row, Mapping):
+            continue
+        domain_id = row.get("id")
+        domain = row.get("domain")
+        if isinstance(domain_id, str) and isinstance(domain, str):
+            result.append({"id": domain_id.lower(), "domain": domain})
+    return result
 
 
 def poll_waits(initial: float) -> Iterator[float]:
@@ -139,9 +177,11 @@ class _HistoryConfig:
         base_url: Optional[str],
         timeout: float,
         max_retries: int,
+        domain_id: Optional[str],
     ) -> tuple[float, int]:
         key = resolve_api_key(api_key)
         self.base_url = history_origin(base_url)
+        self.domain_id = domain_id
         self._headers = {
             "Authorization": f"Bearer {key}",
             "Accept": "application/json",
@@ -152,9 +192,20 @@ class _HistoryConfig:
             validate_max_retries(max_retries),
         )
 
+    def _domain_prefix(self) -> str:
+        if not isinstance(self.domain_id, str) or not _DOMAIN_ID.fullmatch(self.domain_id):
+            raise ValidationError("domain_id must be the public domain UUID from domains().")
+        return f"{self.base_url}/api/v1/domains/{self.domain_id.lower()}"
+
     def _history_url(self, lookup_type: str, value: Union[str, UUID]) -> str:
-        checked_type, segment = validate_lookup(lookup_type, value)
-        return f"{self.base_url}{_HISTORY_PATH}/{checked_type}/{segment}"
+        _checked_type, segment = validate_lookup(lookup_type, value)
+        resource = _HISTORY_RESOURCES.get(lookup_type)
+        if resource is None:
+            raise ValidationError(
+                "That lookup is not a History resource. "
+                "Use identifications, user, visitor, device or ip."
+            )
+        return f"{self._domain_prefix()}/history/{resource}/{segment}"
 
     def __repr__(self) -> str:
         return f"{type(self).__name__}(base_url={self.base_url!r})"
@@ -184,8 +235,11 @@ class ShieldLabs(_HistoryConfig):
         timeout: float = 10.0,
         max_retries: int = 2,
         http_client: Optional[httpx.Client] = None,
+        domain_id: Optional[str] = None,
     ) -> None:
-        checked_timeout, checked_retries = self._configure(api_key, base_url, timeout, max_retries)
+        checked_timeout, checked_retries = self._configure(
+            api_key, base_url, timeout, max_retries, domain_id
+        )
         self._transport = SyncTransport(
             client=http_client,
             timeout=checked_timeout,
@@ -204,16 +258,43 @@ class ShieldLabs(_HistoryConfig):
         *,
         timeout: Optional[float] = None,
         max_retries: Optional[int] = None,
+        filters: Optional[Mapping[str, Any]] = None,
     ) -> HistoryPage:
+        validate_offset(offset)
+        if offset != 0:
+            raise ValidationError("offset is not accepted. Continue with page_token.")
         url = self._history_url(lookup_type, value)
         response = self._transport.get(
             url,
             headers=self._headers,
-            params={"limit": validate_limit(limit), "offset": validate_offset(offset)},
+            params=_flat_params(limit, filters),
             timeout=timeout,
             max_retries=max_retries,
         )
         return HistoryPage.from_dict(json_object(response))
+
+    def domains(self) -> list[dict[str, str]]:
+        """Enabled domains for this key. ``id`` is the only legal ``domain_id``."""
+        response = self._transport.get(
+            f"{self.base_url}/api/v1/domains",
+            headers=self._headers,
+        )
+        return _domain_rows(json_object(response))
+
+    def _list(
+        self,
+        resource: str,
+        limit: int,
+        filters: Optional[Mapping[str, Any]] = None,
+    ) -> EntityPage:
+        if resource not in ("identifications", "user"):
+            raise ValidationError("list supports identifications and user.")
+        response = self._transport.get(
+            f"{self._domain_prefix()}/history/{resource}",
+            headers=self._headers,
+            params=_flat_params(limit, filters),
+        )
+        return EntityPage.from_dict(json_object(response))
 
     def close(self) -> None:
         """Close the underlying HTTP client (unless it was passed in)."""
@@ -243,23 +324,24 @@ class History:
         value: Union[str, UUID],
         limit: int = 20,
         offset: int = 0,
+        **filters: Any,
     ) -> HistoryPage:
-        """Read one page of identifications that match ``type`` = ``value``, newest first.
+        """Read one identification card. ``offset`` is refused; continue with ``page_token``.
 
-        Args:
-            type: ``ip``, ``user_hid``, ``visitor_id``, ``identification_id``, ``device_id``,
-                ``session_id`` or ``cookie_id``.
-            value: A UUID for the ID types, a dotted IPv4 address for ``ip``, a non-empty
-                string for ``user_hid`` (matched exactly; ``.``, ``..`` and values that contain
-                ``/`` cannot be matched in the request path and raise ``ValidationError``).
-            limit: Page size, 1 to 100.
-            offset: Rows to skip.
-
-        Raises:
-            ValidationError: Invalid arguments (nothing is sent).
-            ApiError: The API answered with an error status.
+        Flat filters (``is_vpn=True``, ``risk_bands=["trusted"]``, ``source``, ``campaign``)
+        are sent as query parameters. Nested ``filter`` objects are not accepted.
         """
-        return self._client._search(type, value, limit, offset)
+        return self._client._search(type, value, limit, offset, filters=filters or None)
+
+    def list(
+        self,
+        resource: str,
+        *,
+        limit: int = 20,
+        **filters: Any,
+    ) -> EntityPage:
+        """List ``identifications`` or ``user`` for the client's domain."""
+        return self._client._list(resource, limit, filters or None)
 
     def iter(
         self,
@@ -291,7 +373,7 @@ class History:
         offset = 0
         count = 0
         while max_items is None or count < max_items:
-            page = self._client._search(lookup_type, value, page_size, offset)
+            page = self._client._search(lookup_type, value, page_size, 0)
             if not page.data:
                 return
             for identification in page.data:
@@ -395,8 +477,11 @@ class AsyncShieldLabs(_HistoryConfig):
         timeout: float = 10.0,
         max_retries: int = 2,
         http_client: Optional[httpx.AsyncClient] = None,
+        domain_id: Optional[str] = None,
     ) -> None:
-        checked_timeout, checked_retries = self._configure(api_key, base_url, timeout, max_retries)
+        checked_timeout, checked_retries = self._configure(
+            api_key, base_url, timeout, max_retries, domain_id
+        )
         self._transport = AsyncTransport(
             client=http_client,
             timeout=checked_timeout,
@@ -415,16 +500,43 @@ class AsyncShieldLabs(_HistoryConfig):
         *,
         timeout: Optional[float] = None,
         max_retries: Optional[int] = None,
+        filters: Optional[Mapping[str, Any]] = None,
     ) -> HistoryPage:
+        validate_offset(offset)
+        if offset != 0:
+            raise ValidationError("offset is not accepted. Continue with page_token.")
         url = self._history_url(lookup_type, value)
         response = await self._transport.get(
             url,
             headers=self._headers,
-            params={"limit": validate_limit(limit), "offset": validate_offset(offset)},
+            params=_flat_params(limit, filters),
             timeout=timeout,
             max_retries=max_retries,
         )
         return HistoryPage.from_dict(json_object(response))
+
+    async def domains(self) -> list[dict[str, str]]:
+        """Enabled domains for this key. ``id`` is the only legal ``domain_id``."""
+        response = await self._transport.get(
+            f"{self.base_url}/api/v1/domains",
+            headers=self._headers,
+        )
+        return _domain_rows(json_object(response))
+
+    async def _list(
+        self,
+        resource: str,
+        limit: int,
+        filters: Optional[Mapping[str, Any]] = None,
+    ) -> EntityPage:
+        if resource not in ("identifications", "user"):
+            raise ValidationError("list supports identifications and user.")
+        response = await self._transport.get(
+            f"{self._domain_prefix()}/history/{resource}",
+            headers=self._headers,
+            params=_flat_params(limit, filters),
+        )
+        return EntityPage.from_dict(json_object(response))
 
     async def aclose(self) -> None:
         """Close the underlying HTTP client (unless it was passed in)."""
@@ -454,9 +566,20 @@ class AsyncHistory:
         value: Union[str, UUID],
         limit: int = 20,
         offset: int = 0,
+        **filters: Any,
     ) -> HistoryPage:
         """Async ``ShieldLabs.history.search``."""
-        return await self._client._search(type, value, limit, offset)
+        return await self._client._search(type, value, limit, offset, filters=filters or None)
+
+    async def list(
+        self,
+        resource: str,
+        *,
+        limit: int = 20,
+        **filters: Any,
+    ) -> EntityPage:
+        """Async ``ShieldLabs.history.list``."""
+        return await self._client._list(resource, limit, filters or None)
 
     def iter(
         self,
@@ -483,7 +606,7 @@ class AsyncHistory:
         offset = 0
         count = 0
         while max_items is None or count < max_items:
-            page = await self._client._search(lookup_type, value, page_size, offset)
+            page = await self._client._search(lookup_type, value, page_size, 0)
             if not page.data:
                 return
             for identification in page.data:

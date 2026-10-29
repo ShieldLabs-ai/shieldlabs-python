@@ -11,6 +11,7 @@ import respx
 from _support import (
     API_KEY,
     DOMAIN,
+    DOMAIN_ID,
     HISTORY_HOST,
     MANAGEMENT_HOST,
     REQUEST_ID,
@@ -50,7 +51,7 @@ def mock() -> Any:
 
 @pytest.fixture
 def client(fake_time: FakeTime) -> AsyncShieldLabs:
-    instance = AsyncShieldLabs(api_key=API_KEY)
+    instance = AsyncShieldLabs(api_key=API_KEY, domain_id=DOMAIN_ID)
     fake_time.install(instance._transport)
     return instance
 
@@ -113,11 +114,14 @@ async def test_user_hid_escaping_and_unsearchable_values(
     route = mock.get(host=HISTORY_HOST).respond(200, json=history_body())
     await client.history.search("user_hid", "a@b c!")
     raw_path = route.calls.last.request.url.raw_path.decode("ascii")
-    assert raw_path == "/api/v1/history/user_hid/a@b%20c%21?limit=20&offset=0"
+    assert (
+        raw_path
+        == "/api/v1/domains/11111111-1111-4111-8111-111111111111/history/user/a@b%20c%21?limit=20"
+    )
     await client.history.search("user_hid", "-._~$&+,:;=@ %?#'()*é")
     raw_path = route.calls.last.request.url.raw_path.decode("ascii")
     assert raw_path == (
-        "/api/v1/history/user_hid/-._~$&+,:;=@%20%25%3F%23%27%28%29%2A%C3%A9?limit=20&offset=0"
+        "/api/v1/domains/11111111-1111-4111-8111-111111111111/history/user/-._~$&+,:;=@%20%25%3F%23%27%28%29%2A%C3%A9?limit=20"
     )
     for value in (".", "..", "a/b", "/"):
         with pytest.raises(ValidationError):
@@ -147,14 +151,16 @@ async def test_retries_and_errors(client: AsyncShieldLabs, mock: Any, fake_time:
 
 
 async def test_context_manager_and_injected_client(mock: Any) -> None:
-    async with AsyncShieldLabs(api_key=API_KEY) as client:
+    async with AsyncShieldLabs(api_key=API_KEY, domain_id=DOMAIN_ID) as client:
         inner = client._transport.client
         assert repr(client) == "AsyncShieldLabs(base_url='https://account.shieldlabs.ai')"
     assert inner.is_closed
 
     route = mock.get(host=HISTORY_HOST).respond(200, json=history_body())
     http_client = httpx.AsyncClient()
-    async with AsyncShieldLabs(api_key=API_KEY, http_client=http_client) as injected:
+    async with AsyncShieldLabs(
+        api_key=API_KEY, http_client=http_client, domain_id=DOMAIN_ID
+    ) as injected:
         await injected.history.search("identification_id", REQUEST_ID)
     assert not http_client.is_closed
     assert route.call_count == 1
@@ -194,6 +200,6 @@ async def test_async_management_injected_client(mock: Any) -> None:
 
 async def test_real_async_sleep_is_used_by_default(mock: Any) -> None:
     mock.get(host=HISTORY_HOST).mock(side_effect=[empty_page(), _found()])
-    async with AsyncShieldLabs(api_key=API_KEY) as client:
+    async with AsyncShieldLabs(api_key=API_KEY, domain_id=DOMAIN_ID) as client:
         found = await client.identifications.get(REQUEST_ID, poll_interval=0.01)
     assert found is not None

@@ -14,6 +14,7 @@ import respx
 
 from _support import (
     API_KEY,
+    DOMAIN_ID,
     HISTORY_HOST,
     REQUEST_ID,
     REQUEST_PATH,
@@ -37,7 +38,7 @@ DEVICE_ID = "AC7C303D-971B-41D1-8E25-CD5B46B46AED"
 
 @pytest.fixture
 def client() -> ShieldLabs:
-    return ShieldLabs(api_key=API_KEY)
+    return ShieldLabs(api_key=API_KEY, domain_id=DOMAIN_ID)
 
 
 @pytest.fixture
@@ -50,7 +51,7 @@ def test_search_sends_expected_request(client: ShieldLabs, mock: Any) -> None:
     route = mock.get(host=HISTORY_HOST, path=REQUEST_PATH).respond(
         200, json=load_json("history-page.json")
     )
-    page = client.history.search("identification_id", REQUEST_ID, limit=5, offset=10)
+    page = client.history.search("identification_id", REQUEST_ID, limit=5)
 
     assert isinstance(page, HistoryPage)
     assert page.total == 37
@@ -60,7 +61,7 @@ def test_search_sends_expected_request(client: ShieldLabs, mock: Any) -> None:
     ]
     request = route.calls.last.request
     assert request.method == "GET"
-    assert str(request.url) == f"https://{HISTORY_HOST}{REQUEST_PATH}?limit=5&offset=10"
+    assert str(request.url) == f"https://{HISTORY_HOST}{REQUEST_PATH}?limit=5"
     assert request.headers["authorization"] == f"Bearer {API_KEY}"
     assert request.headers["accept"] == "application/json"
     assert request.headers["user-agent"] == USER_AGENT
@@ -72,7 +73,6 @@ def test_search_defaults_and_empty_page(client: ShieldLabs, mock: Any) -> None:
     page = client.history.search("user_hid", "anonymous")
     assert page == HistoryPage(data=(), total=0)
     assert route.calls.last.request.url.params["limit"] == "20"
-    assert route.calls.last.request.url.params["offset"] == "0"
 
 
 def test_uuid_values_are_sent_lowercase(client: ShieldLabs, mock: Any) -> None:
@@ -81,8 +81,8 @@ def test_uuid_values_are_sent_lowercase(client: ShieldLabs, mock: Any) -> None:
     client.history.search("visitor_id", UUID("bde0e249-20d8-4544-838c-ed9a0b6d7a36"))
     paths = [call.request.url.path for call in route.calls]
     assert paths == [
-        f"/api/v1/history/device_id/{DEVICE_ID.lower()}",
-        "/api/v1/history/visitor_id/bde0e249-20d8-4544-838c-ed9a0b6d7a36",
+        f"/api/v1/domains/11111111-1111-4111-8111-111111111111/history/device/{DEVICE_ID.lower()}",
+        "/api/v1/domains/11111111-1111-4111-8111-111111111111/history/visitor/bde0e249-20d8-4544-838c-ed9a0b6d7a36",
     ]
 
 
@@ -120,7 +120,10 @@ def test_user_hid_uses_the_escaping_the_history_api_matches(
     route = mock.get(host=HISTORY_HOST).respond(200, json=history_body())
     client.history.search("user_hid", user_hid)
     raw_path = route.calls.last.request.url.raw_path.decode("ascii")
-    assert raw_path == f"/api/v1/history/user_hid/{segment}?limit=20&offset=0"
+    assert (
+        raw_path
+        == f"/api/v1/domains/11111111-1111-4111-8111-111111111111/history/user/{segment}?limit=20"
+    )
 
 
 _KEPT_IN_PATH = frozenset(string.ascii_letters + string.digits + "-._~" + "$&+,:;=@")
@@ -173,7 +176,10 @@ def test_user_hids_the_history_api_cannot_search_send_nothing(
 def test_ip_lookup(client: ShieldLabs, mock: Any) -> None:
     route = mock.get(host=HISTORY_HOST).respond(200, json=history_body())
     client.history.search("ip", "203.0.113.24")
-    assert route.calls.last.request.url.path == "/api/v1/history/ip/203.0.113.24"
+    assert (
+        route.calls.last.request.url.path
+        == "/api/v1/domains/11111111-1111-4111-8111-111111111111/history/ip/203.0.113.24"
+    )
 
 
 @pytest.mark.parametrize(
@@ -229,7 +235,7 @@ def test_limit_and_offset_validation(
 def test_limit_boundaries_are_accepted(client: ShieldLabs, mock: Any) -> None:
     route = mock.get(host=HISTORY_HOST).respond(200, json=history_body())
     client.history.search("identification_id", REQUEST_ID, limit=1)
-    client.history.search("identification_id", REQUEST_ID, limit=100, offset=5000)
+    client.history.search("identification_id", REQUEST_ID, limit=100)
     assert [c.request.url.params["limit"] for c in route.calls] == ["1", "100"]
 
 
@@ -253,10 +259,7 @@ def test_iter_dedupes_on_identification_id_and_stops_at_total(
     )
     items = list(client.history.iter("user_hid", "acct-1", page_size=2))
     assert [item.identification_id for item in items] == [uuid_for(i) for i in (1, 2, 3, 4)]
-    offsets = [call.request.url.params["offset"] for call in route.calls]
-    limits = {call.request.url.params["limit"] for call in route.calls}
-    assert offsets == ["0", "2", "4"]
-    assert limits == {"2"}
+    assert route.call_count == 3
 
 
 def test_iter_stops_at_empty_page(client: ShieldLabs, mock: Any) -> None:
@@ -333,7 +336,7 @@ def test_iter_validates_eagerly(
 )
 def test_api_suffix_is_stripped(mock: Any, base_url: str) -> None:
     route = mock.get(host=HISTORY_HOST).respond(200, json=history_body())
-    client = ShieldLabs(api_key=API_KEY, base_url=base_url)
+    client = ShieldLabs(api_key=API_KEY, base_url=base_url, domain_id=DOMAIN_ID)
     assert client.base_url == "https://account.shieldlabs.ai"
     client.history.search("identification_id", REQUEST_ID)
     assert route.calls.last.request.url.path == REQUEST_PATH
@@ -341,10 +344,14 @@ def test_api_suffix_is_stripped(mock: Any, base_url: str) -> None:
 
 def test_custom_base_url_with_prefix_and_dev_host(mock: Any) -> None:
     route = mock.get(host="dev.account.shieldlabs.ai").respond(200, json=history_body())
-    client = ShieldLabs(api_key=API_KEY, base_url="https://dev.account.shieldlabs.ai")
+    client = ShieldLabs(
+        api_key=API_KEY, base_url="https://dev.account.shieldlabs.ai", domain_id=DOMAIN_ID
+    )
     client.history.search("identification_id", REQUEST_ID)
     assert route.call_count == 1
-    proxied = ShieldLabs(api_key=API_KEY, base_url="http://localhost:8080/shield/api")
+    proxied = ShieldLabs(
+        api_key=API_KEY, base_url="http://localhost:8080/shield/api", domain_id=DOMAIN_ID
+    )
     assert proxied.base_url == "http://localhost:8080/shield"
 
 
@@ -354,7 +361,7 @@ def test_custom_base_url_with_prefix_and_dev_host(mock: Any) -> None:
 )
 def test_invalid_base_url(base_url: str) -> None:
     with pytest.raises(ValidationError, match="must be an http"):
-        ShieldLabs(api_key=API_KEY, base_url=base_url)
+        ShieldLabs(api_key=API_KEY, base_url=base_url, domain_id=DOMAIN_ID)
 
 
 @pytest.mark.parametrize(
@@ -370,7 +377,7 @@ def test_invalid_base_url(base_url: str) -> None:
 )
 def test_plain_http_is_refused_for_remote_hosts(base_url: str) -> None:
     with pytest.raises(ValidationError, match="must use https") as caught:
-        ShieldLabs(api_key=API_KEY, base_url=base_url)
+        ShieldLabs(api_key=API_KEY, base_url=base_url, domain_id=DOMAIN_ID)
     assert "secret" not in str(caught.value)
 
 
@@ -386,20 +393,20 @@ def test_plain_http_is_refused_for_remote_hosts(base_url: str) -> None:
     ],
 )
 def test_plain_http_is_accepted_for_loopback_hosts(base_url: str, origin: str) -> None:
-    assert ShieldLabs(api_key=API_KEY, base_url=base_url).base_url == origin
+    assert ShieldLabs(api_key=API_KEY, base_url=base_url, domain_id=DOMAIN_ID).base_url == origin
 
 
 def test_plain_http_from_the_environment_is_refused(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("SHIELDLABS_API_BASE_URL", "http://account.shieldlabs.ai")
     with pytest.raises(ValidationError, match="must use https"):
-        ShieldLabs(api_key=API_KEY)
+        ShieldLabs(api_key=API_KEY, domain_id=DOMAIN_ID)
 
 
 def test_env_fallbacks(monkeypatch: pytest.MonkeyPatch, mock: Any) -> None:
     monkeypatch.setenv("SHIELDLABS_API_KEY", API_KEY)
     monkeypatch.setenv("SHIELDLABS_API_BASE_URL", "https://dev.account.shieldlabs.ai/api")
     route = mock.get(host="dev.account.shieldlabs.ai").respond(200, json=history_body())
-    client = ShieldLabs()
+    client = ShieldLabs(domain_id=DOMAIN_ID)
     assert client.base_url == "https://dev.account.shieldlabs.ai"
     client.history.search("identification_id", REQUEST_ID)
     assert route.calls.last.request.headers["authorization"] == f"Bearer {API_KEY}"
@@ -408,17 +415,17 @@ def test_env_fallbacks(monkeypatch: pytest.MonkeyPatch, mock: Any) -> None:
 @pytest.mark.parametrize("api_key", [None, "", "   "])
 def test_missing_api_key(api_key: Any) -> None:
     with pytest.raises(ValidationError, match="SHIELDLABS_API_KEY"):
-        ShieldLabs(api_key=api_key)
+        ShieldLabs(api_key=api_key, domain_id=DOMAIN_ID)
 
 
 def test_non_string_api_key() -> None:
     with pytest.raises(ValidationError, match="api_key must be a string"):
-        ShieldLabs(api_key=12345)  # type: ignore[arg-type]
+        ShieldLabs(api_key=12345, domain_id=DOMAIN_ID)  # type: ignore[arg-type]
 
 
 def test_unusual_api_key_warns_without_leaking_it() -> None:
     with pytest.warns(ShieldLabsWarning, match="Private API Key") as record:
-        ShieldLabs(api_key="0123456789abcdef0123456789abcdef")
+        ShieldLabs(api_key="0123456789abcdef0123456789abcdef", domain_id=DOMAIN_ID)
     assert "0123456789abcdef" not in str(record[0].message)
     assert record[0].filename == __file__
 
@@ -426,7 +433,7 @@ def test_unusual_api_key_warns_without_leaking_it() -> None:
 def test_valid_api_key_does_not_warn() -> None:
     with warnings.catch_warnings():
         warnings.simplefilter("error")
-        ShieldLabs(api_key=f"  {API_KEY}\n")
+        ShieldLabs(api_key=f"  {API_KEY}\n", domain_id=DOMAIN_ID)
 
 
 def test_repr_never_contains_the_key(client: ShieldLabs) -> None:
@@ -440,11 +447,11 @@ def test_repr_never_contains_the_key(client: ShieldLabs) -> None:
 )
 def test_invalid_options(kwargs: dict[str, Any]) -> None:
     with pytest.raises(ValidationError):
-        ShieldLabs(api_key=API_KEY, **kwargs)
+        ShieldLabs(api_key=API_KEY, domain_id=DOMAIN_ID, **kwargs)
 
 
 def test_context_manager_closes_owned_client() -> None:
-    with ShieldLabs(api_key=API_KEY) as client:
+    with ShieldLabs(api_key=API_KEY, domain_id=DOMAIN_ID) as client:
         inner = client._transport.client
         assert not inner.is_closed
     assert inner.is_closed
@@ -453,7 +460,7 @@ def test_context_manager_closes_owned_client() -> None:
 def test_injected_http_client_is_used_and_left_open(mock: Any) -> None:
     route = mock.get(host=HISTORY_HOST).respond(200, json=history_body())
     http_client = httpx.Client(headers={"X-Trace": "1"})
-    with ShieldLabs(api_key=API_KEY, http_client=http_client) as client:
+    with ShieldLabs(api_key=API_KEY, http_client=http_client, domain_id=DOMAIN_ID) as client:
         client.history.search("identification_id", REQUEST_ID)
     assert not http_client.is_closed
     assert route.calls.last.request.headers["x-trace"] == "1"
@@ -492,10 +499,36 @@ def test_errors_survive_deepcopy(client: ShieldLabs, mock: Any) -> None:
 @pytest.mark.parametrize("api_key", ["sec_abc def", "sec_abc\x00def", "sec_été"])
 def test_api_key_must_be_header_safe_and_is_never_echoed(api_key: str) -> None:
     with pytest.raises(ValidationError, match="HTTP header") as caught:
-        ShieldLabs(api_key=api_key)
+        ShieldLabs(api_key=api_key, domain_id=DOMAIN_ID)
     assert api_key not in str(caught.value)
 
 
 def test_non_string_base_url() -> None:
     with pytest.raises(ValidationError, match="base_url must be a string"):
-        ShieldLabs(api_key=API_KEY, base_url=8080)  # type: ignore[arg-type]
+        ShieldLabs(api_key=API_KEY, base_url=8080, domain_id=DOMAIN_ID)  # type: ignore[arg-type]
+
+
+def test_domains_and_flat_list_filters(client: ShieldLabs, mock: Any) -> None:
+    domains = mock.get(host=HISTORY_HOST, path="/api/v1/domains").respond(
+        200,
+        json={"domains": [{"id": DOMAIN_ID.upper(), "domain": "example.com"}]},
+    )
+    listing = mock.get(
+        host=HISTORY_HOST,
+        path=f"/api/v1/domains/{DOMAIN_ID}/history/identifications",
+    ).respond(200, json=history_body())
+
+    assert client.domains() == [{"id": DOMAIN_ID, "domain": "example.com"}]
+    client.history.list(
+        "identifications",
+        limit=5,
+        is_vpn=True,
+        risk_bands=["trusted", "suspicious"],
+        source="google",
+    )
+    assert domains.call_count == 1
+    params = listing.calls.last.request.url.params
+    assert params["limit"] == "5"
+    assert params["is_vpn"] == "true"
+    assert params.get_list("risk_bands") == ["trusted", "suspicious"]
+    assert params["source"] == "google"
