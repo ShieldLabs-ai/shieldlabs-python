@@ -85,7 +85,7 @@ class SignalName:
     DATACENTER_IP = "datacenter_ip"
     ABUSER = "abuser"
     TIMEZONE_MISMATCH = "timezone_mismatch"
-    RATE_LIMITED = "rate_limited"
+    RATE_LIMITED = "banned_ip"
 
 
 @dataclass(frozen=True)
@@ -176,7 +176,7 @@ class DetectionFlags:
     latency_test: bool = False
     anti_detect_browser: bool = False
     device_spoofing: bool = False
-    rate_limited: bool = False
+    banned_ip: bool = False
     incognito: bool = False
     search_bot: bool = False
     ai_bot: bool = False
@@ -192,7 +192,6 @@ class DetectionFlags:
             "private_relay": "privacy_relay",
             "network_check_incomplete": "stun_not_checked",
             "latency_test": "ws_tcp_latency",
-            "rate_limited": "banned_ip",
         }
         return cls(
             **{
@@ -243,7 +242,7 @@ class Identification:
 
     @property
     def risk_band(self) -> RiskBand:
-        """Band of ``risk_score``: trusted, suspicious, dangerous, or rate_limited (marker)."""
+        """Band of ``risk_score``: trusted, suspicious, dangerous, or banned_ip (marker)."""
         return risk_band(self.risk_score)
 
     @property
@@ -327,7 +326,6 @@ class Identification:
             if not isinstance(names, list):
                 names = []
             aliases = {
-                "rate_limited": "banned_ip",
                 "private_relay": "privacy_relay",
                 "network_check_incomplete": "stun_not_checked",
                 "latency_test": "ws_tcp_latency",

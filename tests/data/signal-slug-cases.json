@@ -59,7 +59,7 @@
     },
     {
       "description": "User has been banned 1H, to many requests",
-      "slug": "rate_limited"
+      "slug": "banned_ip"
     },
     {
       "description": "Antidetect browser (turn_block)",

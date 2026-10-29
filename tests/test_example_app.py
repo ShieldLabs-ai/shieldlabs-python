@@ -81,7 +81,7 @@ def test_trusted_signup_is_created_once(app_client: tuple[TestClient, Any]) -> N
     [
         ({"score": 80}, "blocked_band"),
         ({"is_browser_automation": True}, "blocked_flag"),
-        ({"score": 999}, "rate_limited"),
+        ({"score": 999}, "banned_ip"),
         ({"created_at": "2026-01-01 00:00:00.000"}, "stale"),
         ({"device_id": "00000000-0000-0000-0000-000000000000"}, "no_device_signals"),
     ],

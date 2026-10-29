@@ -140,7 +140,7 @@ this order, and reports the first one that fails:
 | `missing` | there is no identification (unverified, never clean) |
 | `replayed` | `is_replay(identification_id)` returns `True` (one identification authorizes one action) |
 | `stale` | `observed_at` is older than `max_age` (default 300 seconds) |
-| `rate_limited` | the Risk Score is the rate-limit marker (above 100, in practice 999) |
+| `banned_ip` | the Risk Score is the rate-limit marker (above 100, in practice 999) |
 | `no_device_signals` | the device ID is the all-zero UUID `00000000-0000-0000-0000-000000000000` |
 | `blocked_flag` | a flag in `block_flags` is set (default `browser_automation`, `javascript_disabled`) |
 | `blocked_band` | the risk band is in `block_bands` (default `dangerous`) |
@@ -165,7 +165,7 @@ The SDK stores nothing, so keep used request IDs in your own store (for example 
 `SET key NX EX 600`) and pass a lookup as `is_replay`.
 
 A visitor IP that sends too many identifications is blocked for 10 minutes. The block can show
-up once as a separate identification with the marker 999 (`rate_limited`) and its own request
+up once as a separate identification with the marker 999 (`banned_ip`) and its own request
 ID. Request IDs that the browser receives during the block get no History row at all, so they
 end up as `missing`.
 
@@ -176,7 +176,7 @@ Risk bands are computed on the client from the score:
 | `trusted` | 0-29 |
 | `suspicious` | 30-59 |
 | `dangerous` | 60-100 |
-| `rate_limited` | above 100: the rate-limit marker, not a score |
+| `banned_ip` | above 100: the rate-limit marker, not a score |
 
 ```python
 from shieldlabs import is_rate_limited, risk_band
@@ -393,7 +393,7 @@ its keys with the default hosts.
 | `webhooks.verify_signature(payload, signature_header, secret)` | `bool` |
 | `webhooks.construct_event(payload, signature_header, secret)` | `IdentificationScoredEvent`, `WebhookPingEvent` or `UnknownWebhookEvent` |
 | `evaluate_identification(identification, *, max_age=300.0, now=None, block_bands=("dangerous",), block_flags=("browser_automation", "javascript_disabled"), is_replay=None)` | `Evaluation(ok, reason, band, flag)` |
-| `risk_band(score)` | `"trusted"`, `"suspicious"`, `"dangerous"` or `"rate_limited"` |
+| `risk_band(score)` | `"trusted"`, `"suspicious"`, `"dangerous"` or `"banned_ip"` |
 | `is_rate_limited(score)` | `bool` |
 | `user_hid(user_id, secret)` | 64-character lowercase hex `str` |
 

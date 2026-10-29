@@ -74,7 +74,7 @@ class HistoryAPIApi:
         ip_mismatch: Annotated[Optional[StrictStr], Field(description="Keep only rows whose `ip_mismatch` equals this value. Omit to leave unconstrained.")] = None,
         latency_test: Annotated[Optional[StrictStr], Field(description="Keep only rows whose `latency_test` equals this value. Omit to leave unconstrained.")] = None,
         device_spoofing: Annotated[Optional[StrictStr], Field(description="Keep only rows whose `device_spoofing` equals this value. Omit to leave unconstrained.")] = None,
-        rate_limited: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `rate_limited` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        banned_ip: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `banned_ip` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
         ai_bot: Annotated[Optional[StrictStr], Field(description="Keep only rows whose `ai_bot` equals this value. Omit to leave unconstrained.")] = None,
         ai_browser: Annotated[Optional[StrictStr], Field(description="Keep only rows whose `ai_browser` equals this value. Omit to leave unconstrained.")] = None,
         risk_signals: Annotated[Optional[List[StrictStr]], Field(description="Repeat a public signal code. Several codes combine with OR.")] = None,
@@ -157,8 +157,8 @@ class HistoryAPIApi:
         :type latency_test: str
         :param device_spoofing: Keep only rows whose `device_spoofing` equals this value. Omit to leave unconstrained.
         :type device_spoofing: str
-        :param rate_limited: When set, keep only rows whose `rate_limited` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
-        :type rate_limited: str
+        :param banned_ip: When set, keep only rows whose `banned_ip` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type banned_ip: str
         :param ai_bot: Keep only rows whose `ai_bot` equals this value. Omit to leave unconstrained.
         :type ai_bot: str
         :param ai_browser: Keep only rows whose `ai_browser` equals this value. Omit to leave unconstrained.
@@ -228,7 +228,7 @@ class HistoryAPIApi:
             ip_mismatch=ip_mismatch,
             latency_test=latency_test,
             device_spoofing=device_spoofing,
-            rate_limited=rate_limited,
+            banned_ip=banned_ip,
             ai_bot=ai_bot,
             ai_browser=ai_browser,
             risk_signals=risk_signals,
@@ -292,7 +292,7 @@ class HistoryAPIApi:
         ip_mismatch: Annotated[Optional[StrictStr], Field(description="Keep only rows whose `ip_mismatch` equals this value. Omit to leave unconstrained.")] = None,
         latency_test: Annotated[Optional[StrictStr], Field(description="Keep only rows whose `latency_test` equals this value. Omit to leave unconstrained.")] = None,
         device_spoofing: Annotated[Optional[StrictStr], Field(description="Keep only rows whose `device_spoofing` equals this value. Omit to leave unconstrained.")] = None,
-        rate_limited: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `rate_limited` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        banned_ip: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `banned_ip` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
         ai_bot: Annotated[Optional[StrictStr], Field(description="Keep only rows whose `ai_bot` equals this value. Omit to leave unconstrained.")] = None,
         ai_browser: Annotated[Optional[StrictStr], Field(description="Keep only rows whose `ai_browser` equals this value. Omit to leave unconstrained.")] = None,
         risk_signals: Annotated[Optional[List[StrictStr]], Field(description="Repeat a public signal code. Several codes combine with OR.")] = None,
@@ -375,8 +375,8 @@ class HistoryAPIApi:
         :type latency_test: str
         :param device_spoofing: Keep only rows whose `device_spoofing` equals this value. Omit to leave unconstrained.
         :type device_spoofing: str
-        :param rate_limited: When set, keep only rows whose `rate_limited` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
-        :type rate_limited: str
+        :param banned_ip: When set, keep only rows whose `banned_ip` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type banned_ip: str
         :param ai_bot: Keep only rows whose `ai_bot` equals this value. Omit to leave unconstrained.
         :type ai_bot: str
         :param ai_browser: Keep only rows whose `ai_browser` equals this value. Omit to leave unconstrained.
@@ -446,7 +446,7 @@ class HistoryAPIApi:
             ip_mismatch=ip_mismatch,
             latency_test=latency_test,
             device_spoofing=device_spoofing,
-            rate_limited=rate_limited,
+            banned_ip=banned_ip,
             ai_bot=ai_bot,
             ai_browser=ai_browser,
             risk_signals=risk_signals,
@@ -510,7 +510,7 @@ class HistoryAPIApi:
         ip_mismatch: Annotated[Optional[StrictStr], Field(description="Keep only rows whose `ip_mismatch` equals this value. Omit to leave unconstrained.")] = None,
         latency_test: Annotated[Optional[StrictStr], Field(description="Keep only rows whose `latency_test` equals this value. Omit to leave unconstrained.")] = None,
         device_spoofing: Annotated[Optional[StrictStr], Field(description="Keep only rows whose `device_spoofing` equals this value. Omit to leave unconstrained.")] = None,
-        rate_limited: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `rate_limited` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        banned_ip: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `banned_ip` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
         ai_bot: Annotated[Optional[StrictStr], Field(description="Keep only rows whose `ai_bot` equals this value. Omit to leave unconstrained.")] = None,
         ai_browser: Annotated[Optional[StrictStr], Field(description="Keep only rows whose `ai_browser` equals this value. Omit to leave unconstrained.")] = None,
         risk_signals: Annotated[Optional[List[StrictStr]], Field(description="Repeat a public signal code. Several codes combine with OR.")] = None,
@@ -593,8 +593,8 @@ class HistoryAPIApi:
         :type latency_test: str
         :param device_spoofing: Keep only rows whose `device_spoofing` equals this value. Omit to leave unconstrained.
         :type device_spoofing: str
-        :param rate_limited: When set, keep only rows whose `rate_limited` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
-        :type rate_limited: str
+        :param banned_ip: When set, keep only rows whose `banned_ip` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type banned_ip: str
         :param ai_bot: Keep only rows whose `ai_bot` equals this value. Omit to leave unconstrained.
         :type ai_bot: str
         :param ai_browser: Keep only rows whose `ai_browser` equals this value. Omit to leave unconstrained.
@@ -664,7 +664,7 @@ class HistoryAPIApi:
             ip_mismatch=ip_mismatch,
             latency_test=latency_test,
             device_spoofing=device_spoofing,
-            rate_limited=rate_limited,
+            banned_ip=banned_ip,
             ai_bot=ai_bot,
             ai_browser=ai_browser,
             risk_signals=risk_signals,
@@ -723,7 +723,7 @@ class HistoryAPIApi:
         ip_mismatch,
         latency_test,
         device_spoofing,
-        rate_limited,
+        banned_ip,
         ai_bot,
         ai_browser,
         risk_signals,
@@ -886,9 +886,9 @@ class HistoryAPIApi:
             
             _query_params.append(('device_spoofing', device_spoofing))
             
-        if rate_limited is not None:
+        if banned_ip is not None:
             
-            _query_params.append(('rate_limited', rate_limited))
+            _query_params.append(('banned_ip', banned_ip))
             
         if ai_bot is not None:
             
@@ -1261,7 +1261,7 @@ class HistoryAPIApi:
         ip_mismatch: Annotated[Optional[StrictStr], Field(description="Keep only rows whose `ip_mismatch` equals this value. Omit to leave unconstrained.")] = None,
         latency_test: Annotated[Optional[StrictStr], Field(description="Keep only rows whose `latency_test` equals this value. Omit to leave unconstrained.")] = None,
         device_spoofing: Annotated[Optional[StrictStr], Field(description="Keep only rows whose `device_spoofing` equals this value. Omit to leave unconstrained.")] = None,
-        rate_limited: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `rate_limited` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        banned_ip: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `banned_ip` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
         ai_bot: Annotated[Optional[StrictStr], Field(description="Keep only rows whose `ai_bot` equals this value. Omit to leave unconstrained.")] = None,
         ai_browser: Annotated[Optional[StrictStr], Field(description="Keep only rows whose `ai_browser` equals this value. Omit to leave unconstrained.")] = None,
         risk_signals: Annotated[Optional[List[StrictStr]], Field(description="Repeat a public signal code. Several codes combine with OR.")] = None,
@@ -1340,8 +1340,8 @@ class HistoryAPIApi:
         :type latency_test: str
         :param device_spoofing: Keep only rows whose `device_spoofing` equals this value. Omit to leave unconstrained.
         :type device_spoofing: str
-        :param rate_limited: When set, keep only rows whose `rate_limited` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
-        :type rate_limited: str
+        :param banned_ip: When set, keep only rows whose `banned_ip` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type banned_ip: str
         :param ai_bot: Keep only rows whose `ai_bot` equals this value. Omit to leave unconstrained.
         :type ai_bot: str
         :param ai_browser: Keep only rows whose `ai_browser` equals this value. Omit to leave unconstrained.
@@ -1403,7 +1403,7 @@ class HistoryAPIApi:
             ip_mismatch=ip_mismatch,
             latency_test=latency_test,
             device_spoofing=device_spoofing,
-            rate_limited=rate_limited,
+            banned_ip=banned_ip,
             ai_bot=ai_bot,
             ai_browser=ai_browser,
             risk_signals=risk_signals,
@@ -1468,7 +1468,7 @@ class HistoryAPIApi:
         ip_mismatch: Annotated[Optional[StrictStr], Field(description="Keep only rows whose `ip_mismatch` equals this value. Omit to leave unconstrained.")] = None,
         latency_test: Annotated[Optional[StrictStr], Field(description="Keep only rows whose `latency_test` equals this value. Omit to leave unconstrained.")] = None,
         device_spoofing: Annotated[Optional[StrictStr], Field(description="Keep only rows whose `device_spoofing` equals this value. Omit to leave unconstrained.")] = None,
-        rate_limited: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `rate_limited` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        banned_ip: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `banned_ip` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
         ai_bot: Annotated[Optional[StrictStr], Field(description="Keep only rows whose `ai_bot` equals this value. Omit to leave unconstrained.")] = None,
         ai_browser: Annotated[Optional[StrictStr], Field(description="Keep only rows whose `ai_browser` equals this value. Omit to leave unconstrained.")] = None,
         risk_signals: Annotated[Optional[List[StrictStr]], Field(description="Repeat a public signal code. Several codes combine with OR.")] = None,
@@ -1547,8 +1547,8 @@ class HistoryAPIApi:
         :type latency_test: str
         :param device_spoofing: Keep only rows whose `device_spoofing` equals this value. Omit to leave unconstrained.
         :type device_spoofing: str
-        :param rate_limited: When set, keep only rows whose `rate_limited` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
-        :type rate_limited: str
+        :param banned_ip: When set, keep only rows whose `banned_ip` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type banned_ip: str
         :param ai_bot: Keep only rows whose `ai_bot` equals this value. Omit to leave unconstrained.
         :type ai_bot: str
         :param ai_browser: Keep only rows whose `ai_browser` equals this value. Omit to leave unconstrained.
@@ -1610,7 +1610,7 @@ class HistoryAPIApi:
             ip_mismatch=ip_mismatch,
             latency_test=latency_test,
             device_spoofing=device_spoofing,
-            rate_limited=rate_limited,
+            banned_ip=banned_ip,
             ai_bot=ai_bot,
             ai_browser=ai_browser,
             risk_signals=risk_signals,
@@ -1675,7 +1675,7 @@ class HistoryAPIApi:
         ip_mismatch: Annotated[Optional[StrictStr], Field(description="Keep only rows whose `ip_mismatch` equals this value. Omit to leave unconstrained.")] = None,
         latency_test: Annotated[Optional[StrictStr], Field(description="Keep only rows whose `latency_test` equals this value. Omit to leave unconstrained.")] = None,
         device_spoofing: Annotated[Optional[StrictStr], Field(description="Keep only rows whose `device_spoofing` equals this value. Omit to leave unconstrained.")] = None,
-        rate_limited: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `rate_limited` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
+        banned_ip: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `banned_ip` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
         ai_bot: Annotated[Optional[StrictStr], Field(description="Keep only rows whose `ai_bot` equals this value. Omit to leave unconstrained.")] = None,
         ai_browser: Annotated[Optional[StrictStr], Field(description="Keep only rows whose `ai_browser` equals this value. Omit to leave unconstrained.")] = None,
         risk_signals: Annotated[Optional[List[StrictStr]], Field(description="Repeat a public signal code. Several codes combine with OR.")] = None,
@@ -1754,8 +1754,8 @@ class HistoryAPIApi:
         :type latency_test: str
         :param device_spoofing: Keep only rows whose `device_spoofing` equals this value. Omit to leave unconstrained.
         :type device_spoofing: str
-        :param rate_limited: When set, keep only rows whose `rate_limited` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
-        :type rate_limited: str
+        :param banned_ip: When set, keep only rows whose `banned_ip` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
+        :type banned_ip: str
         :param ai_bot: Keep only rows whose `ai_bot` equals this value. Omit to leave unconstrained.
         :type ai_bot: str
         :param ai_browser: Keep only rows whose `ai_browser` equals this value. Omit to leave unconstrained.
@@ -1817,7 +1817,7 @@ class HistoryAPIApi:
             ip_mismatch=ip_mismatch,
             latency_test=latency_test,
             device_spoofing=device_spoofing,
-            rate_limited=rate_limited,
+            banned_ip=banned_ip,
             ai_bot=ai_bot,
             ai_browser=ai_browser,
             risk_signals=risk_signals,
@@ -1877,7 +1877,7 @@ class HistoryAPIApi:
         ip_mismatch,
         latency_test,
         device_spoofing,
-        rate_limited,
+        banned_ip,
         ai_bot,
         ai_browser,
         risk_signals,
@@ -2039,9 +2039,9 @@ class HistoryAPIApi:
             
             _query_params.append(('device_spoofing', device_spoofing))
             
-        if rate_limited is not None:
+        if banned_ip is not None:
             
-            _query_params.append(('rate_limited', rate_limited))
+            _query_params.append(('banned_ip', banned_ip))
             
         if ai_bot is not None:
             

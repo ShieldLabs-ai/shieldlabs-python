@@ -41,14 +41,14 @@ class DetectionFlags(BaseModel):
     latency_test: StrictBool = Field(description="The WebSocket-to-TCP latency test fired. Older payloads used ws_tcp_latency.")
     anti_detect_browser: StrictBool = Field(description="An anti-detect browser was detected.")
     device_spoofing: StrictBool
-    rate_limited: StrictBool = Field(description="The visitor exceeded the identification rate limit. Older payloads used banned_ip.")
+    banned_ip: StrictBool = Field(description="The visitor exceeded the identification rate limit.")
     incognito: StrictBool = Field(description="The browser runs in a private window. False for a search-engine crawler, an AI bot, or an AI browser. Weight 0, and present in signals when true.")
     search_bot: StrictBool = Field(description="A search-engine crawler. Its Risk Score is always 0. Weight 0, and present in signals when true.")
     ai_bot: StrictBool = Field(description="A recognized AI bot or crawler. Its Risk Score is always 0. ShieldLabs identifies the provider when available. Weight 0, and present in signals when true.")
     browser_automation: StrictBool = Field(description="Browser automation was detected, for example a WebDriver-controlled browser. Catalogue weight is 90 for task 204 scoring releases; historical result versions may retain the earlier weight 60.")
     ai_browser: StrictBool = Field(description="A recognized AI browser. Its Risk Score is always 0. ShieldLabs identifies the provider when available. Weight 0, and present in signals when true.")
     tor: StrictBool = Field(description="The request came through the Tor network.")
-    __properties: ClassVar[List[str]] = ["vpn", "proxy", "private_relay", "check_incomplete", "network_check_incomplete", "os_not_detected", "timezone_mismatch", "javascript_disabled", "os_mismatch", "ip_mismatch", "latency_test", "anti_detect_browser", "device_spoofing", "rate_limited", "incognito", "search_bot", "ai_bot", "browser_automation", "ai_browser", "tor"]
+    __properties: ClassVar[List[str]] = ["vpn", "proxy", "private_relay", "check_incomplete", "network_check_incomplete", "os_not_detected", "timezone_mismatch", "javascript_disabled", "os_mismatch", "ip_mismatch", "latency_test", "anti_detect_browser", "device_spoofing", "banned_ip", "incognito", "search_bot", "ai_bot", "browser_automation", "ai_browser", "tor"]
 
     model_config = ConfigDict(
         validate_by_name=True,
@@ -114,7 +114,7 @@ class DetectionFlags(BaseModel):
             "latency_test": obj.get("latency_test"),
             "anti_detect_browser": obj.get("anti_detect_browser"),
             "device_spoofing": obj.get("device_spoofing"),
-            "rate_limited": obj.get("rate_limited"),
+            "banned_ip": obj.get("banned_ip"),
             "incognito": obj.get("incognito"),
             "search_bot": obj.get("search_bot"),
             "ai_bot": obj.get("ai_bot"),

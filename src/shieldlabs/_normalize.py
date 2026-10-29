@@ -31,8 +31,8 @@ __all__ = [
     "signal_slug",
 ]
 
-RiskBand = Literal["trusted", "suspicious", "dangerous", "rate_limited"]
-"""Client-side label of a Risk Score. ``rate_limited`` marks the 999 marker, not a band."""
+RiskBand = Literal["trusted", "suspicious", "dangerous", "banned_ip"]
+"""Client-side label of a Risk Score. ``banned_ip`` marks the 999 marker, not a band."""
 
 NIL_UUID = "00000000-0000-0000-0000-000000000000"
 """The all-zero UUID. As a device ID it means "no usable device signals"."""
@@ -51,7 +51,7 @@ FLAG_KEYS: tuple[str, ...] = (
     "latency_test",
     "anti_detect_browser",
     "device_spoofing",
-    "rate_limited",
+    "banned_ip",
     "incognito",
     "search_bot",
     "ai_bot",
@@ -72,7 +72,6 @@ HISTORY_FLAG_MAP: dict[str, str] = {
     "latency_test": "is_latency_test",
     "anti_detect_browser": "is_antidetect",
     "device_spoofing": "is_device_spoof",
-    "rate_limited": "is_rate_limited",
     "banned_ip": "is_rate_limited",
     "incognito": "is_incognito",
     "search_bot": "is_search_bot",
@@ -110,7 +109,7 @@ _EXACT_SLUGS: dict[str, str] = {
     "Browser VPN/Proxy": "vpn",
     "Browser Automation": "browser_automation",
     "Port scan routed via proxy (antidetect browser pattern)": "proxy_routed_antidetect",
-    "User has been banned 1H, to many requests": "rate_limited",
+    "User has been banned 1H, to many requests": "banned_ip",
     "private_relay": "private_relay",
     "network_check_incomplete": "network_check_incomplete",
 }
@@ -271,10 +270,10 @@ def risk_band(score: int) -> RiskBand:
     """Return the risk band of a Risk Score.
 
     ``trusted`` for 0-29, ``suspicious`` for 30-59, ``dangerous`` for 60-100, and
-    ``rate_limited`` for values above 100 (the 999 rate-limit marker is not a score).
+    ``banned_ip`` for values above 100 (the 999 rate-limit marker is not a score).
     """
     if score > 100:
-        return "rate_limited"
+        return "banned_ip"
     if score >= 60:
         return "dangerous"
     if score >= 30:

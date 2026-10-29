@@ -124,8 +124,8 @@ def test_rate_limited_event() -> None:
     assert isinstance(event, IdentificationScoredEvent)
     assert event.data.risk_score == 999
     assert event.data.is_rate_limited
-    assert event.data.risk_band == "rate_limited"
-    assert [(s.name, s.weight) for s in event.data.signals] == [("rate_limited", 999)]
+    assert event.data.risk_band == "banned_ip"
+    assert [(s.name, s.weight) for s in event.data.signals] == [("banned_ip", 999)]
     assert event.data.to_dict() == NORMALIZATION["webhook_rate_limited"]["expected"]
 
 
