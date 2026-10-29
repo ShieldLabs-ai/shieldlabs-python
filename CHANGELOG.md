@@ -8,6 +8,8 @@ All notable changes to this project are documented in this file. The format foll
 
 ### Changed
 
+- Entity-card responses preserve the public ID, nested Risk Score, timestamp, addresses, traffic and confirmed flags. Original cards remain available as raw data. The new entity list returns an `EntityPage` with original records and `next_page_token`, without a fabricated global total. Compatibility identification reads reject unavailable or invalid scores instead of treating them as zero.
+
 - History reads use `GET /api/v1/domains/{domain_id}/history/{resource}/{resource_id}`. Pass `domain_id` (the public domain UUID) when you construct the client. `domains()` lists the domains for the key. `history.list` reads `identifications` and `user` and sends filters as flat query parameters. `offset` is refused. The client does not call the retired unscoped History search.
 - Public risk-signal slugs are `network_check_incomplete`, `rate_limited`, `private_relay` and `latency_test`. Webhook flag parsers still accept `stun_not_checked`, `banned_ip`, `privacy_relay` and `ws_tcp_latency`. History columns stay `is_stun_not_checked`, `is_rate_limited`, `is_privacy_relay` and `is_latency_test`.
 - `DetectionFlags` follows webhook schema `2026-10-13`: 20 public booleans. `vpn` covers a network VPN and an in-browser VPN or proxy. `os_mismatch` covers either operating-system mismatch check. The public set adds `ws_tcp_latency`, `device_spoofing`, `rate_limited`, `ai_bot` and `ai_browser`.

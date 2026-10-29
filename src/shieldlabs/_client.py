@@ -27,7 +27,7 @@ from ._http import (
     SyncTransport,
     json_object,
 )
-from ._models import HistoryPage, Identification
+from ._models import EntityPage, HistoryPage, Identification
 from ._validation import (
     LookupType,
     history_origin,
@@ -286,7 +286,7 @@ class ShieldLabs(_HistoryConfig):
         resource: str,
         limit: int,
         filters: Optional[Mapping[str, Any]] = None,
-    ) -> HistoryPage:
+    ) -> EntityPage:
         if resource not in ("identifications", "user"):
             raise ValidationError("list supports identifications and user.")
         response = self._transport.get(
@@ -294,7 +294,7 @@ class ShieldLabs(_HistoryConfig):
             headers=self._headers,
             params=_flat_params(limit, filters),
         )
-        return HistoryPage.from_dict(json_object(response))
+        return EntityPage.from_dict(json_object(response))
 
     def close(self) -> None:
         """Close the underlying HTTP client (unless it was passed in)."""
@@ -339,7 +339,7 @@ class History:
         *,
         limit: int = 20,
         **filters: Any,
-    ) -> HistoryPage:
+    ) -> EntityPage:
         """List ``identifications`` or ``user`` for the client's domain."""
         return self._client._list(resource, limit, filters or None)
 
@@ -528,7 +528,7 @@ class AsyncShieldLabs(_HistoryConfig):
         resource: str,
         limit: int,
         filters: Optional[Mapping[str, Any]] = None,
-    ) -> HistoryPage:
+    ) -> EntityPage:
         if resource not in ("identifications", "user"):
             raise ValidationError("list supports identifications and user.")
         response = await self._transport.get(
@@ -536,7 +536,7 @@ class AsyncShieldLabs(_HistoryConfig):
             headers=self._headers,
             params=_flat_params(limit, filters),
         )
-        return HistoryPage.from_dict(json_object(response))
+        return EntityPage.from_dict(json_object(response))
 
     async def aclose(self) -> None:
         """Close the underlying HTTP client (unless it was passed in)."""
@@ -577,7 +577,7 @@ class AsyncHistory:
         *,
         limit: int = 20,
         **filters: Any,
-    ) -> HistoryPage:
+    ) -> EntityPage:
         """Async ``ShieldLabs.history.list``."""
         return await self._client._list(resource, limit, filters or None)
 

@@ -23,6 +23,7 @@ EXPECTED_EXPORTS = {
     "TrafficSource",
     "IpInfo",
     "HistoryPage",
+    "EntityPage",
     "DomainProfile",
     "LookupType",
     "RiskBand",

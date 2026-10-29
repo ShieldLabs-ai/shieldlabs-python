@@ -35,6 +35,7 @@ from ._management import AsyncShieldLabsManagement, ShieldLabsManagement
 from ._models import (
     DetectionFlags,
     DomainProfile,
+    EntityPage,
     HistoryPage,
     Identification,
     IdentificationSource,
@@ -64,6 +65,7 @@ __all__ = [
     "BadRequestError",
     "DetectionFlags",
     "DomainProfile",
+    "EntityPage",
     "Evaluation",
     "EvaluationReason",
     "HistoryPage",

@@ -4,10 +4,11 @@ from __future__ import annotations
 
 import json
 from collections.abc import Mapping
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime
 from typing import Any, Literal, Optional
 
+from ._errors import ApiError
 from ._normalize import (
     FLAG_KEYS,
     HISTORY_FLAG_MAP,
@@ -28,6 +29,7 @@ from ._normalize import (
 __all__ = [
     "DetectionFlags",
     "DomainProfile",
+    "EntityPage",
     "HistoryPage",
     "Identification",
     "IdentificationSource",
@@ -292,6 +294,54 @@ class Identification:
     def from_history_row(cls, row: Mapping[str, Any]) -> Identification:
         """Normalize one row of a History API response."""
         row = _mapping(row)
+        if isinstance(row.get("type"), str):
+            risk = _mapping(row.get("risk"))
+            score = risk.get("score")
+            if risk.get("state") != "ok" or isinstance(score, bool) or not isinstance(score, int):
+                raise ApiError(
+                    "Risk Score is unavailable in this entity card. "
+                    "Read the entity list to preserve its availability state.",
+                    status=200,
+                    body=dict(row),
+                )
+            if not 0 <= score <= 100:
+                raise ApiError(
+                    "History returned an invalid entity Risk Score.", status=200, body=dict(row)
+                )
+            traffic = _mapping(row.get("traffic"))
+            legacy = dict(row)
+            legacy.pop("type", None)
+            legacy.update(
+                identification_id=as_str(row.get("id")),
+                score=score,
+                ip=row.get("public_ip"),
+                web_rtc_ip=row.get("local_ip"),
+                web_rtc_country=row.get("local_country"),
+                traffic_channel=traffic.get("channel"),
+                entry_url=traffic.get("entry_url"),
+            )
+            legacy.update({key: traffic[key] for key in TRAFFIC_KEYS if key in traffic})
+            result = cls.from_history_row(legacy)
+            entity_signals = _mapping(row.get("signals"))
+            names = entity_signals.get("items", []) if entity_signals.get("state") == "ok" else []
+            if not isinstance(names, list):
+                names = []
+            aliases = {
+                "rate_limited": "banned_ip",
+                "private_relay": "privacy_relay",
+                "network_check_incomplete": "stun_not_checked",
+                "latency_test": "ws_tcp_latency",
+            }
+            entity_flags = DetectionFlags(
+                **{key: key in names or aliases.get(key, key) in names for key in FLAG_KEYS}
+            )
+            return replace(
+                result,
+                observed_at=parse_rfc3339(row.get("created_at"))
+                or parse_history_time(row.get("created_at")),
+                detection_flags=entity_flags,
+                raw=dict(row),
+            )
         leak_source = as_str(row.get("webrtc_leak_source")).strip()
         if leak_source and leak_source != "none":
             local_ip = clean_ip(row.get("webrtc_leak_ip"))
@@ -453,18 +503,51 @@ class HistoryPage:
 
     data: tuple[Identification, ...]
     total: int
+    next_page_token: Optional[str] = None
 
     @classmethod
     def from_dict(cls, body: Mapping[str, Any]) -> HistoryPage:
         """Build from a History API response body ``{"data": [...], "total": N}``."""
         body = _mapping(body)
         rows = body.get("data")
+        if isinstance(rows, Mapping) and isinstance(rows.get("type"), str):
+            rows = [rows]
         data = tuple(
             Identification.from_history_row(row)
             for row in (rows if isinstance(rows, list) else [])
             if isinstance(row, Mapping)
         )
-        return cls(data=data, total=as_int(body.get("total"), default=len(data)))
+        return cls(
+            data=data,
+            total=as_int(body.get("total"), default=len(data)),
+            next_page_token=body.get("next_page_token")
+            if isinstance(body.get("next_page_token"), str)
+            else None,
+        )
+
+
+@dataclass(frozen=True)
+class EntityPage:
+    """Current entity page: original cards and opaque cursor, without a total."""
+
+    data: tuple[Mapping[str, Any], ...]
+    next_page_token: Optional[str]
+
+    @classmethod
+    def from_dict(cls, body: Mapping[str, Any]) -> EntityPage:
+        rows = body.get("data")
+        token = body.get("next_page_token")
+        if not isinstance(rows, list) or any(
+            not isinstance(row, Mapping)
+            or not isinstance(row.get("id"), str)
+            or not isinstance(row.get("type"), str)
+            or not isinstance(row.get("risk"), Mapping)
+            for row in rows
+        ):
+            raise ApiError("History returned an invalid entity page.", status=200, body=dict(body))
+        if token is not None and not isinstance(token, str):
+            raise ApiError("History returned an invalid page token.", status=200, body=dict(body))
+        return cls(data=tuple(dict(row) for row in rows), next_page_token=token)
 
 
 @dataclass(frozen=True)
