@@ -49,7 +49,7 @@ class LegacyDetectionFlags(BaseModel):
     device_spoofing: Optional[StrictBool] = None
     latency_test: Optional[StrictBool] = Field(default=None, description="Current public name of the latency detector. Payloads from schema 2026-10-13 before the slug rename used ws_tcp_latency.")
     ws_tcp_latency: Optional[StrictBool] = Field(default=None, description="Previous public name of the latency detector. Current 2026-10-13 payloads use latency_test.")
-    banned_ip: Optional[StrictBool] = Field(default=None, description="The visitor exceeded the identification rate limit.")
+    banned_ip: Optional[StrictBool] = Field(default=None, description="Current public name of the banned-IP flag.")
     ai_bot: Optional[StrictBool] = Field(default=None, description="An accepted bot is classified as AI training or user-requested fetch. ChatGPT-User, Claude-User and Perplexity-User are AI bots, not AI browsers. Weight 0. The flag is optional on older payloads; its absence is not an evaluated negative result. Provider claims alone do not grant zero risk.")
     ai_browser: Optional[StrictBool] = Field(default=None, description="A browser is identified by separate verified browser infrastructure. A generic browser User-Agent or a verified provider alone is insufficient. Weight 0. Optional on older payloads; absence is not an evaluated negative.")
     os_mismatch2: Optional[StrictBool] = Field(default=None, description="Legacy 2026-10-06 only; current payloads combine this check into os_mismatch.")

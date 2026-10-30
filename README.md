@@ -1,5 +1,10 @@
 # ShieldLabs Python SDK
 
+History user lists accept one `ids` value. `risk_bands`, `risk_signals`, `source` and
+`campaign` remain repeatable. Multiple ids are rejected before HTTP; use one request per user.
+Entity cards do not support relation parameters.
+
+
 Read identification verdicts, verify webhooks and turn risk scores into decisions on your Python
 backend.
 

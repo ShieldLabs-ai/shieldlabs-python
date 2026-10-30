@@ -81,9 +81,6 @@ class HistoryAPIApi:
         source: Annotated[Optional[List[StrictStr]], Field(description="Traffic source. Together with campaign, at most 8 values, matched if any value matches. _empty means no referrer.")] = None,
         campaign: Annotated[Optional[List[StrictStr]], Field(description="Campaign name. No campaign matches visits with no campaign.")] = None,
         device_id_source: Annotated[Optional[StrictStr], Field(description="Device cards only. `legacy` or `fp21_record`.")] = None,
-        relation: Annotated[Optional[StrictStr], Field(description="Linked-id page for this card. Identification cards reject this parameter.")] = None,
-        relation_limit: Annotated[Optional[Annotated[int, Field(le=100, strict=True, ge=1)]], Field(description="Linked records in one page, from 1 through 100.")] = None,
-        relation_page_token: Annotated[Optional[StrictStr], Field(description="Opaque token from the previous linked-id page.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -171,12 +168,6 @@ class HistoryAPIApi:
         :type campaign: List[str]
         :param device_id_source: Device cards only. `legacy` or `fp21_record`.
         :type device_id_source: str
-        :param relation: Linked-id page for this card. Identification cards reject this parameter.
-        :type relation: str
-        :param relation_limit: Linked records in one page, from 1 through 100.
-        :type relation_limit: int
-        :param relation_page_token: Opaque token from the previous linked-id page.
-        :type relation_page_token: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -235,9 +226,6 @@ class HistoryAPIApi:
             source=source,
             campaign=campaign,
             device_id_source=device_id_source,
-            relation=relation,
-            relation_limit=relation_limit,
-            relation_page_token=relation_page_token,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -299,9 +287,6 @@ class HistoryAPIApi:
         source: Annotated[Optional[List[StrictStr]], Field(description="Traffic source. Together with campaign, at most 8 values, matched if any value matches. _empty means no referrer.")] = None,
         campaign: Annotated[Optional[List[StrictStr]], Field(description="Campaign name. No campaign matches visits with no campaign.")] = None,
         device_id_source: Annotated[Optional[StrictStr], Field(description="Device cards only. `legacy` or `fp21_record`.")] = None,
-        relation: Annotated[Optional[StrictStr], Field(description="Linked-id page for this card. Identification cards reject this parameter.")] = None,
-        relation_limit: Annotated[Optional[Annotated[int, Field(le=100, strict=True, ge=1)]], Field(description="Linked records in one page, from 1 through 100.")] = None,
-        relation_page_token: Annotated[Optional[StrictStr], Field(description="Opaque token from the previous linked-id page.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -389,12 +374,6 @@ class HistoryAPIApi:
         :type campaign: List[str]
         :param device_id_source: Device cards only. `legacy` or `fp21_record`.
         :type device_id_source: str
-        :param relation: Linked-id page for this card. Identification cards reject this parameter.
-        :type relation: str
-        :param relation_limit: Linked records in one page, from 1 through 100.
-        :type relation_limit: int
-        :param relation_page_token: Opaque token from the previous linked-id page.
-        :type relation_page_token: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -453,9 +432,6 @@ class HistoryAPIApi:
             source=source,
             campaign=campaign,
             device_id_source=device_id_source,
-            relation=relation,
-            relation_limit=relation_limit,
-            relation_page_token=relation_page_token,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -517,9 +493,6 @@ class HistoryAPIApi:
         source: Annotated[Optional[List[StrictStr]], Field(description="Traffic source. Together with campaign, at most 8 values, matched if any value matches. _empty means no referrer.")] = None,
         campaign: Annotated[Optional[List[StrictStr]], Field(description="Campaign name. No campaign matches visits with no campaign.")] = None,
         device_id_source: Annotated[Optional[StrictStr], Field(description="Device cards only. `legacy` or `fp21_record`.")] = None,
-        relation: Annotated[Optional[StrictStr], Field(description="Linked-id page for this card. Identification cards reject this parameter.")] = None,
-        relation_limit: Annotated[Optional[Annotated[int, Field(le=100, strict=True, ge=1)]], Field(description="Linked records in one page, from 1 through 100.")] = None,
-        relation_page_token: Annotated[Optional[StrictStr], Field(description="Opaque token from the previous linked-id page.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -607,12 +580,6 @@ class HistoryAPIApi:
         :type campaign: List[str]
         :param device_id_source: Device cards only. `legacy` or `fp21_record`.
         :type device_id_source: str
-        :param relation: Linked-id page for this card. Identification cards reject this parameter.
-        :type relation: str
-        :param relation_limit: Linked records in one page, from 1 through 100.
-        :type relation_limit: int
-        :param relation_page_token: Opaque token from the previous linked-id page.
-        :type relation_page_token: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -671,9 +638,6 @@ class HistoryAPIApi:
             source=source,
             campaign=campaign,
             device_id_source=device_id_source,
-            relation=relation,
-            relation_limit=relation_limit,
-            relation_page_token=relation_page_token,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -730,9 +694,6 @@ class HistoryAPIApi:
         source,
         campaign,
         device_id_source,
-        relation,
-        relation_limit,
-        relation_page_token,
         _request_auth,
         _content_type,
         _headers,
@@ -913,18 +874,6 @@ class HistoryAPIApi:
         if device_id_source is not None:
             
             _query_params.append(('device_id_source', device_id_source))
-            
-        if relation is not None:
-            
-            _query_params.append(('relation', relation))
-            
-        if relation_limit is not None:
-            
-            _query_params.append(('relation_limit', relation_limit))
-            
-        if relation_page_token is not None:
-            
-            _query_params.append(('relation_page_token', relation_page_token))
             
         # process the header parameters
         # process the form parameters
@@ -1243,7 +1192,7 @@ class HistoryAPIApi:
         risk_bands: Annotated[Optional[List[StrictStr]], Field(description="Repeat for trusted, suspicious, or dangerous.")] = None,
         hre_min_accounts: Annotated[Optional[Annotated[int, Field(le=99, strict=True, ge=3)]], Field(description="Minimum linked accounts for a high-risk event, from 3 to 99.")] = None,
         hre_min_devices: Annotated[Optional[Annotated[int, Field(le=99, strict=True, ge=4)]], Field(description="Minimum linked devices for a high-risk event, from 4 to 99.")] = None,
-        ids: Annotated[Optional[List[StrictStr]], Field(description="User ids. Repeat the key. User list only, at most 100.")] = None,
+        ids: Annotated[Optional[Annotated[str, Field(min_length=1, strict=True, max_length=512)]], Field(description="One user id. User list only. A repeated key returns 400.")] = None,
         is_vpn: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `is_vpn` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
         is_tor: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `is_tor` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
         is_proxy: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `is_proxy` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
@@ -1282,7 +1231,7 @@ class HistoryAPIApi:
     ) -> ListHistoryEntities200Response:
         """List History entities
 
-        Lists `identifications` or `user` for one domain. `{domain_id}` is the public domain UUID from `GET /api/v1/domains`. Literal `all` returns `403 domain_scope_not_supported`. A list of `visitor`, `device` or `ip` returns `403 entity_list_disabled`.  Repeat `risk_bands`, `risk_signals`, `source`, `campaign` and `ids`. Flags are `true` or `false` and combine with AND. Signal codes combine with OR. `source` and `campaign` are one OR group, at most 8 values together. `is_abuser`, `is_datacenter` and `is_stun_not_checked` return `400`. A nested `filter` or `chips` returns `400`.  The old `/api/v1/history/{search_type}/{value}` route returns `410 endpoint_retired`. Page with `page_token`, not `offset`. `from` and `to` are both required when either is set.
+        Lists `identifications` or `user` for one domain. `{domain_id}` is the public domain UUID from `GET /api/v1/domains`. Literal `all` returns `403 domain_scope_not_supported`. A list of `visitor`, `device` or `ip` returns `403 entity_list_disabled`.  Repeat `risk_bands`, `risk_signals`, `source` and `campaign`. Flags are `true` or `false` and combine with AND. Signal codes combine with OR. `source` and `campaign` are one OR group, at most 8 values together. `is_abuser`, `is_datacenter` and `is_stun_not_checked` return `400`. A nested `filter` or `chips` returns `400`.  The old `/api/v1/history/{search_type}/{value}` route returns `410 endpoint_retired`. Page with `page_token`, not `offset`. `from` and `to` are both required when either is set.
 
         :param domain_id: Public domain UUID of the site whose History is being read. (required)
         :type domain_id: UUID
@@ -1304,8 +1253,8 @@ class HistoryAPIApi:
         :type hre_min_accounts: int
         :param hre_min_devices: Minimum linked devices for a high-risk event, from 4 to 99.
         :type hre_min_devices: int
-        :param ids: User ids. Repeat the key. User list only, at most 100.
-        :type ids: List[str]
+        :param ids: One user id. User list only. A repeated key returns 400.
+        :type ids: str
         :param is_vpn: When set, keep only rows whose `is_vpn` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
         :type is_vpn: str
         :param is_tor: When set, keep only rows whose `is_tor` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
@@ -1450,7 +1399,7 @@ class HistoryAPIApi:
         risk_bands: Annotated[Optional[List[StrictStr]], Field(description="Repeat for trusted, suspicious, or dangerous.")] = None,
         hre_min_accounts: Annotated[Optional[Annotated[int, Field(le=99, strict=True, ge=3)]], Field(description="Minimum linked accounts for a high-risk event, from 3 to 99.")] = None,
         hre_min_devices: Annotated[Optional[Annotated[int, Field(le=99, strict=True, ge=4)]], Field(description="Minimum linked devices for a high-risk event, from 4 to 99.")] = None,
-        ids: Annotated[Optional[List[StrictStr]], Field(description="User ids. Repeat the key. User list only, at most 100.")] = None,
+        ids: Annotated[Optional[Annotated[str, Field(min_length=1, strict=True, max_length=512)]], Field(description="One user id. User list only. A repeated key returns 400.")] = None,
         is_vpn: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `is_vpn` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
         is_tor: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `is_tor` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
         is_proxy: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `is_proxy` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
@@ -1489,7 +1438,7 @@ class HistoryAPIApi:
     ) -> ApiResponse[ListHistoryEntities200Response]:
         """List History entities
 
-        Lists `identifications` or `user` for one domain. `{domain_id}` is the public domain UUID from `GET /api/v1/domains`. Literal `all` returns `403 domain_scope_not_supported`. A list of `visitor`, `device` or `ip` returns `403 entity_list_disabled`.  Repeat `risk_bands`, `risk_signals`, `source`, `campaign` and `ids`. Flags are `true` or `false` and combine with AND. Signal codes combine with OR. `source` and `campaign` are one OR group, at most 8 values together. `is_abuser`, `is_datacenter` and `is_stun_not_checked` return `400`. A nested `filter` or `chips` returns `400`.  The old `/api/v1/history/{search_type}/{value}` route returns `410 endpoint_retired`. Page with `page_token`, not `offset`. `from` and `to` are both required when either is set.
+        Lists `identifications` or `user` for one domain. `{domain_id}` is the public domain UUID from `GET /api/v1/domains`. Literal `all` returns `403 domain_scope_not_supported`. A list of `visitor`, `device` or `ip` returns `403 entity_list_disabled`.  Repeat `risk_bands`, `risk_signals`, `source` and `campaign`. Flags are `true` or `false` and combine with AND. Signal codes combine with OR. `source` and `campaign` are one OR group, at most 8 values together. `is_abuser`, `is_datacenter` and `is_stun_not_checked` return `400`. A nested `filter` or `chips` returns `400`.  The old `/api/v1/history/{search_type}/{value}` route returns `410 endpoint_retired`. Page with `page_token`, not `offset`. `from` and `to` are both required when either is set.
 
         :param domain_id: Public domain UUID of the site whose History is being read. (required)
         :type domain_id: UUID
@@ -1511,8 +1460,8 @@ class HistoryAPIApi:
         :type hre_min_accounts: int
         :param hre_min_devices: Minimum linked devices for a high-risk event, from 4 to 99.
         :type hre_min_devices: int
-        :param ids: User ids. Repeat the key. User list only, at most 100.
-        :type ids: List[str]
+        :param ids: One user id. User list only. A repeated key returns 400.
+        :type ids: str
         :param is_vpn: When set, keep only rows whose `is_vpn` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
         :type is_vpn: str
         :param is_tor: When set, keep only rows whose `is_tor` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
@@ -1657,7 +1606,7 @@ class HistoryAPIApi:
         risk_bands: Annotated[Optional[List[StrictStr]], Field(description="Repeat for trusted, suspicious, or dangerous.")] = None,
         hre_min_accounts: Annotated[Optional[Annotated[int, Field(le=99, strict=True, ge=3)]], Field(description="Minimum linked accounts for a high-risk event, from 3 to 99.")] = None,
         hre_min_devices: Annotated[Optional[Annotated[int, Field(le=99, strict=True, ge=4)]], Field(description="Minimum linked devices for a high-risk event, from 4 to 99.")] = None,
-        ids: Annotated[Optional[List[StrictStr]], Field(description="User ids. Repeat the key. User list only, at most 100.")] = None,
+        ids: Annotated[Optional[Annotated[str, Field(min_length=1, strict=True, max_length=512)]], Field(description="One user id. User list only. A repeated key returns 400.")] = None,
         is_vpn: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `is_vpn` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
         is_tor: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `is_tor` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
         is_proxy: Annotated[Optional[StrictStr], Field(description="When set, keep only rows whose `is_proxy` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.")] = None,
@@ -1696,7 +1645,7 @@ class HistoryAPIApi:
     ) -> RESTResponseType:
         """List History entities
 
-        Lists `identifications` or `user` for one domain. `{domain_id}` is the public domain UUID from `GET /api/v1/domains`. Literal `all` returns `403 domain_scope_not_supported`. A list of `visitor`, `device` or `ip` returns `403 entity_list_disabled`.  Repeat `risk_bands`, `risk_signals`, `source`, `campaign` and `ids`. Flags are `true` or `false` and combine with AND. Signal codes combine with OR. `source` and `campaign` are one OR group, at most 8 values together. `is_abuser`, `is_datacenter` and `is_stun_not_checked` return `400`. A nested `filter` or `chips` returns `400`.  The old `/api/v1/history/{search_type}/{value}` route returns `410 endpoint_retired`. Page with `page_token`, not `offset`. `from` and `to` are both required when either is set.
+        Lists `identifications` or `user` for one domain. `{domain_id}` is the public domain UUID from `GET /api/v1/domains`. Literal `all` returns `403 domain_scope_not_supported`. A list of `visitor`, `device` or `ip` returns `403 entity_list_disabled`.  Repeat `risk_bands`, `risk_signals`, `source` and `campaign`. Flags are `true` or `false` and combine with AND. Signal codes combine with OR. `source` and `campaign` are one OR group, at most 8 values together. `is_abuser`, `is_datacenter` and `is_stun_not_checked` return `400`. A nested `filter` or `chips` returns `400`.  The old `/api/v1/history/{search_type}/{value}` route returns `410 endpoint_retired`. Page with `page_token`, not `offset`. `from` and `to` are both required when either is set.
 
         :param domain_id: Public domain UUID of the site whose History is being read. (required)
         :type domain_id: UUID
@@ -1718,8 +1667,8 @@ class HistoryAPIApi:
         :type hre_min_accounts: int
         :param hre_min_devices: Minimum linked devices for a high-risk event, from 4 to 99.
         :type hre_min_devices: int
-        :param ids: User ids. Repeat the key. User list only, at most 100.
-        :type ids: List[str]
+        :param ids: One user id. User list only. A repeated key returns 400.
+        :type ids: str
         :param is_vpn: When set, keep only rows whose `is_vpn` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
         :type is_vpn: str
         :param is_tor: When set, keep only rows whose `is_tor` equals this value. Omit the parameter to leave the flag unconstrained. The only accepted values are `true` and `false`.
@@ -1896,7 +1845,6 @@ class HistoryAPIApi:
 
         _collection_formats: Dict[str, str] = {
             'risk_bands': 'multi',
-            'ids': 'multi',
             'risk_signals': 'multi',
             'source': 'multi',
             'campaign': 'multi',

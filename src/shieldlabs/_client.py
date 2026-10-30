@@ -83,6 +83,12 @@ def _flat_params(limit: int, filters: Optional[Mapping[str, Any]] = None) -> dic
     for key, value in (filters or {}).items():
         if value is None:
             continue
+        if key == "ids":
+            # Older callers may already hold one id in a list; never repeat the key.
+            if isinstance(value, (list, tuple)) and len(value) == 1:
+                value = value[0]
+            if not isinstance(value, str) or not value or len(value) > 512:
+                raise ValidationError("ids must be one non-empty user id string.")
         params[key] = "true" if isinstance(value, bool) else value
     return params
 

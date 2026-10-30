@@ -176,7 +176,7 @@ paths:
         from `GET /api/v1/domains`. Literal `all` returns `403 domain_scope_not_supported`. A list of
         `visitor`, `device` or `ip` returns `403 entity_list_disabled`.
 
-        Repeat `risk_bands`, `risk_signals`, `source`, `campaign` and `ids`. Flags are `true` or `false`
+        Repeat `risk_bands`, `risk_signals`, `source` and `campaign`. Flags are `true` or `false`
         and combine with AND. Signal codes combine with OR. `source` and `campaign` are one OR group,
         at most 8 values together. `is_abuser`, `is_datacenter` and
         `is_stun_not_checked` return `400`. A nested `filter` or `chips` returns `400`.
@@ -306,17 +306,14 @@ paths:
         - name: ids
           in: query
           required: false
-          description: User ids. Repeat the key. User list only, at most 100.
+          description: One user id. User list only. A repeated key returns 400.
           schema:
-            type: array
-            items:
-              type: string
-          style: form
-          explode: true
+            type: string
+            minLength: 1
+            maxLength: 512
           examples:
             one:
-              value:
-                - customer
+              value: customer
         - $ref: '#/components/parameters/HistoryFlagVpn'
         - $ref: '#/components/parameters/HistoryFlagTor'
         - $ref: '#/components/parameters/HistoryFlagProxy'
@@ -705,52 +702,6 @@ paths:
           examples:
             legacy:
               value: legacy
-        - name: relation
-          in: query
-          required: false
-          description: Linked-id page for this card. Identification cards reject this parameter.
-          schema:
-            type: string
-            enum:
-              - visitors
-              - devices
-              - users
-              - public_ips
-              - sessions
-              - cookies
-              - local_ips
-              - countries
-              - local_countries
-              - browsers
-              - os
-              - device_types
-              - connection_types
-              - risk_signals
-              - high_risk_events
-          examples:
-            visitors:
-              value: visitors
-        - name: relation_limit
-          in: query
-          required: false
-          description: Linked records in one page, from 1 through 100.
-          schema:
-            type: integer
-            minimum: 1
-            maximum: 100
-            default: 20
-          examples:
-            page:
-              value: 20
-        - name: relation_page_token
-          in: query
-          required: false
-          description: Opaque token from the previous linked-id page.
-          schema:
-            type: string
-          examples:
-            next:
-              value: next-page
       responses:
         '200':
           description: The entity card.
@@ -2601,7 +2552,7 @@ components:
           description: Previous public name of the latency detector. Current 2026-10-13 payloads use latency_test.
         banned_ip:
           type: boolean
-          description: The visitor exceeded the identification rate limit.
+          description: Current public name of the banned-IP flag.
         ai_bot:
           type: boolean
           description: An accepted bot is classified as AI training or user-requested fetch. ChatGPT-User, Claude-User and Perplexity-User are AI bots, not AI browsers. Weight 0. The flag is optional on older payloads; its absence is not an evaluated negative result. Provider claims alone do not grant zero risk.
